@@ -45,7 +45,7 @@ for name,digest in verified.items():
  if p.is_symlink() or hashlib.sha256(p.read_bytes()).hexdigest()!=digest:raise ValueError('Public model hash mismatch: '+name)
  target=app/'models/all-MiniLM-L6-v2'/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(p,target)
 info=plistlib.loads((ROOT/'Muse Lab.app/Contents/Info.plist').read_bytes())
-info.update(CFBundleName='Bandstand',CFBundleDisplayName='Bandstand',CFBundleShortVersionString='0.2.0',CFBundleVersion='2',LSMinimumSystemVersion='14.0')
+info.update(CFBundleName='Bandstand',CFBundleDisplayName='Bandstand',CFBundleShortVersionString='0.2.1',CFBundleVersion='3',LSMinimumSystemVersion='14.0')
 (out/'Contents/Info.plist').write_bytes(plistlib.dumps(info))
 icon=ROOT/'Muse Lab.app/Contents/Resources/MuseLab.icns'
 if not icon.exists():
@@ -59,9 +59,9 @@ subprocess.run(['/usr/bin/swiftc','-module-cache-path',str(ROOT/'build/module-ca
 # Ad-hoc signing checks bundle integrity; it is NOT Developer ID notarization.
 subprocess.run(['/usr/bin/codesign','--force','--deep','--sign','-',str(out)],check=True)
 manifest={str(p.relative_to(out)):hashlib.sha256(p.read_bytes()).hexdigest() for p in out.rglob('*') if p.is_file()}
-(ROOT/'release/bundle-manifest.json').write_text(json.dumps({'version':'0.2.0','architecture':'arm64','dependencies':versions,'files':manifest},indent=2))
+(ROOT/'release/bundle-manifest.json').write_text(json.dumps({'version':'0.2.1','architecture':'arm64','dependencies':versions,'files':manifest},indent=2))
 subprocess.run([str(resources/'python/bin/python3.12'),'-c','import numpy,PIL,reportlab,ssl; from semantic_decoder import encode; assert encode(["Synthetic packaging test"]).shape == (1,384); print("Bundled runtime and offline encoder passed")'],check=True,cwd=app)
-archive=ROOT/'release/Bandstand-0.2.0-macos-arm64.zip'
+archive=ROOT/'release/Bandstand-0.2.1-macos-arm64.zip'
 if archive.exists():archive.unlink()
 subprocess.run(['/usr/bin/ditto','-c','-k','--sequesterRsrc','--keepParent',str(out),str(archive)],check=True)
 print(archive)
