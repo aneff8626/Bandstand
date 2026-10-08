@@ -1,0 +1,11 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const s=fs.readFileSync(require('path').join(__dirname,'../web/app.js'),'utf8');
+const calls=[];const box={audioCtx:{currentTime:10},now:()=>100,developerBeep:(...a)=>calls.push(a)};vm.createContext(box);
+vm.runInContext('let developerAudio=[];'+s.slice(s.indexOf('function scheduleDeveloperAudio('),s.indexOf('function drawDeveloperCue(')),box);
+box.scheduleDeveloperAudio({action:'saccade',action_onset:108,ends:128});
+assert.equal(calls.length,24);assert.deepEqual(calls.slice(0,3).map(c=>c[2]),[15,16,17]);
+assert.deepEqual(calls.slice(3,23).map(c=>c[2]),Array.from({length:20},(_,i)=>18+i));
+assert.equal(calls.at(-1)[1],.7);assert.equal(calls.at(-1)[2],38);
+calls.length=0;box.scheduleDeveloperAudio({action:'blink',action_onset:108,ends:128});
+assert.equal(calls.length,14);assert.deepEqual(calls.slice(3,13).map(c=>c[2]),Array.from({length:10},(_,i)=>18+i*2));
+console.log('Countdown, one-second cadence, ten blink cues, and stop beep scheduling passed');

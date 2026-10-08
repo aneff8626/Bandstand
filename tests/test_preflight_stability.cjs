@@ -1,0 +1,10 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const source=fs.readFileSync(__dirname+'/../web/app.js','utf8');
+let writes=0;const nodes=new Map();
+const $=id=>{if(!nodes.has(id)){let text='';nodes.set(id,{open:true,disabled:false,dataset:{},children:[],get textContent(){return text},set textContent(v){text=v;writes++},querySelector(){return this.children[0]},append(el){this.children.push(el)}})}return nodes.get(id)};
+const context={$,state:{stale:false,contact:[{channel:'TP9',level:'yellow',state:'Noisy'}],live_artifacts:['Contact noise']},boot:{channels:['TP9']},document:{createElement:()=>({dataset:{},textContent:''})},preflightStarting:false,preflightOverride:false,preflightContactRejected:false};
+vm.createContext(context);vm.runInContext(source.slice(source.indexOf('function setPreflightText'),source.indexOf('let preflightOverride=')),context);
+vm.runInContext('renderPreflight()',context);assert.equal($('confirmStart').textContent,'Continue anyway');const initial=writes;
+for(let i=0;i<30;i++)vm.runInContext('renderPreflight()',context);
+assert.equal(writes,initial,'Polling must not replace button or unchanged warning text');assert.equal($('confirmStart').disabled,false);
+console.log('Repeated preflight updates preserve button text nodes and enabled state.');

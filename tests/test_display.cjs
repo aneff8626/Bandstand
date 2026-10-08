@@ -1,0 +1,31 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const source=fs.readFileSync(require('path').join(__dirname,'../web/app.js'),'utf8');
+const code=source.slice(source.indexOf('function overflowRuns('),source.indexOf("function drawTrace("));
+const box={};vm.createContext(box);vm.runInContext(code,box);
+const runs=box.overflowRuns([[0,5],[1,-3],[2,-6],[3,6]],0,10);
+assert.equal(runs.length,1);assert.deepEqual(JSON.parse(JSON.stringify(runs[0].points)),[[0,5],[1,0],[3,0],[3,6]]);
+assert.equal(box.overflowRuns([[0,5],[1,NaN],[2,6]],0,10).length,0);
+assert.equal(box.overflowRuns([[0,11],[1,15]],0,10)[0].points[0][1],10);
+console.log('3 overflow connector checks passed');
+const layoutCode=source.slice(source.indexOf('function layoutAnnotationLabels('),source.indexOf('function drawArtifactLabels('));
+vm.runInContext(layoutCode,box);
+const items=[{text:'Blink*',x:170},{text:'Jaw clench*',x:175},{text:'Noise',x:460}];
+const layout=box.layoutAnnotationLabels(items,42,500,t=>t.length*6);
+assert.equal(layout.placed.length,3);
+assert.equal(layout.overflow,false);
+for(let i=0;i<layout.placed.length;i++){
+ const p=layout.placed[i];assert.ok(p.x>=42&&p.x+p.width<=500);
+ assert.equal(p.lane,undefined);
+ if(i)assert.ok(layout.placed[i-1].x+layout.placed[i-1].width+8<=p.x);
+}
+assert.ok(layout.placed[1].x>175);
+const edge=box.layoutAnnotationLabels([{text:'First',x:470},{text:'Second',x:480}],42,500,t=>t.length*6);
+assert.ok(edge.placed[0].x<470);
+assert.equal(box.layoutAnnotationLabels([{text:'Long'.repeat(50),x:42}],42,500,t=>t.length*6).overflow,true);
+assert.equal(box.layoutAnnotationLabels([],42,500,t=>t.length*6).placed.length,0);
+console.log('Single-row annotations: left/right packing, bounds, empty and overflow checks passed');
+const dense=box.layoutAnnotationLabels(Array.from({length:8},(_,i)=>({text:'👁 #'+(100+i),x:499})),42,500,t=>t.length*5);
+assert.equal(dense.overflow,false);
+for(let i=1;i<dense.placed.length;i++)assert.ok(dense.placed[i-1].x+dense.placed[i-1].width+8<=dense.placed[i].x);
+assert.ok(!source.slice(source.indexOf('function drawArtifactRegions('),source.indexOf('function layoutAnnotationLabels(')).includes("fillText('#'"));
+console.log('Dense right-edge IDs stay packed; duplicate box IDs removed');

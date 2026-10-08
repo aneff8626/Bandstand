@@ -1,0 +1,3 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');const box={localStorage:{getItem:()=>JSON.stringify(['de la cruz','X Æ A-12'])}};vm.createContext(box);vm.runInContext(fs.readFileSync(__dirname+'/../web/redaction.js','utf8'),box);
+for(const phrase of ['John met Sarah','john met sarah','Dr. Patel called','I met de la cruz','Hello Gabriela','X Æ A-12 called']){const red=box.redactPhrase(phrase);assert(red.includes('[name]'),red)}
+assert.equal(box.redactPhrase('I can see the EEG'),'I can see the EEG');assert(!box.redactPhrase('John Smith').includes('Smith'));console.log('Name masking: capitalized, lowercase common names, titles, custom phrases and ordinary text passed');
