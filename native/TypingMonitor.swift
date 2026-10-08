@@ -2,7 +2,7 @@ import AppKit
 import ApplicationServices
 import Carbon
 
-// Opt-in, passive keyboard observation. No permission prompts, clipboard reads,
+// Opt-in, passive keyboard observation. Permission setup is user-initiated. No clipboard reads,
 // field-value reads, injected keys, network transport, or automatic startup.
 final class TypingMonitor {
     var tap: CFMachPort?
@@ -18,7 +18,18 @@ final class TypingMonitor {
     func permissions()->[String:Any] {
         let listen=CGPreflightListenEventAccess(),access=AXIsProcessTrusted()
         return ["inputMonitoring":listen,"accessibility":access,"available":listen && access,"active":active,
-                "reason":listen && access ? "Ready. Protected fields, terminals and Muse Lab controls are skipped." : "Typing in other apps needs Muse Lab enabled under macOS Privacy & Security → Input Monitoring and Accessibility. No permission prompts were opened."]
+                "reason":listen && access ? "Ready. Protected fields, terminals and Muse Lab controls are skipped." : "Enable typing access to open macOS settings. Allow Muse Lab (or Bandstand) in Accessibility and Input Monitoring; macOS may require reopening the app."]
+    }
+    func requestAccess()->[String:Any] {
+        if !AXIsProcessTrusted() {
+            let options=[kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String:true] as CFDictionary
+            _ = AXIsProcessTrustedWithOptions(options)
+            NSWorkspace.shared.open(URL(string:"x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+        } else if !CGPreflightListenEventAccess() {
+            _ = CGRequestListenEventAccess()
+            NSWorkspace.shared.open(URL(string:"x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")!)
+        }
+        return permissions()
     }
     func start()->[String:Any] {
         if active {return permissions()}

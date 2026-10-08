@@ -71,7 +71,8 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
         guard message.frameInfo.isMainFrame, message.frameInfo.request.url?.scheme == "muselab", let body=message.body as? [String:Any] else{return}
         if let path=body["path"] as? String,path.hasPrefix("system_typing/") {
             let result:[String:Any]
-            if path == "system_typing/start" {result=typingMonitor?.start() ?? ["available":false]}
+            if path == "system_typing/request_access" {result=typingMonitor?.requestAccess() ?? ["available":false]}
+            else if path == "system_typing/start" {result=typingMonitor?.start() ?? ["available":false]}
             else if path == "system_typing/stop" {typingMonitor?.stop();result=["active":false]}
             else {result=typingMonitor?.permissions() ?? ["available":false]}
             let reply:[String:Any]=["id":body["id"] ?? 0,"result":result]
