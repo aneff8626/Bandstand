@@ -168,7 +168,8 @@ class Engine:
             if path=='typing/stop':return self.typing.stop(body.get('reason','Stopped by writer'))
             raise ValueError('Unknown typing request')
     def manifest(self):
-        path=ROOT/'stimuli/manifest.json'
+        path=DATA_ROOT/'stimuli/manifest.json'
+        if not path.exists():path=ROOT/'stimuli/manifest.json'
         return json.loads(path.read_text()) if path.exists() else []
     def catalog(self):
         assets=self.manifest(); result=[]

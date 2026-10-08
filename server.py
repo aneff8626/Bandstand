@@ -36,7 +36,7 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/api/sessions':
                 sessions=[]
                 for p in sorted((DATA_ROOT).glob('*/session.json'),reverse=True):
-                    s=json.loads(p.read_text()); sessions.append({k:s.get(k) for k in ['id','title','source','started','ended','running']})
+                    s=json.loads(p.read_text()); sessions.append({k:s.get(k) for k in ['id','title','source','started','ended','running','mode','protocol']})
                 return self.send(200,dumps(sessions))
             if path.startswith('/api/results/'):
                 parts=path.split('/')
@@ -62,7 +62,8 @@ class Handler(BaseHTTPRequestHandler):
                 from enrollment import enrollment
                 return self.send(200,dumps(enrollment()))
             if path.startswith('/stimuli/'):
-                file=ROOT/'stimuli'/Path(path).name
+                file=DATA_ROOT/'stimuli'/Path(path).name
+                if not file.exists():file=ROOT/'stimuli'/Path(path).name
                 if file.suffix!='.png' or not file.exists(): return self.send(404,'Not found','text/plain')
                 return self.send(200,file.read_bytes(),'image/png')
             mapping={'/':'index.html','/style.css':'style.css',**{'/'+p.name:p.name for p in (ROOT/'web').glob('*.js')}}
@@ -87,6 +88,8 @@ class Handler(BaseHTTPRequestHandler):
             elif path=='/api/enrollment':
                 from enrollment import enrollment
                 result=enrollment(body if body else None)
+            elif path in ('/api/bluetooth_connect','/api/bluetooth_disconnect'):
+                raise ValueError('Bluetooth controls require the Bandstand desktop app. Open Bandstand.app to connect your headset.')
             elif path=='/api/source': engine.switch_source(body['source']); result={'ok':True}
             elif path.startswith('/api/typing/'):result=engine.typing_request(path[5:],body)
             elif path=='/api/start': result=engine.begin(body)
@@ -110,12 +113,12 @@ class Handler(BaseHTTPRequestHandler):
         if std<.005: raise ValueError('Image has insufficient contrast')
         # Normalize digital luminance and RMS contrast; these are not photometric calibration.
         a=(a-a.mean())*(.18/std)+.5; clipped=float(np.mean((a<0)|(a>1))); a=np.clip(a,0,1)
-        digest=hashlib.sha256(raw).hexdigest(); name=digest[:24]+'.png'; Image.fromarray(np.uint8(a*255)).save(ROOT/'stimuli'/name)
+        digest=hashlib.sha256(raw).hexdigest(); name=digest[:24]+'.png'; (DATA_ROOT/'stimuli').mkdir(exist_ok=True); Image.fromarray(np.uint8(a*255)).save(DATA_ROOT/'stimuli'/name)
         entry=dict(file=name,sha256=digest,category=category,source=source[:1000],license=license_text[:300],original_name=str(b.get('name',''))[:200],width=512,height=512,mean=float(a.mean()),rms_contrast=float(a.std()),clipped_fraction=clipped,processing='Grayscale, aspect-preserving fit in 480px, gray padding to 512px, target mean .5 RMS .18; 8-bit quantization. Not a validated publication stimulus.')
         with engine.lock:
             manifest=engine.manifest()
             if any(x['sha256']==digest for x in manifest): raise ValueError('Duplicate image already imported')
-            manifest.append(entry); (ROOT/'stimuli/manifest.json').write_text(dumps(manifest))
+            manifest.append(entry); (DATA_ROOT/'stimuli/manifest.json').write_text(dumps(manifest))
         return entry
 
 if __name__=='__main__':

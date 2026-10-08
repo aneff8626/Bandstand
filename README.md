@@ -1,6 +1,8 @@
 # Bandstand
 
-A local macOS desktop app for Muse 2 EEG experiments. Open **Muse Lab.app** or double-click **Launch Muse Lab.command** in this folder. Keep the app inside this folder: its source and local Python environment are adjacent to it. Participant data are stored separately.
+A local macOS desktop app for Muse 2 EEG experiments and exploratory writing-to-EEG semantic retrieval. The self-contained development build is **Bandstand.app** (Apple Silicon, macOS 14+). Unzip the release and open it. The source checkout also supports **Muse Lab.app** and **Launch Muse Lab.command**. Participant data are stored separately.
+
+The development build is ad-hoc signed, not Apple-notarized. A clean-machine installation and headset check remain necessary before a participant release.
 
 ## Current readiness
 
@@ -9,13 +11,13 @@ A local macOS desktop app for Muse 2 EEG experiments. Open **Muse Lab.app** or d
 - Hardware verified on this Mac: live Muse EEG on TP9, AF7, AF8 and TP10 at 256 Hz, including automatic reconnection after app restart. Physical event timing and signal accuracy remain uncalibrated.
 - **Preview synthetic EEG** explicitly enables a simulator. Every simulated recording and report is labeled. The app starts in live mode; it never silently substitutes synthetic EEG for a missing headset.
 - Faces/cars and expertise tasks require locally imported photographic sets. Public source links and import controls are provided. No photograph pack is bundled, and no preset is claimed to be an exact replication.
-- Optional accounts use Supabase. Recording remains local; research uploads are disabled.
+- Optional accounts use Supabase. Explicitly selected, completed built-in ERP trials can be uploaded after consent. Writing-decoder contributions remain disabled; writing, embeddings and personalized models stay local.
 
 ## Workflow
 
 1. Choose ERP, time-frequency, or biofeedback. Choose a protocol and analysis electrodes.
 2. Review the source-linked protocol notes, primary analysis window and artifact thresholds. Set display width and viewing distance if visual angle matters.
-3. With live EEG available, inspect contact estimates and traces. The app requires recent samples and a clean two-second segment before recording. These estimates are **not impedance measurements**.
+3. With live EEG available, inspect contact estimates and traces. The app requires recent samples. Contact warnings can be overridden in the task review; per-channel trial rejection remains active. These estimates are **not impedance measurements**.
 4. Start recording. The participant display and analyst plots appear together. Escape or **End session** stops and preserves available data. Leaving the app's presentation tab stops a run if the visibility event is delivered. Gaps or interrupted presentation are flagged.
 5. Export raw data/events, processed data, or a PDF. Native-app exports are saved under the private storage directory’s `exports` folder; their absolute path is shown. Saved Sessions exports the full saved session as a ZIP.
 
@@ -43,7 +45,7 @@ A local macOS desktop app for Muse 2 EEG experiments. Open **Muse Lab.app** or d
 - Online ERP processing: causal 60 Hz notch (Q=30), first-order 0.1 Hz high-pass and second-order 30 Hz low-pass. These filters change phase/peak latency; do not treat online peaks as calibrated physiological latency. Raw EEG is retained for offline processing.
 - Epoch: -200 to +800 ms; baseline -200 to 0 ms. Signal is interpolated to a common 256 Hz grid only after checking coverage and gaps. Reward trials additionally use the temporal mean as reference.
 - Time-frequency: 60 Hz notched EEG; 1 s Hann windows, 125 ms hops, 2–40 Hz, absolute log power. Condition differences are differences of mean log power. Welch-style band features use a periodogram over each nonoverlapping block analysis interval. No hidden baseline division.
-- Artifact rules operate on raw EEG. Provisional thresholds flag large amplitude/steps, frontal blink-like changes, elevated 25–45 Hz activity, clipping, flatline, missing samples. Frontal blink flags are applied even when temporal channels are selected. Entire epochs are conservatively rejected, including baseline and the primary interval. No ICA or EOG/EMG validation is claimed.
+- Artifact rules operate on raw EEG. Provisional thresholds flag large amplitude/steps, frontal blink-like changes, elevated 25–45 Hz activity, clipping, flatline, missing samples. Frontal blink flags are applied even when temporal channels are selected. ERP rejection is assessed per channel, including baseline and the primary interval, so a noisy channel does not automatically discard clean channels. No ICA or EOG/EMG validation is claimed.
 - ERP display adds condition means and pointwise Student-t 95% intervals from 10 accepted trials per condition. Comparison plots show single trials, then means ± SE.
 - Two-sided Welch tests compare trial-level features after every new usable trial, gated by at least 10 usable trials in both conditions (adjustable upward). Exact numeric p, t, df and thresholds for NS/*/**/*** are stored. Repeated looks are uncorrected, trials may be autocorrelated, and one participant's trials do not establish population effects. The threshold of 10 is for display, not a power calculation.
 - Biofeedback uses overlapping two-second windows for display. Their summaries are descriptive and are not counted as independent inferential trials. Stable pre/post blocks provide separate features.
@@ -63,19 +65,19 @@ These controls do not establish equality of physical luminance, spatial frequenc
 - `trials.json`, `analysis.json`, processed ZIP CSVs: trial acceptance/reasons, features, mean ERP, SE, pointwise CI and TF arrays.
 - `bandpower.csv`: time, training phase, power, quality status and rejection reasons.
 - `report.pdf`: generated on export; simulated recordings are marked prominently.
-- `data/desktop.log`: local diagnostic errors. Account credentials are sent only when you use account controls; research recordings are not uploaded.
+- `data/desktop.log`: local diagnostic errors. Account credentials are sent only when you use account controls; only explicitly selected ERP trials are uploaded after consent.
 
 Raw data and events flush during acquisition. An abrupt process termination may leave `running: true` in metadata, but previously flushed raw/event files remain. Do not interpret that field as proof a session is still recording after a crash.
 
 ## Development
 
-Installed runtime is the existing Codex Python 3.12 distribution, exposed through `.venv` with system packages. Required libraries: NumPy, Pillow, ReportLab. macOS native code uses Foundation, CoreBluetooth, AppKit and WebKit; Swift command-line tools must be available to rebuild. No third-party BLE package is needed.
+Installed runtime is the existing Codex Python 3.12 distribution, exposed through `.venv` with system packages. Required libraries are listed in requirements.txt, including PyTorch and Transformers for local semantic encoding. macOS native code uses Foundation, CoreBluetooth, AppKit and WebKit; Swift command-line tools must be available to rebuild. No third-party BLE package is needed.
 
 ```sh
 .venv/bin/python -m unittest discover -s tests -v
 ```
 
-`server.py` is an optional loopback web frontend on port 8765 for environments that permit a listening socket. The desktop app uses `desktop_service.py` and needs no port. `build/qa/example-report.pdf` is a synthetic pipeline-test artifact, not a human recording. Eleven automated tests passed. A 20-trial desktop simulation completed with 20 accepted trials, saved events/epochs and a PDF exported through the UI. Live hardware remains unverified.
+`server.py` is an optional loopback web frontend on port 8765 for environments that permit a listening socket. The desktop app uses `desktop_service.py` and needs no port. `build/qa/example-report.pdf` is a synthetic pipeline-test artifact, not a human recording. The 2026-10-08 release checks passed 89 Python tests and all JavaScript regression scripts. A synthetic 100-trial benchmark covered processing and raw/processed/PDF exports. These do not validate physical stimulus timing or current Bluetooth behavior.
 
 ## Primary sources
 
@@ -141,9 +143,9 @@ A provisional EEG-to-semantic model is now fitted after eight usable phrases wit
 
 Private recordings are stored outside the code folder. `BANDSTAND_DATA_DIR` or ignored `local-settings.json` can override the default `~/Library/Application Support/Bandstand/data`. Keep local settings, recordings, logs, exports, imported stimuli, personalized models and phrase banks out of source releases. Local files are not application-encrypted.
 
-Enrollment supports optional Supabase email/password accounts. Passwords are never intentionally persisted by Bandstand; tokens are held in process memory. The authentication client sends only allowlisted credentials to the fixed project endpoint and does not follow redirects. Local recording does not require an account. Account deletion removes the signed-in cloud account and its consent row; local recordings remain. Provider backups are not erased immediately.
+Enrollment supports optional Supabase email/password accounts. Passwords are never intentionally persisted by Bandstand; access tokens are held in process memory and optional refresh tokens are stored in macOS Keychain. The authentication client sends only allowlisted credentials to the fixed project endpoint and does not follow redirects. Local recording does not require an account. Account deletion removes the signed-in cloud account and its consent row; local recordings remain. Provider backups are not erased immediately.
 
-ERP sharing preferences are local requests only. Research uploads and shared decoder contributions remain disabled. There is no secure aggregation or differential privacy implementation yet. Do not upload personal decoder files: they may contain readable phrase libraries. Backup expiration policy must be finalized before research enrollment is released.
+ERP consent is enforced in Supabase and selected numeric ERP trials can be shared. Shared decoder contributions remain disabled. There is no secure aggregation or differential privacy implementation yet. Do not upload personal decoder files: they may contain readable phrase libraries. Backup expiration policy must be finalized before research enrollment is released.
 
 `hosting/` is a minimal coordinator deployment scaffold. Build only that directory as the Docker context. `/health` reports readiness; all POST requests are rejected. It is not a functioning federated training service.
 
@@ -155,13 +157,13 @@ GitHub hosts source and a static information site. Supabase handles authenticati
 
 Custom SMTP must be configured in Supabase before inviting participants. Its default service restricts email delivery to project team addresses. Configure recovery emails to show `{{ .Token }}` for convenient in-app entry. Keep email verification enabled. SMTP credentials belong only in Supabase settings. Actual email confirmation, recovery, expired/reused links and delivery still need a designated test account. Automated tests use synthetic values and mocked requests.
 
-Research uploads and cloud consent synchronization remain disabled. This is a source preview, not completed participant enrollment or shared learning. Supabase cannot recover lost local recordings or a lost email inbox. Provider backup retention must be defined before sharing opens.
+ERP uploads and cloud consent synchronization are enabled. Protected shared decoder learning is not implemented. Supabase cannot recover lost local recordings or a lost email inbox. Provider backup retention must be defined before sharing opens.
 
 ## License and contact
 
 Bandstand source is MIT licensed, copyright 2026 Andrew Neff. Research contact: aneff8626@gmail.com. Downloaded models and imported stimulus sets retain their own licenses.
 
-For a fresh source checkout, create `.venv` with Python 3.12 and install `requirements.txt`. The writing semantic encoder additionally needs sentence-transformers and its separately downloaded model; it is not bundled in the public source. Build the native macOS app using the launch script and installed Apple command-line tools. A clean-machine installation test remains pending.
+For a fresh source checkout, create `.venv` with Python 3.12 and install `requirements.txt`. The writing semantic encoder needs the pinned public model downloaded by scripts/prepare_public_model.py; model weights are bundled in the app release, not the source repository. Build the native macOS app using the launch script and installed Apple command-line tools. A clean-machine installation test remains pending.
 
 ```sh
 python3.12 -m venv .venv
@@ -170,3 +172,26 @@ zsh "Launch Muse Lab.command"
 ```
 
 The source release is not a signed or notarized installer. macOS Bluetooth, Accessibility and Input Monitoring prompts must be handled by the participant. Do not disable system security protections.
+
+## Accounts and sharing
+
+Sign-in, signup, email confirmation, password recovery, Account, and Data Sharing Settings are separate dialogs. Every dialog has a close button. Remembered sign-in stores a rotating refresh token in macOS Keychain, never a password. New Supabase confirmation and recovery emails contain codes entered in the app.
+
+ERP sharing is manual and opt-in: choose a completed live visual oddball, auditory oddball, flanker or reward recording. Only protocol ID, numerical condition IDs, relative sample times, channel acceptance and processed waveforms leave the computer. Supabase links these records to the account. Other participants cannot read them; project administrators can. Sharing is not anonymous. Turning sharing off blocks new uploads; delete shared copies separately. Account deletion also deletes shared copies, subject to provider backup retention.
+
+The writing decoder is an experimental local EEG-to-embedding model plus phrase retrieval; it is not a validated general-purpose intended-communication decoder. Shared training, secure aggregation, differential privacy, cohort management and shared model distribution are NOT implemented. The contribution choice records interest only.
+
+## Build a distributable app
+
+On Apple Silicon with Python 3.12 and Swift command-line tools:
+
+```sh
+python3.12 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python scripts/prepare_public_model.py
+.venv/bin/python scripts/build_desktop.py
+```
+
+The builder expects a relocatable Python base installation and includes the dependency closure and the public all-MiniLM-L6-v2 encoder at revision `1110a243fdf4706b3f48f1d95db1a4f5529b4d41`. It verifies upstream model hashes. The model card declares Apache 2.0; its license and dependency license files are included. Personal checkpoints are never included. The generated bundle manifest records file hashes.
+
+The source publication audit uses three checks: an explicit file allowlist, secret/identity pattern scanning, and exact comparison with local private text without printing that text. Passing these is evidence for the selected source bundle, not a guarantee that every possible identifier has been detected.

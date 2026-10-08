@@ -50,7 +50,7 @@ def dispatch(path,body):
     if path=='stop': return engine.stop(body.get('reason','stopped'))
     if path=='import': return Handler.import_image(None,body)
     if path=='sessions':
-        return [{k:s.get(k) for k in ['id','title','source','started','ended','running']} for s in [json.loads(p.read_text()) for p in sorted((DATA_ROOT).glob('*/session.json'),reverse=True)]]
+        return [{k:s.get(k) for k in ['id','title','source','started','ended','running','mode','protocol']} for s in [json.loads(p.read_text()) for p in sorted((DATA_ROOT).glob('*/session.json'),reverse=True)]]
     if path.startswith('results/'):
         parts=path.split('/')
         if len(parts)==4:return engine.result_window(parts[1],parts[2],parts[3])
