@@ -108,15 +108,6 @@ Open **Developer tools → Artifact calibration**. Choose each action and record
 
 The live plot runs on a continuous animation clock with a fixed 150 ms playback buffer. Developer tools shows the measured frame rate. Off-scale excursions use dotted horizontal connectors at the row edge; these are display markers, not measured flat voltages. Annotations shorter than 150 ms are hidden in the chart only. Full raw data remains available for trial rejection, and annotation updates are retained in recording exports as `artifact_annotations.jsonl`. Labels extend past event rectangles and wrap only when the plot itself is too narrow.
 
-### Personal calibration revision (2026-10-05)
-
-Five complete recordings, one per requested action, informed `data/artifact_profile.json`. Old capture summaries stored action metrics under the same key as the requested label; the action identity was recovered by exact matching of the saved instruction text to the five defined prompts. New captures store `requested_action` separately. Original recordings are unchanged.
-
-Blink examples were dominated by highly correlated TP9/TP10 excursions. Jaw clench examples increased AF7 amplitude and high-frequency power; horizontal saccades opposed AF7/AF8; vertical gaze tended toward matching frontal polarity; head rotation strongly increased gyroscope magnitude. The revised rules use these patterns and preserve generic contact/noise labels when evidence is insufficient. All personal action attributions carry an asterisk. Up/down gaze included head motion, so both may appear. `data/calibration_replay_review.json` reports descriptive replay only, not independent classification accuracy. More labeled repetitions and an external eye/muscle reference would be needed for validation.
-
-Annotation labels occupy separate collision-free rows above the plot, with matching event numbers in the affected signal regions. Lane space grows when needed and does not collapse every frame. Footnote: “* Signal was unclear.”
-
-
 ## Writing & EEG: temporal decoder and other-app capture
 
 The writing workspace records text labels, edits, first-letter markers, continuous EEG and short display epochs under `data/typing/<session>/`. A separate `.context.npz` for each word holds up to 60 seconds of EEG context as 120 half-second tokens, with per-channel quality weights and relative timestamps. The history selector offers 10, 30 or 60 seconds; the inference cutoff is the first letter or one second afterward. Raw EEG is always retained.
@@ -130,15 +121,6 @@ Live estimates require ≥30 training and ≥10 later-validation examples per ca
 `Typing source → Other apps on this Mac` starts a passive native event tap only after Start is clicked and existing Input Monitoring **and** Accessibility grants are confirmed. The app does not request/grant those permissions itself. A visible menu-bar indicator provides Stop & save. Secure input, password/protected fields, terminals, password managers, unsupported field roles, clipboard/paste and modified shortcuts are skipped. No clipboard or field values are read. Focus/cursor changes cancel partial words, and the first partial word after switching fields is skipped until whitespace. Native key reconstruction cannot observe another application's autocorrect or IME replacements. Typed data stays local and capture is never enabled automatically at launch. This mode keeps recording in the background; editor-only recording stops when hidden. System access can be rechecked in the app.
 
 [Apple event-tap documentation](https://developer.apple.com/documentation/coregraphics/cgevent/tapcreate(tap:place:options:eventsofinterest:callback:userinfo:)) · [PyTorch transformer masks](https://docs.pytorch.org/docs/stable/generated/torch.nn.Transformer) · [EEG temporal autocorrelation and evaluation](https://arxiv.org/abs/2405.17024).
-
-### Native capture activation status (2026-10-05)
-
-The new native executable is compiled at `build/next/MuseLab`, but is not installed. Testing showed that its changed ad-hoc code signature no longer matched the existing Bluetooth grant, and Input Monitoring / Accessibility access was unavailable. The installed executable was restored from `build/MuseLab-previous` to preserve existing headset access. Backend transformer and channel-mask changes remain active. Activating across-app capture requires installing the staged executable and user-managed macOS permissions; no permission prompts or settings changes were performed.
-
-### Native capture permissions activated (2026-10-05)
-
-After explicit user confirmation and user authentication, the staged native build was installed, Input Monitoring was added for Muse Lab, and Accessibility was enabled. After Quit & Reopen, Muse Lab reported typing access Ready and live Muse EEG streaming at 256 Hz. Across-app recording remains controlled by Typing source and Start writing & recording.
-
 
 ## Active semantic free-writing decoder (2026-10-05)
 
@@ -180,3 +162,11 @@ Research uploads and cloud consent synchronization remain disabled. This is a so
 Bandstand source is MIT licensed, copyright 2026 Andrew Neff. Research contact: aneff8626@gmail.com. Downloaded models and imported stimulus sets retain their own licenses.
 
 For a fresh source checkout, create `.venv` with Python 3.12 and install `requirements.txt`. The writing semantic encoder additionally needs sentence-transformers and its separately downloaded model; it is not bundled in the public source. Build the native macOS app using the launch script and installed Apple command-line tools. A clean-machine installation test remains pending.
+
+```sh
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+zsh "Launch Muse Lab.command"
+```
+
+The source release is not a signed or notarized installer. macOS Bluetooth, Accessibility and Input Monitoring prompts must be handled by the participant. Do not disable system security protections.
