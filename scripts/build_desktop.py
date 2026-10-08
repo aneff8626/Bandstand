@@ -17,6 +17,12 @@ for name in ('LICENSE','README.md'):shutil.copy2(source/name,app/name)
 base=Path(sys.base_prefix)
 def ignore(path,names):return [n for n in names if n in ('site-packages','__pycache__','test','tests','idlelib','tkinter') or n.endswith('.pyc')]
 shutil.copytree(base,resources/'python',symlinks=True,ignore=ignore)
+# Normalize upstream build-machine symlinks to relocatable sibling targets.
+for link in (resources/'python').rglob('*'):
+ if link.is_symlink() and link.readlink().is_absolute():
+  sibling=link.with_name(link.readlink().name)
+  if not sibling.exists():raise ValueError('Unresolved runtime symlink: '+str(link))
+  link.unlink();link.symlink_to(sibling.name)
 site=resources/'python/lib/python3.12/site-packages';site.mkdir(parents=True,exist_ok=True)
 versions={}
 pending=['numpy','pillow','reportlab','torch','transformers']
