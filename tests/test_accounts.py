@@ -54,3 +54,12 @@ class AccountsTests(unittest.TestCase):
     self.assertEqual(request.call_args_list[2].args,('/auth/v1/user',{'password':'synthetic-password'},'synthetic'))
     self.assertEqual(request.call_args_list[2].kwargs,{'method':'PUT'})
     self.assertFalse(result['signed_in']);self.assertNotIn('synthetic',str(result))
+ def test_confirmation_does_not_update_password_or_expose_session(self):
+  with patch.object(accounts,'_request',side_effect=[{'access_token':'synthetic'},{'email':'test@example.org'},{}]) as request:
+   result=accounts.account('confirm',{'email':'test@example.org','code':accounts.URL+'/auth/v1/verify?token=abc&type=signup','password':'ignored'})
+   self.assertFalse(any(c.kwargs.get('method')=='PUT' for c in request.call_args_list))
+   self.assertNotIn('synthetic',str(result));self.assertIsNone(accounts._session)
+ def test_recovery_link_cannot_be_used_for_confirmation(self):
+  with patch.object(accounts,'_request') as request:
+   with self.assertRaises(ValueError):accounts.account('confirm',{'email':'test@example.org','code':accounts.URL+'/auth/v1/verify?token=abc&type=recovery'})
+   request.assert_not_called()
