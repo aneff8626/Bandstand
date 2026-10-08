@@ -61,7 +61,7 @@ def _restore():
   remembered=_session.get('remembered',False) if _session else True
   result=_request('/auth/v1/token?grant_type=refresh_token',{'refresh_token':refresh})
   user=_request('/auth/v1/user',token=result['access_token'])
-  _session={'token':result['access_token'],'refresh_token':result.get('refresh_token',refresh),'email':user['email'],'user_id':user['id'],'expires_at':time.time()+result.get('expires_in',3600),'remembered':remembered,'preferences':user.get('user_metadata',{}).get('bandstand_preferences',{})}
+  _session={'token':result['access_token'],'refresh_token':result.get('refresh_token',refresh),'email':user['email'],'user_id':user['id'],'expires_at':time.time()+result.get('expires_in',3600),'remembered':remembered,'display_name':user.get('user_metadata',{}).get('display_name',''),'preferences':user.get('user_metadata',{}).get('bandstand_preferences',{})}
   if remembered:_persist(result)
   _session_notice='';_restore_attempted=True
  except AccountError as e:
@@ -76,7 +76,7 @@ def _restore():
   raise ValueError(_session_notice) from None
 
 def _status():
- return {'signed_in':_session is not None,'email':_session['email'] if _session else None,'remembered':bool(_session and _session.get('remembered')),'message':_session_notice if not _session else '', 'preferences':_session.get('preferences',{}) if _session else {}}
+ return {'display_name':_session.get('display_name','') if _session else '', 'signed_in':_session is not None,'email':_session['email'] if _session else None,'remembered':bool(_session and _session.get('remembered')),'message':_session_notice if not _session else '', 'preferences':_session.get('preferences',{}) if _session else {}}
 
 def account(action,body=None):
  global _session,_restore_attempted,_session_notice
@@ -103,6 +103,14 @@ def account(action,body=None):
    ident,recording=payload(str(body.get('recording_id','')))
    _request('/rest/v1/rpc/bandstand_upload_erp',{'recording_id':ident,'recording':recording},_session['token'])
    return {'message':'ERP trial waveforms shared successfully.'}
+  if action=='profile':
+   _restore()
+   if not _session:raise ValueError('Sign in to edit your display name.')
+   name=str(body.get('display_name','')).strip()
+   if not 1<=len(name)<=40 or any(ord(c)<32 for c in name):raise ValueError('Enter a display name of 1–40 characters.')
+   _request('/auth/v1/user',{'data':{'display_name':name}},_session['token'],method='PUT')
+   _session['display_name']=name
+   return _status()
   if action=='preferences':
    _restore()
    if not _session:raise ValueError('Sign in to save choices to your account.')
@@ -179,10 +187,14 @@ def account(action,body=None):
   _session=None
   credentials={'email':email,'password':password}
   if action=='signup':credentials['data']={'bandstand_privacy':{'policy_version':body['policy_version'],'acknowledged':True}}
+  if action=='signup' and body.get('display_name'):
+   name=str(body['display_name']).strip()
+   if not 1<=len(name)<=40 or any(ord(c)<32 for c in name):raise ValueError('Enter a display name of 1–40 characters.')
+   credentials['data']['display_name']=name
   result=_request('/auth/v1/signup' if action=='signup' else '/auth/v1/token?grant_type=password',credentials)
   if result.get('access_token'):
    user=_request('/auth/v1/user',token=result['access_token'])
-   _session={'token':result['access_token'],'email':user['email'],'user_id':user['id'],'expires_at':time.time()+result.get('expires_in',3600),'refresh_token':result.get('refresh_token'),'remembered':body.get('remember') is True,'preferences':user.get('user_metadata',{}).get('bandstand_preferences',{})}
+   _session={'token':result['access_token'],'email':user['email'],'user_id':user['id'],'expires_at':time.time()+result.get('expires_in',3600),'refresh_token':result.get('refresh_token'),'remembered':body.get('remember') is True,'display_name':user.get('user_metadata',{}).get('display_name',''),'preferences':user.get('user_metadata',{}).get('bandstand_preferences',{})}
    if body.get('remember') is True:
     try:_persist(result)
     except ValueError:_session['remembered']=False;_session_notice='Signed in for this session only. Keychain storage was unavailable.'

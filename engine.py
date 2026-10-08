@@ -49,7 +49,7 @@ class Engine:
         self.lock=threading.RLock(); self.raw=deque(maxlen=FS*90); self.filtered=deque(maxlen=FS*90); self.times=deque(maxlen=FS*90)
         self.filters=Filters(); self.notch=Filters(notch_only=True); self.spectral=deque(maxlen=FS*90); self.source='live'; self.status={'state':'starting','message':'Checking existing Bluetooth authorization'}
         self.session=None; self.events=[]; self.trials=[]; self.pending=[]; self.notifications=deque(maxlen=20)
-        self.motion_samples={k:deque(maxlen=104) for k in ('acc','gyro')}; self.last_quality=0; self.quality=[]; self.band=None; self.signal_count=0; self.bridge=None
+        self.motion_samples={k:deque(maxlen=104) for k in ('acc','gyro')}; self.last_quality=0; self.quality=[]; self.band=None; self.signal_count=0; self.bridge=None; self.bridge_enabled=threading.Event(); self.bridge_enabled.set()
         self.assembler=PacketAssembler(self.ingest); self.last_notify=0; self.demo_time=None; self.rng=np.random.default_rng(472)
         self.cache_revision=None; self.cache_analysis={}; self.revision=0
         self.artifact_regions=deque(maxlen=200); self.open_artifact_regions={}; self.artifact_region_time=None
@@ -65,17 +65,34 @@ class Engine:
         if os.environ.get("MUSE_NATIVE_BLUETOOTH") != "1":
             threading.Thread(target=self.bridge_loop,daemon=True).start()
         threading.Thread(target=self.simulation_loop,daemon=True).start()
+    def bluetooth_connection(self,connected):
+        with self.lock:
+            if not connected and ((self.session and self.session.get('running')) or self.typing.running or self.developer.status().get('recording')):
+                raise ValueError('Stop and save the recording before disconnecting.')
+            if connected:
+                self.bridge_enabled.set()
+                self.status={'state':'scanning','message':'Searching for your headset.'}
+            else:
+                self.bridge_enabled.clear()
+                if self.bridge and self.bridge.poll() is None:self.bridge.terminate()
+                self.status={'state':'disconnected','message':'Disconnected. Click Connect Bluetooth to reconnect.'}
+                self.live_status=self.status.copy()
+            return {'connected':connected}
     def bridge_loop(self):
         while True:
+            self.bridge_enabled.wait()
             try:
                 path=ROOT/'build/muse-bridge'
                 if not path.exists():
                     self.status={'state':'bridge_missing','message':'Native bridge has not been built. Run Launch Muse Lab.command.'}; time.sleep(15); continue
-                self.bridge=subprocess.Popen([str(path)],stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+                with self.lock:
+                    if not self.bridge_enabled.is_set():continue
+                    self.bridge=subprocess.Popen([str(path)],stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
                 for line in self.bridge.stdout:
                     try:
                         p=json.loads(line)
                         with self.lock:
+                            if not self.bridge_enabled.is_set():continue
                             if p.get('type')=='status':
                                 if p.get('state')=='connecting' and self.source=='live':
                                     self.typing.stop('Headset reconnected')

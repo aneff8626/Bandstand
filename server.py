@@ -89,7 +89,7 @@ class Handler(BaseHTTPRequestHandler):
                 from enrollment import enrollment
                 result=enrollment(body if body else None)
             elif path in ('/api/bluetooth_connect','/api/bluetooth_disconnect'):
-                raise ValueError('Bluetooth controls require the Bandstand desktop app. Open Bandstand.app to connect your headset.')
+                result=engine.bluetooth_connection(path.endswith('bluetooth_connect'))
             elif path=='/api/source': engine.switch_source(body['source']); result={'ok':True}
             elif path.startswith('/api/typing/'):result=engine.typing_request(path[5:],body)
             elif path=='/api/start': result=engine.begin(body)
