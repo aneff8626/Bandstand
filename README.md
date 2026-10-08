@@ -77,7 +77,7 @@ Installed runtime is the existing Codex Python 3.12 distribution, exposed throug
 .venv/bin/python -m unittest discover -s tests -v
 ```
 
-`server.py` is an optional loopback web frontend on port 8765 for environments that permit a listening socket. The desktop app uses `desktop_service.py` and needs no port. `build/qa/example-report.pdf` is a synthetic pipeline-test artifact, not a human recording. The 2026-10-08 release checks passed 89 Python tests and all JavaScript regression scripts. A synthetic 100-trial benchmark covered processing and raw/processed/PDF exports. These do not validate physical stimulus timing or current Bluetooth behavior.
+`server.py` is an optional loopback web frontend on port 8765 for environments that permit a listening socket. The desktop app uses `desktop_service.py` and needs no port. `build/qa/example-report.pdf` is a synthetic pipeline-test artifact, not a human recording. The 2026-10-08 release checks passed 90 Python tests and all JavaScript regression scripts. A synthetic 100-trial benchmark covered processing and raw/processed/PDF exports. These do not validate physical stimulus timing or current Bluetooth behavior.
 
 ## Primary sources
 

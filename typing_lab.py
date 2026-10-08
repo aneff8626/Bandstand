@@ -107,8 +107,12 @@ class TypingLab:
  def recording_minutes(self):
   total=0
   for ident,s in self.recording_sessions.items():
-   end=time.time() if self.running and self.session and ident==self.session['id'] else s.get('ended',self.session_last_word.get(ident,s['started']))
-   total+=max(0,end-s['started'])
+   start=s.get('started',0);last=self.session_last_word.get(ident,start)
+   end=time.time() if self.running and self.session and ident==self.session['id'] else (s.get('ended') or last)
+   if not isinstance(start,(int,float)) or not isinstance(end,(int,float)) or not math.isfinite(start+end):continue
+   # Corrupt/mixed-clock stop times must not produce decades of recording.
+   if end-start>7*86400:end=last
+   total+=max(0,end-start) if math.isfinite(end) and end-start<=7*86400 else 0
   return total/60
  def start(self,window='context',history=30,delay=0,capture='editor'):
   if self.running:raise ValueError('Typing is already recording')
