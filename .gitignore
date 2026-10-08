@@ -1,0 +1,24 @@
+.venv/
+build/
+data/
+__pycache__/
+*.pyc
+Muse Lab.app/Contents/MacOS/MuseLab
+stimuli/*.png
+stimuli/manifest.json
+
+# Credentials and local machine files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.DS_Store
+*.log
+
+# Downloaded model weights: install separately from their source
+models/
+
+local-settings.json
+.audit/
+release/
