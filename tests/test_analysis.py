@@ -88,7 +88,7 @@ class PipelineTests(unittest.TestCase):
                     if kind=='raw':self.assertIn('continuous.csv',z.namelist());self.assertIn('events.json',z.namelist())
                     else:self.assertIn('trial-summary.csv',z.namelist());self.assertIn('erp-0.csv',z.namelist())
                 data,_,_=e.export('pdf');self.assertTrue(data.startswith(b'%PDF'))
-                dest=Path(__file__).resolve().parents[1]/'build/qa';dest.mkdir(exist_ok=True);(dest/'example-report.pdf').write_bytes(data)
+                dest=Path(__file__).resolve().parents[1]/'build/qa';dest.mkdir(parents=True,exist_ok=True);(dest/'example-report.pdf').write_bytes(data)
     def test_time_frequency_block_pipeline(self):
         with tempfile.TemporaryDirectory() as tmp, patch('engine.ROOT',Path(tmp)),patch('engine.DATA_ROOT',Path(tmp)/'data'):
             (Path(tmp)/'data').mkdir(); (Path(tmp)/'stimuli').mkdir()
