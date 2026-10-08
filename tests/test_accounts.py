@@ -2,6 +2,8 @@ import unittest
 from unittest.mock import patch
 import accounts
 class AccountsTests(unittest.TestCase):
+ def setUp(self):
+  self.vault=patch('accounts._forget');self.vault.start();self.addCleanup(self.vault.stop)
  def tearDown(self):accounts._session=None
  def test_only_credentials_uploaded_and_token_not_returned(self):
   calls=[]
@@ -63,3 +65,27 @@ class AccountsTests(unittest.TestCase):
   with patch.object(accounts,'_request') as request:
    with self.assertRaises(ValueError):accounts.account('confirm',{'email':'test@example.org','code':accounts.URL+'/auth/v1/verify?token=abc&type=recovery'})
    request.assert_not_called()
+ def test_preferences_uploads_only_explicit_choices(self):
+  from enrollment import POLICY_VERSION
+  accounts._session={'token':'synthetic','email':'test@example.org'}
+  with patch.object(accounts,'_request',return_value={}) as request:
+   result=accounts.account('preferences',{'policy_version':POLICY_VERSION,'acknowledged':True,'erp_sharing_requested':True,'decoder_interest_requested':True,'text':'PRIVATE','eeg':[1],'embedding':[2],'decoder_upload_enabled':True})
+   payload=request.call_args.args[1]['data']['bandstand_preferences']
+   self.assertEqual(set(payload),{'policy_version','acknowledged','erp_sharing_requested','decoder_interest_requested','sharing_choices_reviewed','erp_policy'})
+   self.assertTrue(result['saved']);self.assertNotIn('PRIVATE',str(request.call_args))
+ def test_preferences_require_login_and_acknowledgment(self):
+  with patch.object(accounts,'_request') as request:
+   with self.assertRaises(ValueError):accounts.account('preferences',{})
+   accounts._session={'token':'synthetic','email':'test@example.org'}
+   with self.assertRaises(ValueError):accounts.account('preferences',{'acknowledged':False})
+   request.assert_not_called()
+
+ def test_signup_requires_current_privacy_acknowledgment(self):
+  from enrollment import POLICY_VERSION
+  for extra in ({},{'acknowledged':True,'policy_version':'old'},{'acknowledged':False,'policy_version':POLICY_VERSION}):
+   with patch.object(accounts,'_request') as request:
+    with self.assertRaises(ValueError):accounts.account('signup',dict(email='test@example.org',password='synthetic-password',**extra))
+    request.assert_not_called()
+  with patch.object(accounts,'_request',return_value={}) as request:
+   accounts.account('signup',{'email':'test@example.org','password':'synthetic-password','acknowledged':True,'policy_version':POLICY_VERSION})
+   self.assertEqual(request.call_args.args[0],'/auth/v1/signup')

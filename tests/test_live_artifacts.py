@@ -56,3 +56,15 @@ class ArtifactRegionTests(unittest.TestCase):
         self.assertEqual(len(e.artifact_regions),0)
         e.update_artifact_regions(['probable blink']); e.switch_source('simulation')
         self.assertEqual(len(e.artifact_regions),0)
+
+
+def setUpModule():
+ import tempfile
+ from pathlib import Path
+ from unittest.mock import patch
+ global _private_tmp,_private_patch
+ _private_tmp=tempfile.TemporaryDirectory()
+ _private_patch=patch('engine.DATA_ROOT',Path(_private_tmp.name)/'data');_private_patch.start()
+
+def tearDownModule():
+ _private_patch.stop();_private_tmp.cleanup()

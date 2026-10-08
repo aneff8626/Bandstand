@@ -8,3 +8,15 @@ class ReviewWindowTests(unittest.TestCase):
   with patch.object(e,'saved_view',return_value=e):
    r=e.result_window('test',.55,.75);self.assertAlmostEqual(r['analysis']['channels']['TP10']['groups'][0]['mean'],8);self.assertEqual(row['feature'],0);self.assertEqual(e.session['window'],[.3,.5]);self.assertEqual(r['analysis']['channels']['TP10']['groups'][0]['accepted'],1)
    with self.assertRaises(ValueError):e.result_window('test',.7,.2)
+
+
+def setUpModule():
+ import tempfile
+ from pathlib import Path
+ from unittest.mock import patch
+ global _private_tmp,_private_patch
+ _private_tmp=tempfile.TemporaryDirectory()
+ _private_patch=patch('engine.DATA_ROOT',Path(_private_tmp.name)/'data');_private_patch.start()
+
+def tearDownModule():
+ _private_patch.stop();_private_tmp.cleanup()

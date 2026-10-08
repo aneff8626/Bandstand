@@ -68,7 +68,7 @@ class TypingTests(unittest.TestCase):
    self.assertTrue(lab.pending['one']['accepted']['post']);self.assertTrue(lab.pending['one']['overlapping_typing']);lab.stop()
  def test_engine_live_and_concurrent_recording_guards(self):
   from engine import Engine
-  with tempfile.TemporaryDirectory() as root,patch('engine.ROOT',Path(root)):
+  with tempfile.TemporaryDirectory() as root,patch('engine.ROOT',Path(root)),patch('engine.DATA_ROOT',Path(root)/'data'):
    e=Engine()
    with self.assertRaises(ValueError):e.typing_request('typing/start',{})
    t,x=self.data();e.times.extend(t);e.raw.extend(x.tolist());e.filtered.extend(x.tolist())
@@ -76,3 +76,11 @@ class TypingTests(unittest.TestCase):
    with self.assertRaises(ValueError):e.switch_source('simulation')
    with self.assertRaises(ValueError):e.begin({})
    e.typing_request('typing/stop',{})
+
+class RecordingDurationTests(unittest.TestCase):
+ def test_mixed_clock_end_uses_last_observation(self):
+  with tempfile.TemporaryDirectory() as root:
+   lab=TypingLab(root);lab.recording_sessions={'a':{'started':100,'ended':1791488074}};lab.session_last_word={'a':160}
+   self.assertEqual(lab.recording_minutes(),1)
+   lab.recording_sessions['a']['ended']=None
+   self.assertEqual(lab.recording_minutes(),1)
