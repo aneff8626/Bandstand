@@ -53,12 +53,18 @@ function renderTyping(){
 $('typingNav').onclick=()=>selectTypingView(true);
 document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{if(typingView)selectTypingView(false)}));
 async function checkTypingAccess(){
- try{typingAccessState=await api('system_typing/status',{});$('typingAccess').textContent=typingAccessState.reason;}catch{typingAccessState={available:false,reason:'Across-app capture is not installed in this build. The updated build needs macOS Input Monitoring, Accessibility, and renewed Bluetooth access. The existing Bluetooth-authorized build is currently retained.'};$('typingAccess').textContent=typingAccessState.reason;}
+ if(!window.museNative){typingAccessState={available:false,reason:'Across-app writing capture requires the Bandstand desktop app. Open Muse Lab.app from Applications, then start recording there. The browser preview cannot capture typing in other apps.'};}
+ else try{typingAccessState=await api('system_typing/status',{});}catch(e){typingAccessState={available:false,reason:'Could not check typing access: '+e.message+'. Quit and reopen Bandstand, then try again.'};}
+ if(window.museNative&&typingAccessState&&typeof typingAccessState.accessibility==='boolean'){const missing=[];if(!typingAccessState.accessibility)missing.push('Accessibility');if(!typingAccessState.inputMonitoring)missing.push('Input Monitoring');typingAccessState.reason=missing.length?'macOS has not authorized this running copy for '+missing.join(' and ')+'. If its switch is already on, remove the old entry and add the Muse Lab app from Applications, then quit and reopen the app.':'Typing access ready.';}
+ $('typingAccess').textContent=typingAccessState.reason;
+ $('typingAccess').hidden=Boolean(typingAccessState.available);$('typingCheckAccess').hidden=!window.museNative||Boolean(typingAccessState.available);$('typingCheckAccess').textContent='Enable typing access';
 }
-$('typingCheckAccess').onclick=checkTypingAccess;
+async function enableTypingAccess(){if(!window.museNative)return checkTypingAccess();try{await api('system_typing/request_access',{});await checkTypingAccess()}catch(e){toast(e.message)}}
+$('typingCheckAccess').onclick=enableTypingAccess;
+window.addEventListener('focus',()=>checkTypingAccess());
 $('typingStart').onclick=async()=>{try{
  const capture=$('typingCapture').value;
- if(capture==='system'){await checkTypingAccess();if(!typingAccessState?.available)return toast(typingAccessState?.reason||'Existing typing access is unavailable.');}
+ if(capture==='system'){await checkTypingAccess();if(!typingAccessState?.available){$('typingCheckAccess').focus();return toast(typingAccessState?.reason||'Use Enable typing access, then start recording.');}}
  await syncClock();state.typing=await api('typing/start',{window:'context',history:Number($('typingHistory').value),delay:Number($('typingDelay').value),capture});typingWord=null;typingPlotRevision=-1;
  if(capture==='system'){
   const result=await api('system_typing/start',{});if(!result.active){await api('typing/stop',{reason:'Input capture unavailable'});return toast(result.reason||'Typing capture could not start.');}
