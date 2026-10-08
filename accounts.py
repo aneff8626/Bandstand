@@ -24,6 +24,15 @@ def _request(path,body=None,token=None,method=None):
   raise ValueError('Account request failed. Check your details and email confirmation.') from None
  except (OSError,ValueError):raise ValueError('Account service unavailable. Local recording remains available.') from None
 
+def _email_proof(email,code,kind):
+ if '@' not in email or len(email)>254:raise ValueError('Enter your account email address.')
+ if code.isascii() and code.isdigit() and 6<=len(code)<=10:
+  return {'email':email,'token':code,'type':'recovery' if kind=='recovery' else 'email'}
+ link=urllib.parse.urlsplit(code);query=urllib.parse.parse_qs(link.query)
+ if link.scheme!='https' or link.netloc!=urllib.parse.urlsplit(URL).netloc or link.path!='/auth/v1/verify' or query.get('type')!=[kind] or len(query.get('token',[]))!=1 or link.fragment:
+  raise ValueError('Paste the email code or copy the unopened link from your email.')
+ return {'token_hash':query['token'][0],'type':kind}
+
 def account(action,body=None):
  global _session
  body=body or {}
@@ -34,19 +43,25 @@ def account(action,body=None):
    if '@' not in email or len(email)>254:raise ValueError('Enter your account email address.')
    _request('/auth/v1/recover',{'email':email})
    return {'message':'If this address has an account, a password reset email will arrive shortly. Check spam too.'}
+  if action=='confirm':
+   email=str(body.get('email','')).strip();code=str(body.get('code','')).strip()
+   result=_request('/auth/v1/verify',_email_proof(email,code,'signup'))
+   token=result.get('access_token')
+   if not token:raise ValueError('Email verification failed. Check the code or request a new account email.')
+   try:
+    user=_request('/auth/v1/user',token=token)
+    if user.get('email','').casefold()!=email.casefold():raise ValueError('This confirmation belongs to a different email address.')
+   finally:
+    try:_request('/auth/v1/logout',{},token)
+    except ValueError:pass
+   return {'message':'Email confirmed. You can now sign in.'}
   if action=='reset':
    # Recovery happens here, never on a public GitHub Pages password form.
    email=str(body.get('email','')).strip();code=str(body.get('code','')).strip()
    password=body.get('password','')
    if '@' not in email or len(email)>254 or not isinstance(password,str) or not 8<=len(password)<=1024:
     raise ValueError('Enter your account email and a new password of at least eight characters.')
-   if code.isascii() and code.isdigit() and 6<=len(code)<=10:
-    proof={'email':email,'token':code,'type':'recovery'}
-   else:
-    link=urllib.parse.urlsplit(code);query=urllib.parse.parse_qs(link.query)
-    if link.scheme!='https' or link.netloc!=urllib.parse.urlsplit(URL).netloc or link.path!='/auth/v1/verify' or query.get('type')!=['recovery'] or len(query.get('token',[]))!=1 or link.fragment:
-     raise ValueError('Paste the recovery code or copy the unopened password-reset link from your email.')
-    proof={'token_hash':query['token'][0],'type':'recovery'}
+   proof=_email_proof(email,code,'recovery')
    result=_request('/auth/v1/verify',proof)
    token=result.get('access_token')
    if not token:raise ValueError('Recovery verification failed. Request a new email.')
