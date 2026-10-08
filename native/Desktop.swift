@@ -3,6 +3,11 @@ import WebKit
 import Foundation
 import CoreBluetooth
 
+func bandstandDataRoot(_ root:URL)->URL {
+ let settings=(try? Data(contentsOf:root.appendingPathComponent("local-settings.json"))).flatMap { try? JSONSerialization.jsonObject(with:$0) as? [String:Any] }
+ return URL(fileURLWithPath:ProcessInfo.processInfo.environment["BANDSTAND_DATA_DIR"] ?? settings?["data_dir"] as? String ?? NSHomeDirectory()+"/Library/Application Support/Bandstand/data")
+}
+
 final class MuseWebView: WKWebView {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
@@ -14,7 +19,7 @@ final class LocalFiles: NSObject, WKURLSchemeHandler {
         guard let url=urlSchemeTask.request.url else { return }
         let path=url.path
         let file:URL
-        if path.hasPrefix("/stimuli/") { file=root.appendingPathComponent("stimuli").appendingPathComponent(url.lastPathComponent) }
+        if path.hasPrefix("/stimuli/") { let privateFile=bandstandDataRoot(root).appendingPathComponent("stimuli").appendingPathComponent(url.lastPathComponent);file=FileManager.default.fileExists(atPath:privateFile.path) ? privateFile : root.appendingPathComponent("stimuli").appendingPathComponent(url.lastPathComponent) }
         else { file=root.appendingPathComponent("web").appendingPathComponent(path=="/" ? "index.html" : url.lastPathComponent) }
         guard let data=try? Data(contentsOf:file) else { urlSchemeTask.didFailWithError(NSError(domain:"MuseLab",code:404)); return }
         let types=["html":"text/html", "js":"text/javascript", "css":"text/css", "png":"image/png"]
@@ -38,10 +43,11 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
         config.userContentController.addUserScript(WKUserScript(source:script,injectionTime:.atDocumentStart,forMainFrameOnly:true))
         web=MuseWebView(frame:.zero,configuration:config);web.navigationDelegate=self;web.uiDelegate=self
         window=NSWindow(contentRect:NSRect(x:0,y:0,width:1450,height:960),styleMask:[.titled,.closable,.miniaturizable,.resizable],backing:.buffered,defer:false)
-        window.title="Muse Lab";window.contentView=web;window.center();window.makeKeyAndOrderFront(nil)
-        let mainMenu=NSMenu();let appItem=NSMenuItem();mainMenu.addItem(appItem);let appMenu=NSMenu();appMenu.addItem(withTitle:"Quit Muse Lab",action:#selector(NSApplication.terminate(_:)),keyEquivalent:"q");appItem.submenu=appMenu
+        window.title="Bandstand";window.contentView=web;window.center();window.makeKeyAndOrderFront(nil)
+        let mainMenu=NSMenu();let appItem=NSMenuItem();mainMenu.addItem(appItem);let appMenu=NSMenu();appMenu.addItem(withTitle:"Quit Bandstand",action:#selector(NSApplication.terminate(_:)),keyEquivalent:"q");appItem.submenu=appMenu
         let editItem=NSMenuItem();mainMenu.addItem(editItem);let edit=NSMenu(title:"Edit");edit.addItem(withTitle:"Copy",action:#selector(NSText.copy(_:)),keyEquivalent:"c");edit.addItem(withTitle:"Paste",action:#selector(NSText.paste(_:)),keyEquivalent:"v");edit.addItem(withTitle:"Select All",action:#selector(NSText.selectAll(_:)),keyEquivalent:"a");editItem.submenu=edit;NSApp.mainMenu=mainMenu
-        process=Process();process.executableURL=root.appendingPathComponent(".venv/bin/python");process.arguments=[root.appendingPathComponent("desktop_service.py").path];process.currentDirectoryURL=root
+        process=Process();let bundledPython=root.deletingLastPathComponent().appendingPathComponent("python/bin/python3.12")
+        process.executableURL=FileManager.default.isExecutableFile(atPath:bundledPython.path) ? bundledPython : root.appendingPathComponent(".venv/bin/python");process.arguments=[root.appendingPathComponent("desktop_service.py").path];process.currentDirectoryURL=root
         var environment=ProcessInfo.processInfo.environment; environment["MUSE_NATIVE_BLUETOOTH"]="1"; process.environment=environment
         input=Pipe();output=Pipe();process.standardInput=input;process.standardOutput=output
         let settingsURL=root.appendingPathComponent("local-settings.json")
@@ -54,7 +60,7 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
             let data=handle.availableData;guard !data.isEmpty,let s=self else{return}
             DispatchQueue.main.async {s.pending.append(data);while let range=s.pending.range(of:Data([10])) {let line=s.pending.subdata(in:0..<range.lowerBound);s.pending.removeSubrange(0..<range.upperBound);if let text=String(data:line,encoding:.utf8){s.web.evaluateJavaScript("window.museReceive(\(text))",completionHandler:nil)}}}
         }
-        do {try process.run()} catch {NSLog("Could not start Muse service: \(error)")}
+        do {try process.run()} catch {let alert=NSAlert();alert.messageText="Bandstand could not start";alert.informativeText="The local analysis service is missing or could not launch. Reinstall the app or rebuild from source.";alert.runModal();NSApp.terminate(nil);return}
         transportOutput={ [weak self] event in self?.sendService(["id":-1,"path":"bluetooth_native","body":event]) }
         if CBManager.authorization == .allowedAlways { bluetooth=Bridge() }
         else { emit(["type":"status","state":"authorization_unavailable","message":"Click Connect Muse to set up Bluetooth access for Muse Lab.","authorization":CBManager.authorization.rawValue]) }
@@ -82,7 +88,7 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
         if body["path"] as? String == "bluetooth_connect" {
             let auth=CBManager.authorization
             if auth == .denied || auth == .restricted {
-                emit(["type":"status","state":"authorization_unavailable","message":"Muse Lab Bluetooth access is blocked. Enable it in System Settings → Privacy & Security → Bluetooth.","authorization":auth.rawValue])
+                emit(["type":"status","state":"authorization_unavailable","message":"Bandstand Bluetooth access is blocked. Enable it in System Settings → Privacy & Security → Bluetooth.","authorization":auth.rawValue])
                 NSWorkspace.shared.open(URL(string:"x-apple.systempreferences:com.apple.preference.security?Privacy_Bluetooth")!)
             } else if bluetooth == nil { bluetooth=Bridge() } else { bluetooth?.reconnect() }
             let reply:[String:Any] = ["id":body["id"] ?? 0,"result":["authorization":auth.rawValue]]
@@ -101,13 +107,15 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
     func webView(_ webView:WKWebView,createWebViewWith configuration:WKWebViewConfiguration,for navigationAction:WKNavigationAction,windowFeatures:WKWindowFeatures)->WKWebView? {if let url=navigationAction.request.url, ["http","https"].contains(url.scheme ?? ""){NSWorkspace.shared.open(url)};return nil}
     func webView(_ webView:WKWebView,runOpenPanelWith parameters:WKOpenPanelParameters,initiatedByFrame frame:WKFrameInfo,completionHandler:@escaping([URL]?)->Void){let panel=NSOpenPanel();panel.allowsMultipleSelection=parameters.allowsMultipleSelection;panel.canChooseDirectories=false;panel.beginSheetModal(for:window){response in completionHandler(response == .OK ? panel.urls:nil)}}
     func applicationShouldTerminateAfterLastWindowClosed(_ sender:NSApplication)->Bool {true}
-    func applicationWillTerminate(_ notification:Notification) {typingMonitor?.stop();try? input?.fileHandleForWriting.close();if process?.isRunning == true {process.terminate()}}
+    func applicationWillTerminate(_ notification:Notification) {typingMonitor?.stop();try? input?.fileHandleForWriting.close();if process?.isRunning == true {let deadline=Date().addingTimeInterval(3);while process.isRunning && Date()<deadline {Thread.sleep(forTimeInterval:0.05)};if process.isRunning {process.terminate()}}}
 }
 @main
 struct MuseMain {
  static func main() {
 let executable=URL(fileURLWithPath:CommandLine.arguments[0]).resolvingSymlinksInPath()
-let root=CommandLine.arguments.count>1 ? URL(fileURLWithPath:CommandLine.arguments[1]) : executable.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+let bundledRoot=Bundle.main.bundleURL.appendingPathComponent("Contents/Resources/app")
+let sourceRoot=CommandLine.arguments.count>1 ? URL(fileURLWithPath:CommandLine.arguments[1]) : executable.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+let root=FileManager.default.fileExists(atPath:bundledRoot.appendingPathComponent("desktop_service.py").path) ? bundledRoot : sourceRoot
 let app=NSApplication.shared
 app.setActivationPolicy(.regular)
 let delegate=App(root:root);app.delegate=delegate;app.run()
