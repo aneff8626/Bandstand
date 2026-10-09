@@ -41,6 +41,7 @@ final class Bridge: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     }
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         if central.state == .poweredOn { scan() }
+        else if central.state == .unknown || central.state == .resetting { emit(["type":"status","state":"starting","message":"Initializing Bluetooth. Please wait…"]) }
         else if central.state == .unauthorized { emit(["type":"status","state":"authorization_unavailable","message":"Allow Muse Lab in System Settings → Privacy & Security → Bluetooth."]) }
         else { emit(["type":"status","state":"bluetooth_unavailable","message":"Bluetooth is off or unavailable. Turn Bluetooth on in System Settings."]) }
     }

@@ -18,15 +18,15 @@ final class TypingMonitor {
     func permissions()->[String:Any] {
         let listen=CGPreflightListenEventAccess(),access=AXIsProcessTrusted()
         return ["inputMonitoring":listen,"accessibility":access,"available":listen && access,"active":active,
+                "appPath":Bundle.main.bundleURL.path,"bundleIdentifier":Bundle.main.bundleIdentifier ?? "unknown",
+                "processID":ProcessInfo.processInfo.processIdentifier,"secureInput":IsSecureEventInputEnabled(),
+                "diagnosticsVersion":2,
                 "reason":listen && access ? "Ready. Protected fields, terminals and Muse Lab controls are skipped." : "Enable typing access to open macOS settings. Allow Muse Lab (or Bandstand) in Accessibility and Input Monitoring; macOS may require reopening the app."]
     }
     func requestAccess()->[String:Any] {
         if !AXIsProcessTrusted() {
-            let options=[kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String:true] as CFDictionary
-            _ = AXIsProcessTrustedWithOptions(options)
             NSWorkspace.shared.open(URL(string:"x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
         } else if !CGPreflightListenEventAccess() {
-            _ = CGRequestListenEventAccess()
             NSWorkspace.shared.open(URL(string:"x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")!)
         }
         return permissions()
@@ -74,12 +74,77 @@ final class TypingMonitor {
         let excluded=["com.apple.Terminal","com.googlecode.iterm2","com.mitchellh.ghostty","dev.warp.Warp-Stable","com.1password.1password","com.agilebits.onepassword7","com.apple.loginwindow","com.apple.systempreferences"]
         if excluded.contains(bundle){return ("","Protected app — capture paused")}
         let application=AXUIElementCreateApplication(app.processIdentifier)
-        guard let value=attribute(application,kAXFocusedUIElementAttribute),CFGetTypeID(value)==AXUIElementGetTypeID() else{return ("","No accessible text field — capture paused")}
-        let element=value as! AXUIElement
-        let role=attribute(element,kAXRoleAttribute) as? String ?? ""
-        let subrole=attribute(element,kAXSubroleAttribute) as? String ?? ""
-        if subrole==kAXSecureTextFieldSubrole || (attribute(element,"AXProtectedContent") as? Bool)==true{return ("","Password/protected field — capture paused")}
-        guard [kAXTextFieldRole,kAXTextAreaRole,kAXComboBoxRole].contains(role) else{return ("","Outside a text field — capture paused")}
+        // App-level focus can be a web/document wrapper. Resolve the actual focused
+        // descendant, never an arbitrary editable sibling or a document's contents.
+        let roots=[AXUIElementCreateSystemWide(),application]
+        var candidates:[AXUIElement]=[]
+        for root in roots {
+            var chain:[AXUIElement]=[]
+            var current=root
+            for _ in 0..<8 {
+                guard let value=attribute(current,kAXFocusedUIElementAttribute),
+                      CFGetTypeID(value)==AXUIElementGetTypeID() else {break}
+                let next=value as! AXUIElement
+                if CFEqual(current,next) {break}
+                current=next
+                var pid:pid_t=0
+                if AXUIElementGetPid(current,&pid) == .success && pid==app.processIdentifier {
+                    chain.insert(current,at:0)
+                }
+            }
+            candidates.append(contentsOf:chain)
+        }
+        // Chromium can return its application/web wrapper instead of the focused
+        // editable node. Search only the frontmost window, accepting AXFocused
+        // nodes rather than arbitrary text fields. Never read field values.
+        if bundle.hasPrefix("com.google.Chrome"),
+           let windowValue=attribute(application,kAXFocusedWindowAttribute),
+           CFGetTypeID(windowValue)==AXUIElementGetTypeID() {
+            var queue=[windowValue as! AXUIElement]
+            var cursor=0
+            let deadline=Date().addingTimeInterval(0.08)
+            var focused:[AXUIElement]=[]
+            while cursor<queue.count && cursor<1500 && Date()<deadline {
+                let node=queue[cursor];cursor+=1
+                if (attribute(node,kAXFocusedAttribute) as? Bool)==true {
+                    focused.insert(node,at:0)
+                }
+                if let children=attribute(node,kAXChildrenAttribute) as? [AXUIElement] {
+                    queue.append(contentsOf:children.prefix(max(0,1500-queue.count)))
+                }
+            }
+            candidates.insert(contentsOf:focused,at:0)
+        }
+        var selected:AXUIElement?
+        var observedRole="unknown"
+        for candidate in candidates {
+            var current:AXUIElement?=candidate
+            var editable:AXUIElement?
+            var protected=false
+            // A caret or text leaf may have an editable parent (e.g. document editors).
+            // Check every ancestor for protected content before accepting that parent.
+            for _ in 0..<16 {
+                guard let node=current else {break}
+                var pid:pid_t=0
+                guard AXUIElementGetPid(node,&pid) == .success && pid==app.processIdentifier else {break}
+                let role=attribute(node,kAXRoleAttribute) as? String ?? "unknown"
+                let subrole=attribute(node,kAXSubroleAttribute) as? String ?? ""
+                if editable == nil {observedRole=role}
+                if subrole==kAXSecureTextFieldSubrole || (attribute(node,"AXProtectedContent") as? Bool)==true {
+                    protected=true;break
+                }
+                if editable == nil && [kAXTextFieldRole,kAXTextAreaRole,kAXComboBoxRole].contains(role) {editable=node}
+                guard let parent=attribute(node,kAXParentAttribute),CFGetTypeID(parent)==AXUIElementGetTypeID() else {break}
+                let next=parent as! AXUIElement
+                if CFEqual(node,next) {break};current=next
+            }
+            // Never fall back to another candidate when the actual focus is protected.
+            if protected {return ("","Password/protected field — capture paused")}
+            if let editable=editable {selected=editable;break}
+        }
+        guard let element=selected else {
+            return ("","Editor not exposed as a text field ("+observedRole+") — capture paused")
+        }
         // Field identity is used only to cancel partial words when focus changes; it is not stored.
         return (bundle+":"+String(CFHash(element)),"Recording new typing in "+(app.localizedName ?? bundle))
     }
