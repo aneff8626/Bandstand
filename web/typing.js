@@ -16,7 +16,7 @@ function closeTypingWord(cancel=false){
 async function stopTyping(reason='Stopped by writer'){
  if(typingStopping)return;typingStopping=true;try{
  clearTimeout(typingDocTimer);await closeTypingWord();await typingEvent({kind:'document',onset:now(),text:$('writingEditor').value});await typingChain;
- if(state.typing?.session?.capture==='system')await api('system_typing/stop',{}).catch(()=>{});state.typing=await api('typing/stop',{reason});renderTyping();}finally{typingStopping=false}
+ if(state.typing?.session?.capture==='system')await api('system_typing/stop',{}).catch(()=>{});state.typing=await api('typing/stop',{reason});renderTyping();await checkTypingAccess();}finally{typingStopping=false}
 }
 function renderTyping(){
  const d=state?.typing;if(!d)return;const running=d.running;if(running&&state.stale){stopTyping('EEG signal lost').catch(e=>toast(e.message));return}
@@ -27,7 +27,12 @@ function renderTyping(){
  $('typingStatus').textContent=running?'Recording locally · space or Enter completes a word':d.session?(d.session.stop_reason||'Recording saved locally'):'Ready when you are';
  $('writingEditor').readOnly=!running||d.session?.capture==='system';
  for(const id of ['typingHistory','typingDelay','typingCapture'])$(id).disabled=running;
- if(running&&d.session?.capture==='system')$('typingStatus').textContent=d.capture_status?.reason||'Recording EEG · type in another app';
+ if(running&&d.session?.capture==='system'){
+  const capture=d.capture_status||{},paused=!!capture.paused;
+  $('typingStatus').textContent=(paused?'EEG recording · typing paused: ':'')+(capture.reason||'Recording EEG · type in another app');
+  if(paused&&/Secure input/i.test(capture.reason||''))$('typingStatus').textContent+=' · Another app has enabled macOS Secure Keyboard Entry. An ordinary open Terminal does not block capture.';
+  $('typingStatus').classList.toggle('capture-paused',paused);
+ }else $('typingStatus').classList.remove('capture-paused');
  $('typingCounts').textContent=`${d.accepted} usable · ${d.rejected} excluded · ${d.pending} pending`;
  $('typingPrediction').textContent=(d.prediction?.word?redactPhrase(d.prediction.word):null)||(d.decoder?.ready?'No confident estimate':'Collecting evidence');
  $('typingPredictionNote').textContent=d.prediction?.reason||d.decoder?.reason||'No EEG prediction yet.';
@@ -55,13 +60,23 @@ document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',(
 async function checkTypingAccess(){
  if(!window.museNative){typingAccessState={available:false,reason:'Across-app writing capture requires the Bandstand desktop app. Open Muse Lab.app from Applications, then start recording there. The browser preview cannot capture typing in other apps.'};}
  else try{typingAccessState=await api('system_typing/status',{});}catch(e){typingAccessState={available:false,reason:'Could not check typing access: '+e.message+'. Quit and reopen Bandstand, then try again.'};}
- if(window.museNative&&typingAccessState&&typeof typingAccessState.accessibility==='boolean'){const missing=[];if(!typingAccessState.accessibility)missing.push('Accessibility');if(!typingAccessState.inputMonitoring)missing.push('Input Monitoring');typingAccessState.reason=missing.length?'macOS has not authorized this running copy for '+missing.join(' and ')+'. If its switch is already on, remove the old entry and add the Muse Lab app from Applications, then quit and reopen the app.':'Typing access ready.';}
- $('typingAccess').textContent=typingAccessState.reason;
- $('typingAccess').hidden=Boolean(typingAccessState.available);$('typingCheckAccess').hidden=!window.museNative||Boolean(typingAccessState.available);$('typingCheckAccess').textContent='Enable typing access';
+ if(window.museNative&&typeof typingAccessState?.accessibility==='boolean'){
+ const p=typingAccessState;
+ p.reason=`Accessibility: ${p.accessibility?'allowed':'not authorized for this process'} · Input Monitoring: ${p.inputMonitoring?'allowed':'not authorized for this process'} · Capture: ${p.active?'running':'stopped'}.`;
+ if(p.appPath)p.reason+=` App: ${p.appPath} · ID: ${p.bundleIdentifier} · Process: ${p.processID}.`;
+ if(p.secureInput)p.reason+=' macOS Secure Input is active; typing capture pauses while it is active.';
+ if(!p.available)p.reason+=' Enable the missing permission, then return here. If you already enabled it, quit and reopen Bandstand once to refresh macOS authorization.';
+ }
+ $('typingAccess').textContent=typingAccessState.reason+' Checked '+new Date().toLocaleTimeString()+'.';
+ $('typingAccess').hidden=false;
+ $('typingCheckAccess').hidden=!window.museNative;
+ $('typingCheckAccess').textContent=typingAccessState.available?'Recheck typing access':typingAccessState.accessibility?'Open Input Monitoring':'Open Accessibility';
+
 }
-async function enableTypingAccess(){if(!window.museNative)return checkTypingAccess();try{await api('system_typing/request_access',{});await checkTypingAccess()}catch(e){toast(e.message)}}
+async function enableTypingAccess(){if(!window.museNative||typingAccessState?.available)return checkTypingAccess();try{await api('system_typing/request_access',{});await checkTypingAccess()}catch(e){toast(e.message)}}
 $('typingCheckAccess').onclick=enableTypingAccess;
 window.addEventListener('focus',()=>checkTypingAccess());
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkTypingAccess()});
 $('typingStart').onclick=async()=>{try{
  const capture=$('typingCapture').value;
  if(capture==='system'){await checkTypingAccess();if(!typingAccessState?.available){$('typingCheckAccess').focus();return toast(typingAccessState?.reason||'Use Enable typing access, then start recording.');}}
@@ -69,7 +84,7 @@ $('typingStart').onclick=async()=>{try{
  if(capture==='system'){
   const result=await api('system_typing/start',{});if(!result.active){await api('typing/stop',{reason:'Input capture unavailable'});return toast(result.reason||'Typing capture could not start.');}
  }else{const el=$('writingEditor');el.readOnly=false;el.focus();el.setSelectionRange(el.value.length,el.value.length);typingEvent({kind:'document',onset:now(),text:el.value})}
- renderTyping();if(state.typing?.running)$('writingAnalysis').scrollIntoView({behavior:'smooth'});
+ await checkTypingAccess();renderTyping();if(state.typing?.running)$('writingAnalysis').scrollIntoView({behavior:'smooth'});
  }catch(e){toast(e.message)}};
 $('typingStop').onclick=()=>stopTyping().catch(e=>toast(e.message));
 $('writingEditor').addEventListener('beforeinput',e=>{
