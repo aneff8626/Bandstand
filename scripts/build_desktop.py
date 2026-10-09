@@ -1,9 +1,18 @@
 """Create a relocatable Apple Silicon development app without participant files."""
 from pathlib import Path
-import sys,shutil,subprocess,plistlib,importlib.metadata as metadata,json,hashlib
+import os,sys,shutil,subprocess,plistlib,importlib.metadata as metadata,json,hashlib
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 ROOT=Path(__file__).resolve().parents[1]
+# Persistent certificate signing is required for normal updates. Never silently
+# replace a permission-bearing app with a different ad-hoc identity.
+SIGN_ID=os.environ.get('BANDSTAND_SIGN_IDENTITY','').strip()
+if not SIGN_ID or SIGN_ID=='-':
+ raise SystemExit('Set BANDSTAND_SIGN_IDENTITY to a persistent code-signing certificate. Ad-hoc release builds invalidate macOS permissions and are disabled.')
+identities=subprocess.run(['/usr/bin/security','find-identity','-v','-p','codesigning'],capture_output=True,text=True,check=True).stdout
+if SIGN_ID not in identities:
+ raise SystemExit('Requested signing identity is unavailable. Existing application has not been changed.')
+
 subprocess.run([sys.executable,str(ROOT/'scripts/audit_release.py')],check=True,cwd=ROOT)
 out=ROOT/'release/Bandstand.app'
 if out.exists():shutil.rmtree(out)
@@ -45,7 +54,7 @@ for name,digest in verified.items():
  if p.is_symlink() or hashlib.sha256(p.read_bytes()).hexdigest()!=digest:raise ValueError('Public model hash mismatch: '+name)
  target=app/'models/all-MiniLM-L6-v2'/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(p,target)
 info=plistlib.loads((ROOT/'Muse Lab.app/Contents/Info.plist').read_bytes())
-info.update(CFBundleName='Bandstand',CFBundleDisplayName='Bandstand',CFBundleShortVersionString='0.2.1',CFBundleVersion='3',LSMinimumSystemVersion='14.0')
+info.update(CFBundleName='Bandstand',CFBundleDisplayName='Bandstand',CFBundleShortVersionString='0.2.2',CFBundleVersion='4',LSMinimumSystemVersion='14.0')
 (out/'Contents/Info.plist').write_bytes(plistlib.dumps(info))
 icon=ROOT/'Muse Lab.app/Contents/Resources/MuseLab.icns'
 if not icon.exists():
@@ -56,15 +65,15 @@ if not icon.exists():
 shutil.copy2(icon,resources/'MuseLab.icns')
 mac=out/'Contents/MacOS';mac.mkdir()
 subprocess.run(['/usr/bin/swiftc','-module-cache-path',str(ROOT/'build/module-cache'),str(ROOT/'native/Desktop.swift'),str(ROOT/'native/MuseTransport.swift'),str(ROOT/'native/TypingMonitor.swift'),'-o',str(mac/'MuseLab'),'-framework','AppKit','-framework','WebKit','-framework','CoreBluetooth','-framework','ApplicationServices','-framework','Carbon'],check=True)
-# Ad-hoc signing checks bundle integrity; it is NOT Developer ID notarization.
-subprocess.run(['/usr/bin/codesign','--force','--deep','--sign','-',str(out)],check=True)
-manifest={str(p.relative_to(out)):hashlib.sha256(p.read_bytes()).hexdigest() for p in out.rglob('*') if p.is_file()}
-(ROOT/'release/bundle-manifest.json').write_text(json.dumps({'version':'0.2.1','architecture':'arm64','dependencies':versions,'files':manifest},indent=2))
+# Use the same certificate and bundle identifier for every update.
+subprocess.run(['/usr/bin/codesign','--force','--deep','--sign',SIGN_ID,str(out)],check=True)
 subprocess.run([str(resources/'python/bin/python3.12'),'-c','import numpy,PIL,reportlab,ssl; from semantic_decoder import encode; assert encode(["Synthetic packaging test"]).shape == (1,384); print("Bundled runtime and offline encoder passed")'],check=True,cwd=app)
 # Runtime verification can create bytecode caches; seal the final tested bundle.
-subprocess.run(['/usr/bin/codesign','--force','--deep','--sign','-',str(out)],check=True)
+subprocess.run(['/usr/bin/codesign','--force','--deep','--sign',SIGN_ID,str(out)],check=True)
 subprocess.run(['/usr/bin/codesign','--verify','--deep','--strict',str(out)],check=True)
-archive=ROOT/'release/Bandstand-0.2.1-macos-arm64.zip'
+manifest={str(p.relative_to(out)):hashlib.sha256(p.read_bytes()).hexdigest() for p in out.rglob('*') if p.is_file()}
+(ROOT/'release/bundle-manifest.json').write_text(json.dumps({'version':'0.2.2','architecture':'arm64','dependencies':versions,'files':manifest},indent=2))
+archive=ROOT/'release/Bandstand-0.2.2-macos-arm64.zip'
 if archive.exists():archive.unlink()
 subprocess.run(['/usr/bin/ditto','-c','-k','--sequesterRsrc','--keepParent',str(out),str(archive)],check=True)
 print(archive)
