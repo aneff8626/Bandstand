@@ -2,7 +2,7 @@
 
 A local macOS desktop app for Muse 2 EEG experiments and exploratory writing-to-EEG semantic retrieval. The self-contained development build is **Bandstand.app** (Apple Silicon, macOS 14+). Unzip the release and open it. The source checkout also supports **Muse Lab.app** and **Launch Muse Lab.command**. Participant data are stored separately.
 
-The development build is ad-hoc signed, not Apple-notarized. A clean-machine installation and headset check remain necessary before a participant release.
+Version 0.2.2 is signed with Developer ID Application. Apple notarization is not yet completed. A clean-machine installation and headset check remain necessary before a participant release.
 
 ## Current readiness
 
@@ -11,7 +11,7 @@ The development build is ad-hoc signed, not Apple-notarized. A clean-machine ins
 - Hardware verified on this Mac: live Muse EEG on TP9, AF7, AF8 and TP10 at 256 Hz, including automatic reconnection after app restart. Physical event timing and signal accuracy remain uncalibrated.
 - **Preview synthetic EEG** explicitly enables a simulator. Every simulated recording and report is labeled. The app starts in live mode; it never silently substitutes synthetic EEG for a missing headset.
 - Faces/cars and expertise tasks require locally imported photographic sets. Public source links and import controls are provided. No photograph pack is bundled, and no preset is claimed to be an exact replication.
-- Optional accounts use Supabase. Explicitly selected, completed built-in ERP trials can be uploaded after consent. Writing-decoder contributions remain disabled; writing, embeddings and personalized models stay local.
+- Optional accounts use Supabase. Supported completed ERP trials are uploaded automatically after explicit ERP-sharing opt-in; previous recordings stay local. Writing-decoder contributions remain disabled; writing, embeddings and personalized models stay local.
 
 ## Workflow
 
@@ -163,7 +163,7 @@ ERP uploads and cloud consent synchronization are enabled. Protected shared deco
 
 Bandstand source is MIT licensed, copyright 2026 Andrew Neff. Research contact: aneff8626@gmail.com. Downloaded models and imported stimulus sets retain their own licenses.
 
-For a fresh source checkout, create `.venv` with Python 3.12 and install `requirements.txt`. The writing semantic encoder needs the pinned public model downloaded by scripts/prepare_public_model.py; model weights are bundled in the app release, not the source repository. Build the native macOS app using the launch script and installed Apple command-line tools. A clean-machine installation test remains pending.
+For a fresh source checkout, create `.venv` with Python 3.12 and install `requirements.txt`. The writing semantic encoder needs the pinned public model downloaded by scripts/prepare_public_model.py; model weights are bundled in the app release, not the source repository. Use a signed app release. The launch script does not rebuild native executables; release builds require a persistent signing certificate. A clean-machine installation test remains pending.
 
 ```sh
 python3.12 -m venv .venv
@@ -195,3 +195,15 @@ python3.12 -m venv .venv
 The builder expects a relocatable Python base installation and includes the dependency closure and the public all-MiniLM-L6-v2 encoder at revision `1110a243fdf4706b3f48f1d95db1a4f5529b4d41`. It verifies upstream model hashes. The model card declares Apache 2.0; its license and dependency license files are included. Personal checkpoints are never included. The generated bundle manifest records file hashes.
 
 The source publication audit uses three checks: an explicit file allowlist, secret/identity pattern scanning, and exact comparison with local private text without printing that text. Passing these is evidence for the selected source bundle, not a guarantee that every possible identifier has been detected.
+
+
+## Writing decoder setup (0.2.2)
+
+1. Download the Apple Silicon app archive, unzip it, and place Bandstand.app in Applications. Quit older copies before opening it.
+2. Connect your headset. In Writing decoder, grant Accessibility and Input Monitoring through the app's named settings button. Quit and reopen if macOS requests it. The app displays each permission separately.
+3. For Google Docs in Chrome, open **Tools → Accessibility** and enable **screen reader support** and **braille support**. Return to the document body. These settings expose its focused editor to local capture.
+4. Start recording, type a sentence ending with a space, and check that words increase. Stop & save, reopen, and confirm the session is retained.
+
+Password/protected fields, Secure Input, and foreground terminal apps pause capture. Ordinary open terminal windows do not prevent capture elsewhere. Only new keystrokes are recorded; pasted or existing document contents are not collected by the native monitor.
+
+Updates must keep the bundle identifier and Developer ID team identity. The signed executable update was tested locally: Accessibility and Input Monitoring stayed allowed. Users migrating from older ad-hoc builds may need a one-time permission replacement. This does not establish behavior on a fresh Mac; Nideesh should run the checklist above and report the exact permission/status text if blocked.
