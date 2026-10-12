@@ -18,6 +18,15 @@ def make_report(session,analysis,events,directory):
     rows=[['Condition','Usable','Rejected','Mean','SE']]
     for g in analysis.get('groups',[]): rows.append([g['label'],str(g['accepted']),str(g['rejected']),f"{g['mean']:.4g} {analysis['unit']}" if g['mean'] is not None else 'Pending',f"{g['se']:.4g}" if g['se'] is not None else '-'])
     table=Table([[p(c,'SmallPrint') for c in row] for row in rows],colWidths=[164,65,65,115,115]); table.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#edf3f1')),('VALIGN',(0,0),(-1,-1),'TOP'),('BOTTOMPADDING',(0,0),(-1,-1),8)])); story.append(table)
+    if analysis.get('spectral'):
+        story.append(p('Channel-local spectral results','Heading2'))
+        story.append(p(f"Reviewed band: {analysis['band']} Hz. 2-second Hann windows; 0.5-second steps; at least 4 unique clean seconds per block. One observation per block/electrode. Power in dB re 1 µV².",'SmallPrint'))
+        for channel,value in analysis['channels'].items():
+            story.append(p(channel,'Heading3'))
+            for g in value['groups']:
+                score=f"{g['mean']:.3f} dB" if g['mean'] is not None else 'Pending'
+                story.append(p(f"{g['label']}: {g['accepted']} usable / {g['rejected']} rejected blocks; {g['clean_seconds']:.1f} clean seconds; mean {score}."))
+            stat=value['stats'];story.append(p(f"Exploratory p = {stat['p']:.8g}; {stat['label']}" if stat.get('ready') else stat['reason']))
     stat=analysis.get('stats',{})
     story.append(p(f"Exploratory Welch t({stat['df']:.2f}) = {stat['t']:.4g}; p = {stat['p']:.12g}; {stat['label']}" if stat.get('ready') else stat.get('reason','No trials yet.')))
     story.append(p('Trial-level comparisons within one participant. Repeated testing is uncorrected; trials are not independent participants. Pointwise 95% intervals and SE describe accepted trials, not population uncertainty. Ten usable trials is a display threshold, not a power guarantee.','SmallPrint'))
@@ -57,7 +66,7 @@ def make_report(session,analysis,events,directory):
         story.append(p('Overlapping feedback windows are descriptive and are not counted as independent trials. Pre/post changes are observational.'))
     if analysis.get('rejections'):
         story.append(p('Rejected trials','Heading2'))
-        for r in analysis['rejections']: story.append(p(f"Trial {r['index']+1} / {r['condition']}: {', '.join(r['reasons'])}",'SmallPrint'))
+        for r in analysis['rejections']: story.append(p(f"{r.get('channel','')} Trial {r['index']+1} / {r['condition']}: {', '.join(r['reasons'])}",'SmallPrint'))
     story.append(p('Sources','Heading2'))
     for key in session.get('source',[]) if isinstance(session.get('source'),list) else session.get('references',[]):
         s=SOURCES[key]; story.append(p(s['title']+' - '+s['url'],'SmallPrint'))

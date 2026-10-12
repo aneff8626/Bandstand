@@ -8,6 +8,8 @@ engine.start()
 
 def dispatch(path,body):
     body=body or {}
+    if path.startswith('personal/'):
+        with engine.lock:return engine.personal.request(path.split('/')[-1],body,engine)
     if path.startswith('account/'):
         from accounts import account
         return account(path.split('/')[-1],body)
@@ -25,6 +27,7 @@ def dispatch(path,body):
                         from engine import PacketAssembler
                         from analysis import Filters
                         engine.typing.stop('Headset reconnected')
+                        if engine.personal.current:engine.personal.finish('Headset reconnected')
                         if engine.session and engine.session['running']: engine.stop('headset reconnected')
                         engine.assembler=PacketAssembler(engine.ingest); engine.filters=Filters(); engine.notch=Filters(notch_only=True)
                         engine.times.clear(); engine.raw.clear(); engine.filtered.clear(); engine.spectral.clear()
@@ -34,6 +37,7 @@ def dispatch(path,body):
     if path.startswith('typing/'):return engine.typing_request(path,body)
     if path=='developer/start':
         with engine.lock:
+            if engine.personal.current:raise ValueError('Finish the personal activity first.')
             if engine.typing.running:raise ValueError('Stop typing recording first.')
             if not engine.times or time.time()-engine.times[-1]>1: raise ValueError('Connect a live headset first.')
             return engine.developer.start(body.get('action'),engine.source,bool(engine.session and engine.session['running']))
@@ -51,6 +55,8 @@ def dispatch(path,body):
     if path=='import': return Handler.import_image(None,body)
     if path=='sessions':
         return [{k:s.get(k) for k in ['id','title','source','started','ended','running','mode','protocol']} for s in [json.loads(p.read_text()) for p in sorted((DATA_ROOT).glob('*/session.json'),reverse=True)]]
+    if path.startswith('tf-band/'):
+        parts=path.split('/');return engine.result_band(parts[1],parts[2],parts[3])
     if path.startswith('results/'):
         parts=path.split('/')
         if len(parts)==4:return engine.result_window(parts[1],parts[2],parts[3])

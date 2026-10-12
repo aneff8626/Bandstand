@@ -23,6 +23,8 @@ Version 0.2.2 is signed with Developer ID Application. Apple notarization is not
 
 ## Tasks
 
+Time-frequency results show all four electrodes separately. Eyes-open/closed recordings alternate 12-second blocks and omit the first 2 seconds after each cue. Spectra use 2-second windows every 0.5 seconds; rejection is local to each electrode/window. A block needs at least 4 unique clean seconds per electrode. Statistical comparisons count completed blocks, not overlapping windows. Alpha (8–13 Hz), low beta (13–20 Hz), high beta (20–30 Hz), and custom bands within 2–40 Hz can be selected in setup or reviewed in results. Drag across a spectrum or use the band controls to select frequencies. Small comparison dots represent non-overlapping clean 2-second segments, including segments from otherwise ineligible blocks; means and tests still use eligible blocks. Changing the review band recalculates band-power comparisons without changing the original protocol; these comparisons are exploratory.
+
 | Task | Built-in stimuli | Analysis / limitation |
 | --- | --- | --- |
 | Visual oddball | Blue/green circles; 25% targets; 800–1200 ms stimulus, 300–500 ms fixation | P300 default TP9/TP10; canonical Pz absent. Based on Krigolson 2017, with documented hardware and preprocessing changes. |
@@ -207,3 +209,37 @@ The source publication audit uses three checks: an explicit file allowlist, secr
 Password/protected fields, Secure Input, and foreground terminal apps pause capture. Ordinary open terminal windows do not prevent capture elsewhere. Only new keystrokes are recorded; pasted or existing document contents are not collected by the native monitor.
 
 Updates must keep the bundle identifier and Developer ID team identity. The signed executable update was tested locally: Accessibility and Input Monitoring stayed allowed. Users migrating from older ad-hoc builds may need a one-time permission replacement. This does not establish behavior on a fresh Mac; Nideesh should run the checklist above and report the exact permission/status text if blocked.
+
+### Continuous writing storage
+Typing is autosaved locally in each session's `events.jsonl` as an ordered stream of edits, timestamps, application identifiers and focus boundaries, independent of semantic phrase boundaries. Backspaces remain explicit edit operations. Completed word records are saved separately in `trials.jsonl`; phrase grouping can be recomputed later. The event stream is flushed on every event and synced to disk at completed words, focus boundaries, stop, and at most once per second during other incoming events. Completed processed trials are also synced. Abrupt power loss may lose the unsynced tail; a truncated final JSONL line can be ignored during recovery.
+
+This is newly captured typing, not a copy of the document: existing text, paste, protected fields, autocorrection and unsupported edits may be absent. Keep app/focus boundaries when reconstructing text rather than joining unrelated documents. Older sessions retain their existing logs; missing historical boundaries cannot be recovered. All writing stays in private local storage.
+
+### Public self-disclosure
+Under Time–frequency → All paradigms, this exploratory task runs four 30-second blocks (ABBA or BAAB), with live on-screen answers, Enter to advance and Skip. The audience must be able to see the participant display; this does not publish answers online. Text is not saved by this task; timing, response length and skip markers are retained locally. Personal and impersonal conditions use non-overlapping 2-second clips for an explicitly labeled exploratory Welch comparison; correlated clips can overstate evidence. Channel-local artifact rejection remains active. Movement reminders use headset motion detection with a cooldown.
+
+
+## Personal workspaces prototype (October 2026)
+
+The shared headset panel now serves three areas: Personal Insights, Growth Activities, and Learn About Your Brain. Personal Insights contains the existing writing decoder, scored IPIP Extraversion and Big Five questionnaires, nine original Enneagram-inspired reflection prompts, and a one-minute EEG profile. Enneagram prompts are unvalidated reflections, not a type classifier.
+
+Growth Activities provides Find Your Reset (three randomly ordered 45-second activities, each preceded by a 30-second eyes-open baseline) and 2-minute eyes-open meditation following a 30-second baseline. Two-second nonoverlapping EEG clips are checked per electrode. Each clip is autosaved. Results show per-electrode theta, alpha, low-beta, and high-beta power. Reset ranks average absolute spectral change from the preceding baseline, requiring at least five usable clips per electrode in each phase. A larger change does not establish a better state or clinical benefit. There are no inferential p-values for this short within-person comparison.
+
+Personal activity files are under the configured private data directory, in `personal/`. They contain questionnaire answers/scores and timestamped spectral features with rejection reasons; these activity files do not retain continuous raw EEG. Existing research and writing storage is unchanged. Interrupted activity files are recovered as partial results. New optional local personalization settings default off and include explicit disclosure about cross-activity writing data. No personal-insight, writing, embedding, or model-weight upload is enabled by this prototype. Research contribution is interest only; ERP sharing retains its existing separate consent.
+
+Scientific limitation: no verified Muse-compatible individual EEG-to-extraversion prediction model is included. More recordings do not automatically validate such a model. Questionnaire scores are not EEG estimates or calibrated probabilities. Future cross-activity predictive training needs an explicit model, participant-separated validation, and an implemented protected sharing protocol before contribution can be enabled.
+
+Validation: Python regression suite, existing JavaScript regression scripts, isolated synthetic EEG and browser checks of questionnaire saving, activity recording/stopping, history, and navigation. Physical-headset performance requires a subsequent real-device check.
+
+Questionnaires now require an active EEG stream. Raw four-channel EEG is saved locally as gzip JSONL, linked by recording ID to question/answer timestamps and scores. Questionnaires stop on sustained signal loss and cannot finalize without fresh EEG; partial records are retained. These recordings do not establish an EEG personality classifier. The research picker starts with no type selected; each paradigm card provides Advanced and expected-results controls.
+
+### Messaging response and focused activity screens
+Introversion/extraversion begins with 60 seconds browsing messages and 60 seconds composing/sending a participant-chosen message. Bandstand does not send messages or capture their content in this activity. A short cue marks phase changes. Local raw EEG, per-channel spectral clips, montage metadata and optional effort/social-ease ratings are retained. The subsequent Extraversion questionnaire links to that recording ID. These paired records support later validation; no automatic trait-model improvement is claimed.
+
+The initial psychological hypothesis concerns possible mental effort, motivated by frontal-theta workload research (https://pubmed.ncbi.nlm.nih.gov/35128686/). Both AF7 and AF8 need ten usable clips in each phase. Concordant changes exceeding 0.5 dB produce explicitly ultra-tentative wording; that cutoff is an unvalidated display heuristic, not statistical significance or probability. Muse montage differences, eye activity, typing and fixed task order limit interpretation. EEG-only extraversion classification remains unsupported (https://doi.org/10.1002/per.2197).
+
+Growth activities use a separate full-window recording screen, with Stop & save and Escape. Questionnaire sections flow vertically without sticky positioning so signal and results cannot overlap. The sidebar uses a left chevron when expanded and a menu icon when collapsed.
+
+Personal activity screens and questionnaires include live per-electrode band-power trends (last 30 two-second clips), frequency selection, gaps for rejected channels, and a baseline reference when available. Meditation defaults to alpha; messaging and questionnaires to theta. These are measured EEG features, not validated psychology scores. Headset setup collapses when experiments, personal activities or writing recordings end. Collapsed navigation retains the menu and Account icons.
+
+Writing decoder Activity setup offers **Write in Bandstand app** (local editor, no system typing permissions) and **Write across all apps** (desktop capture with macOS permissions). Choose before recording; stop to switch modes. Both use local EEG-linked word events and autosaving. Contributor acceptance work is listed in [the handoff](docs/contributor-handoff.html).

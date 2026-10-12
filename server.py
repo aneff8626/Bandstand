@@ -38,6 +38,8 @@ class Handler(BaseHTTPRequestHandler):
                 for p in sorted((DATA_ROOT).glob('*/session.json'),reverse=True):
                     s=json.loads(p.read_text()); sessions.append({k:s.get(k) for k in ['id','title','source','started','ended','running','mode','protocol']})
                 return self.send(200,dumps(sessions))
+            if path.startswith('/api/tf-band/'):
+                parts=path.split('/');return self.send(200,dumps(engine.result_band(parts[3],parts[4],parts[5])))
             if path.startswith('/api/results/'):
                 parts=path.split('/')
                 if len(parts)==6:return self.send(200,dumps(engine.result_window(parts[3],parts[4],parts[5])))
@@ -77,7 +79,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.headers.get('X-Muse-Token')!=TOKEN: return self.send(403,dumps({'error':'Reload the local app to obtain a session token'}))
         if not secrets.compare_digest(self.headers.get('X-Muse-Token',''),TOKEN): return self.send(403,'{}')
         origin=self.headers.get('Origin')
-        if origin and origin not in ['http://127.0.0.1:8765','http://localhost:8765']: return self.send(403,'{}')
+        if origin and origin not in [f'http://127.0.0.1:{self.server.server_port}',f'http://localhost:{self.server.server_port}']: return self.send(403,'{}')
         try:
             length=int(self.headers.get('Content-Length','0'))
             if length<0 or length>24*1024*1024: raise ValueError('Request exceeds 24 MB')
@@ -85,6 +87,8 @@ class Handler(BaseHTTPRequestHandler):
             if path.startswith('/api/account/'):
                 from accounts import account
                 result=account(path.split('/')[-1],body)
+            elif path.startswith('/api/personal/'):
+                with engine.lock:result=engine.personal.request(path.split('/')[-1],body,engine)
             elif path=='/api/enrollment':
                 from enrollment import enrollment
                 result=enrollment(body if body else None)

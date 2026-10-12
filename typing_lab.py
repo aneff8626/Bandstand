@@ -78,7 +78,7 @@ def evaluate(rows,window,look):
 class TypingLab:
  def __init__(self,root,data_dir=None):
   self.root=(Path(data_dir) if data_dir is not None else Path(root)/'data')/'typing';self.root.mkdir(parents=True,exist_ok=True)
-  self.running=False;self.session=None;self.pending={};self.history=[];self.word_onsets=[];self.rows=deque(maxlen=MAX_WORDS);self.lock=threading.RLock();self.models={};self.reports={w:dict(ready=False,reason='Collecting clean examples of recurring words.') for w in WINDOWS};self.prediction=None;self.revision=0;self.last_fit=0;self.fitting=False;self.look=0;self.last_epoch=None;self.sequence_model=None;self.native_word=None;self.native_boundary=False;self.native_app=None;self.capture_status={};self.focus_id=uuid.uuid4().hex;self.last_semantic_fit=0;self.last_disk_check=0;self.last_live_prediction=0;self.total_words=0;self.recording_sessions={};self.session_last_word={}
+  self.running=False;self.session=None;self.pending={};self.history=[];self.word_onsets=[];self.rows=deque(maxlen=MAX_WORDS);self.lock=threading.RLock();self.models={};self.reports={w:dict(ready=False,reason='Collecting clean examples of recurring words.') for w in WINDOWS};self.prediction=None;self.revision=0;self.last_fit=0;self.fitting=False;self.look=0;self.last_epoch=None;self.sequence_model=None;self.native_word=None;self.native_boundary=False;self.native_app=None;self.capture_status={};self.capture_preview={};self.focus_id=uuid.uuid4().hex;self.last_semantic_fit=0;self.last_disk_check=0;self.last_live_prediction=0;self.total_words=0;self.recording_sessions={};self.session_last_word={}
   for p in sorted(self.root.glob('*/trials.jsonl')):
    for line in read_lines(p):
     try:
@@ -89,6 +89,10 @@ class TypingLab:
     saved=json.loads(path.read_text());self.recording_sessions[saved['id']]=saved
    except (ValueError,KeyError):pass
   self.reports['context']=dict(ready=False,reason='Collecting free-writing phrases for semantic retrieval.')
+  saved_evaluation=self.root/'semantic_result.json'
+  if saved_evaluation.exists():
+   try:self.reports['context']=json.loads(saved_evaluation.read_text())['report']
+   except (ValueError,KeyError,OSError):pass
   replacements={};recent_ids={(r.get("session"),r.get("id")) for r in self.rows}
   for p in sorted(self.root.glob('*/context_trials.jsonl')):
    for line in read_lines(p):
@@ -118,12 +122,13 @@ class TypingLab:
   if self.running:raise ValueError('Typing is already recording')
   if window not in [*WINDOWS,'context']:raise ValueError('Unknown EEG window')
   if history not in [10,30,60] or delay not in [0,1] or capture not in ['editor','system']:raise ValueError('Invalid context/capture settings')
-  self.native_word=None;self.native_boundary=False;self.native_app=None
+  self.native_word=None;self.native_boundary=False;self.native_app=None;self.capture_preview={};self.capture_status={}
   now=time.time();ident=time.strftime('%Y%m%d-%H%M%S')+'-'+uuid.uuid4().hex[:6];self.directory=self.root/ident;self.directory.mkdir()
   self.session=dict(id=ident,started=now,window=window,history_seconds=history,prediction_delay=delay,capture=capture,source='live',sample_rate=FS,channels=CHANNELS,epoch=[-1.5,1.],baseline=[-1.5,-1.25],timing='Browser beforeinput timestamp; BLE and physical key onset uncalibrated',model_features='EEG only; text and edit timings are labels/quality checks, never predictors')
   self.recording_sessions[ident]=self.session
   self.running=True;self.pending={};self.history=[];self.word_onsets=[];self.prediction=None
   self.rawfile=gzip.open(self.directory/'continuous.csv.gz','wt',newline='',compresslevel=1);self.writer=csv.writer(self.rawfile);self.writer.writerow(['time',*CHANNELS,*[c+'_filtered' for c in CHANNELS]])
+  self.last_text_sync=0
   self.eventfile=open(self.directory/'events.jsonl','a');self.trialfile=open(self.directory/'trials.jsonl','a');self._save_session();self.maybe_fit();return self.status()
  def _save_session(self):
   (self.directory/'session.json').write_text(json.dumps(self.session,indent=2))
@@ -145,6 +150,8 @@ class TypingLab:
    trial=self.pending.get(str(body.get('id')))
    if trial:
     trial.update(typed=str(body.get('text','')),label=word_label(body.get('text','')) if kind=='commit' else '',committed=onset,cancelled=kind=='cancel',edited=bool(body.get('edited')),unsupported=bool(body.get('unsupported')))
+  if kind in ('commit','boundary') or time.time()-self.last_text_sync>=1:
+   os.fsync(self.eventfile.fileno());self.last_text_sync=time.time()
   self.process(times,raw,filtered);return self.status()
  def native_event(self,body,times,raw,filtered):
   if not self.running or self.session.get('capture')!='system':return {}
@@ -152,14 +159,22 @@ class TypingLab:
   if kind=='status':self.capture_status=body;return {}
   if kind=='boundary' or (self.native_app is not None and self.native_app!=body.get('app')):
    if self.native_word:self.event(dict(kind='cancel',id=self.native_word['id'],onset=now,text=self.native_word['text'],unsupported=True),times,raw,filtered)
+   self.event(dict(kind='boundary',onset=now,focus_id=self.focus_id,app=self.native_app),times,raw,filtered)
    self.native_word=None;self.native_boundary=False;self.focus_id=uuid.uuid4().hex
    if kind=='boundary':return {}
+  if self.native_app!=body.get('app'):self.capture_preview={}
   self.native_app=body.get('app')
   if kind!='key':return {}
   chars=body.get('text','');code=body.get('keycode')
   if body.get('shortcut') or code in [48,53,115,116,117,119,121,123,124,125,126]:
    return self.native_event(dict(kind='boundary',onset=now),times,raw,filtered)
-  self.event(dict(kind='edit',onset=now,input_type='nativeKey',data=chars,keycode=code,app=self.native_app),times,raw,filtered)
+  preview=self.capture_preview.get('text','')
+  if code==51:preview=preview[:-1]
+  elif chars and all(c.isprintable() or c.isspace() for c in chars):preview=(preview+chars)[-180:]
+  elif code in [36,76]:preview=(preview+' ')[-180:]
+  app_name=self.capture_status.get('reason','').removeprefix('Recording new typing in ')
+  self.capture_preview=dict(text=preview,app=app_name if self.capture_status.get('reason','').startswith('Recording new typing in ') else self.native_app,at=now)
+  self.event(dict(kind='edit',onset=now,input_type='nativeKey',data=chars,keycode=code,app=self.native_app,focus_id=self.focus_id),times,raw,filtered)
   if code==51:
    if self.native_word:
     self.native_word['text']=self.native_word['text'][:-1];self.native_word['edited']=True
@@ -227,7 +242,7 @@ class TypingLab:
     for ch,ok in enumerate(trial['erp_channel_accepted']):
      if not ok:wave[:,ch]=np.nan
     trial['erp_times']=(t[ep]-onset)[::4].tolist();trial['erp_values']=[[float(v) if np.isfinite(v) else None for v in row] for row in wave[::4]];
-    self.rows.append(trial);self.count_word(trial);self.trialfile.write(json.dumps(trial)+'\n');self.trialfile.flush();self.last_epoch=dict(times=(t[ep]-onset)[::4].tolist(),values=[[float(v) if np.isfinite(v) else None for v in row] for row in wave[::4]],label=trial['typed'],accepted=trial['accepted']);del self.pending[ident];self.revision+=1
+    self.rows.append(trial);self.count_word(trial);self.trialfile.write(json.dumps(trial)+'\n');self.trialfile.flush();os.fsync(self.trialfile.fileno());self.last_epoch=dict(times=(t[ep]-onset)[::4].tolist(),values=[[float(v) if np.isfinite(v) else None for v in row] for row in wave[::4]],label=trial['typed'],accepted=trial['accepted']);del self.pending[ident];self.revision+=1
   self.maybe_fit()
  def live_predict(self,times,raw,filtered):
   if not self.running or not self.sequence_model or not len(times) or time.time()-self.last_live_prediction<1:return
@@ -237,8 +252,12 @@ class TypingLab:
    result=self.sequence_model.predict(seq,q,pos);result.update(generated_at=time.time(),live=True,eeg_cutoff=float(times[-1]));self.prediction=result
   else:self.prediction=dict(word=None,candidates=[],reason='Waiting for usable EEG to refresh the tentative match',generated_at=time.time(),live=True)
 
- def maybe_fit(self):
-  if self.fitting or len(self.rows)<100 or (len(self.rows)-self.last_fit<100 and len(self.rows)<MAX_WORDS) or time.time()-self.last_semantic_fit<300:return
+ def maybe_fit(self,force=False):
+  if self.fitting:return
+  if len(self.rows)<100:
+   if force:raise ValueError("Collect at least 100 word records before updating the test.")
+   return
+  if not force and ((len(self.rows)-self.last_fit<100 and len(self.rows)<MAX_WORDS) or time.time()-self.last_semantic_fit<300):return
   self.last_fit=len(self.rows);self.last_semantic_fit=time.time();self.fitting=True;self.look+=1;look=self.look
   rows=[{k:r[k] for k in ('id','onset','committed','session','typed','label','context_block','context_file','accepted','cancelled','unsupported','incomplete','focus_id') if k in r} for r in self.rows]
   (self.root/'semantic_evaluation_count.json').write_text(json.dumps({'looks':look}))
@@ -249,10 +268,12 @@ class TypingLab:
     if result.exists():result.unlink()
     env=dict(os.environ,OPENBLAS_NUM_THREADS='1',OMP_NUM_THREADS='1',VECLIB_MAXIMUM_THREADS='1',HF_HUB_OFFLINE='1',HF_HUB_DISABLE_TELEMETRY='1')
     subprocess.run([sys.executable,str(Path(__file__).with_name('semantic_decoder.py')),str(request)],check=True,timeout=180,env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
-    output=json.loads(result.read_text());model=SemanticModel(output['path']) if output.get('path') else None
+    output=json.loads(result.read_text());output['report']['evaluated_at']=time.time();result.write_text(json.dumps(output));model=SemanticModel(output['path']) if output.get('path') else None
     with self.lock:
      self.sequence_model=model;self.reports['context']=output['report']
      (self.root/'decoder_review.json').write_text(json.dumps(self.reports,indent=2))
+     with (self.root/'evaluation_history.jsonl').open('a') as history:
+      history.write(json.dumps(dict(evaluated_at=time.time(),look=look,report=output['report']))+'\n');history.flush();os.fsync(history.fileno())
    except Exception as e:self.reports['context']=dict(kind='semantic',ready=False,reason='Semantic training paused: '+str(e));self.sequence_model=None
    finally:self.fitting=False
   threading.Thread(target=worker,daemon=True).start()
@@ -261,6 +282,7 @@ class TypingLab:
   for trial in self.pending.values():
    trial.update(incomplete=True,stop_reason=reason);trial['accepted']={w:False for w in [*WINDOWS,'context']};trial['reasons']={w:['Recording stopped before full epoch was saved'] for w in [*WINDOWS,'context']};self.rows.append(trial);self.count_word(trial);self.trialfile.write(json.dumps(trial)+'\n')
   self.pending={};self.running=False;self.session.update(ended=time.time(),stop_reason=reason);self._save_session()
+  for f in (self.eventfile,self.trialfile):f.flush();os.fsync(f.fileno())
   for f in (self.rawfile,self.eventfile,self.trialfile):f.close()
   return self.status()
  def status(self):
@@ -270,4 +292,4 @@ class TypingLab:
   if matches:
    waves=np.asarray([r['erp_values'] for r in matches],float);valid=np.isfinite(waves);mean=np.nansum(waves,axis=0)/np.maximum(valid.sum(0),1);mean[valid.sum(0)==0]=np.nan;erp=dict(n=len(waves),times=matches[-1]['erp_times'],mean=[[float(v) if np.isfinite(v) else None for v in row] for row in mean])
   semantic=phrase_examples(self.rows)
-  return dict(lifetime_words=self.total_words,session_count=len(self.recording_sessions),recording_minutes=self.recording_minutes(),semantic_blocks=len(set(r['block'] for r in semantic)),semantic_phrases=len(semantic),dataset_scope='Most recent '+str(MAX_WORDS)+' words in memory; all recordings remain on disk',resource_policy='Compressed EEG · 512 phrases/fit · one CPU thread · 180-second worker limit · 10 GiB disk reserve',capture_status=self.capture_status,erp=erp,running=self.running,session=self.session,counts=dict(counts.most_common(20)),total=len(self.rows),accepted=sum(counts.values()),rejected=rejected,pending=len(self.pending),prediction=self.prediction,decoder=self.reports[w],fitting=self.fitting,last_epoch=self.last_epoch,revision=self.revision)
+  return dict(lifetime_words=self.total_words,session_count=len(self.recording_sessions),recording_minutes=self.recording_minutes(),semantic_blocks=len(set(r['block'] for r in semantic)),semantic_phrases=len(semantic),dataset_scope='Most recent '+str(MAX_WORDS)+' words in memory; all recordings remain on disk',resource_policy='Compressed EEG · 512 phrases/fit · one CPU thread · 180-second worker limit · 10 GiB disk reserve',capture_preview=self.capture_preview if self.running else {},capture_status=self.capture_status,erp=erp,running=self.running,session=self.session,counts=dict(counts.most_common(20)),total=len(self.rows),accepted=sum(counts.values()),rejected=rejected,pending=len(self.pending),prediction=self.prediction,decoder=self.reports[w],fitting=self.fitting,last_epoch=self.last_epoch,revision=self.revision)

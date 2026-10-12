@@ -3,6 +3,7 @@ import csv, io, json, math, os, random, subprocess, threading, time, uuid, zipfi
 from pathlib import Path
 from collections import deque, Counter
 import numpy as np
+from tf_analysis import channel_windows,summarize_tf
 from analysis import FS, CHANNELS, DEFAULT_THRESHOLDS, ERP_THRESHOLDS, Filters, artifacts, compare, summarize, bandpower, time_frequency
 from protocols import PROTOCOLS, SOURCES
 
@@ -46,6 +47,8 @@ class PacketAssembler:
 
 class Engine:
     def __init__(self):
+        from personal import PersonalActivities
+        self.personal=PersonalActivities(DATA_ROOT)
         self.lock=threading.RLock(); self.raw=deque(maxlen=FS*90); self.filtered=deque(maxlen=FS*90); self.times=deque(maxlen=FS*90)
         self.filters=Filters(); self.notch=Filters(notch_only=True); self.spectral=deque(maxlen=FS*90); self.source='live'; self.status={'state':'starting','message':'Checking existing Bluetooth authorization'}
         self.session=None; self.events=[]; self.trials=[]; self.pending=[]; self.notifications=deque(maxlen=20)
@@ -67,7 +70,7 @@ class Engine:
         threading.Thread(target=self.simulation_loop,daemon=True).start()
     def bluetooth_connection(self,connected):
         with self.lock:
-            if not connected and ((self.session and self.session.get('running')) or self.typing.running or self.developer.status().get('recording')):
+            if not connected and ((self.session and self.session.get('running')) or self.typing.running or self.developer.status().get('recording') or getattr(getattr(self,'personal',None),'current',None)):
                 raise ValueError('Stop and save the recording before disconnecting.')
             if connected:
                 self.bridge_enabled.set()
@@ -128,6 +131,7 @@ class Engine:
     def switch_source(self,source):
         if source not in ['live','simulation']: raise ValueError('Unknown data source')
         with self.lock:
+            if self.personal.current:raise ValueError('Stop the personal activity before changing source.')
             if self.typing.running: raise ValueError('Stop typing recording before changing source.')
             if self.developer.current: raise ValueError('Finish developer calibration before changing source.')
             if self.session and self.session['running']: raise ValueError('End the current session before changing source')
@@ -136,6 +140,7 @@ class Engine:
             self.status={'state':'simulation','message':'SIMULATED EEG • No headset data'} if source=='simulation' else getattr(self,'live_status',{'state':'waiting','message':'Waiting for Muse'})
     def ingest(self,ts,values):
         with self.lock:
+            self.personal.record_raw(ts,values)
             filtered=self.filters.process(values); self.developer.add(ts,values,filtered); notched=self.notch.process(values); self.spectral.extend(notched.tolist())
             self.typing.ingest(ts,values,filtered)
             self.times.extend(ts.tolist()); self.raw.extend(values.tolist()); self.filtered.extend(filtered.tolist()); self.signal_count+=len(ts)
@@ -158,11 +163,16 @@ class Engine:
                     self.bio_writer.writerow([time.time(),self.session.get('phase','recording'),self.band['value'],self.band['valid'],'; '.join(reasons)])
                     self.bio_file.flush()
                 self.last_quality=time.time()
+            if self.personal.current and self.times[-1]-self.personal.last_sample>=2:self.personal.ingest(list(self.times),list(self.raw),list(self.spectral))
             self.process_pending()
             if self.typing.running and self.typing.pending:self.typing.process(list(self.times),list(self.raw),list(self.filtered))
             if self.typing.running and time.time()-self.typing.last_live_prediction>=1:self.typing.live_predict(list(self.times),list(self.raw),list(self.filtered))
     def typing_request(self,path,body):
         with self.lock:
+            if path=='typing/start' and self.personal.current:raise ValueError('Finish the personal activity first')
+            if path=='typing/update_test':
+                self.typing.maybe_fit(force=True)
+                return self.typing.status()
             if path=='typing/document':
                 files=sorted(self.typing.root.glob('*/document.txt'))
                 return {'text':files[-1].read_text() if files else ''}
@@ -209,10 +219,12 @@ class Engine:
             if not selected or not set(selected)<=set(CHANNELS): raise ValueError('Select at least one valid electrode')
             thresholds={**(ERP_THRESHOLDS if p['mode']=='erp' else DEFAULT_THRESHOLDS),**cfg.get('thresholds',{})}
             if set(thresholds)!=set(DEFAULT_THRESHOLDS) or any(not isinstance(v,(float,int)) or not math.isfinite(v) or v<=0 for v in thresholds.values()): raise ValueError('Artifact thresholds must be finite positive numbers')
+            if self.personal.current:raise ValueError('Finish the personal activity first')
             count=int(cfg.get('trials',p['trials'])); minimum=int(cfg.get('minimum',10))
-            if not 20<=count<=1000 or not 10<=minimum<=500: raise ValueError('Trial count must be 20–1000; minimum usable trials 10–500')
+            if p['id']=='disclosure':count=4
+            if not (count==4 if p['id']=='disclosure' else 20<=count<=1000) or not 10<=minimum<=500: raise ValueError('Trial count must be 20–1000; minimum usable trials 10–500')
             window=list(map(float,cfg.get('window',p['window'])))
-            if len(window)!=2 or not 0<=window[0]<window[1]<= (8 if p['mode']!='erp' else .8): raise ValueError('Invalid analysis window')
+            if len(window)!=2 or not 0<=window[0]<window[1]<= (p['stim_ms'][1]/1000 if p['mode']!='erp' else .8): raise ValueError('Invalid analysis window')
             band=list(map(float,cfg.get('band',p.get('band',[8,13]))))
             if len(band)!=2 or not 2<=band[0]<band[1]<=40: raise ValueError('Band must be within 2–40 Hz')
             conditions=p['conditions']; assets=self.manifest(); pools=None
@@ -231,6 +243,8 @@ class Engine:
             if len(self.times)<FS*3: raise ValueError('Wait for three seconds of stable EEG')
             seed=random.SystemRandom().randint(1,2**31-1); rng=random.Random(seed)
             labels=[1]*round(count*p['probability'])+[0]*(count-round(count*p['probability'])); rng.shuffle(labels)
+            if p['id']=='disclosure':labels=[seed%2,1-seed%2,1-seed%2,seed%2]
+            if p['id']=='alpha':labels= [(i+seed%2)%2 for i in range(count)]
             plan=[]
             for i,c in enumerate(labels):
                 item=dict(index=i,condition_index=c,condition=conditions[c],duration=rng.randint(*p['stim_ms']),isi=rng.randint(*p['isi_ms']),direction=rng.choice(['left','right']),number=rng.randint(600,999))
@@ -239,8 +253,10 @@ class Engine:
             session_id=time.strftime('%Y%m%d-%H%M%S')+'-'+uuid.uuid4().hex[:6]
             directory=DATA_ROOT/session_id; directory.mkdir()
             calibration=cfg.get('calibration',{})
-            self.session={**p,'id':session_id,'protocol':p['id'],'source':self.source,'channels':selected,'conditions':conditions,'trials_planned':count,'minimum':minimum,'window':window,'band':band,'thresholds':thresholds,'seed':seed,'plan':plan,'running':True,'started':time.time(),'phase':'recording','calibration':calibration,'metric':cfg.get('metric','amplitude'),'training_seconds':max(30,min(1800,int(cfg.get('training_seconds',120)))),'timing':'Browser frame / Web Audio software timestamps aligned by clock ping; BLE receive-anchored sample clock. Physical display/audio/BLE latencies uncalibrated.','analysis':'Causal .1Hz HP, 30Hz LP, 60Hz notch Q30. ERP pre-stimulus baseline -200..0ms. TF uses 60 Hz notched EEG with DC removal and 1s Hann windows. Trial-level statistics, repeated looks; no population inference.'}
+            if hasattr(self,'review_band'):del self.review_band
+            self.session={**p,'id':session_id,'protocol':p['id'],'source':self.source,'channels':selected,'conditions':conditions,'trials_planned':count,'minimum':minimum,'window':window,'band':band,'thresholds':thresholds,'seed':seed,'plan':plan,'running':True,'started':time.time(),'phase':'recording','calibration':calibration,'metric':cfg.get('metric','amplitude'),'training_seconds':max(30,min(1800,int(cfg.get('training_seconds',120)))),'timing':'Browser frame / Web Audio software timestamps aligned by clock ping; BLE receive-anchored sample clock. Physical display/audio/BLE latencies uncalibrated.','analysis':'Causal .1Hz HP, 30Hz LP, 60Hz notch Q30. ERP pre-stimulus baseline -200..0ms. TF uses channel-local 2s Hann windows every 0.5s, DC removal and 60 Hz notch. At least 4 clean seconds per block/channel; comparisons use block log band power. Trial-level statistics, repeated looks; no population inference.'}
             if self.session['metric'] not in ['amplitude','latency']: raise ValueError('Unknown measurement')
+            if p['id']=='disclosure':self.session['analysis']+=' Public self-disclosure exception: condition comparisons use non-overlapping 2-second clips as observations. Clips within blocks are correlated; p-values may overstate evidence. Answer text is not saved by this task.'
             self.session['preflight_quality']={'warnings':reasons,'continued_anyway':cfg.get('allow_noisy_start') is True}
             self.session['electrode_warning']=selected!=p['channels']
             self.events=[]; self.trials=[]; self.pending=[]; self.revision+=1
@@ -274,9 +290,15 @@ class Engine:
         if not self.session or not self.pending or not self.times: return
         s=self.session; tt=np.asarray(self.times); raw=np.asarray(self.raw); filt=np.asarray(self.filtered); spectral=np.asarray(self.spectral)
         for event in self.pending[:]:
-            pre=.2 if s['mode']=='erp' else 2.; end=.8 if s['mode']=='erp' else 8.
+            pre=.2 if s['mode']=='erp' else 2.; end=.8 if s['mode']=='erp' else max(8.,event.get('duration',s.get('stim_ms',[8000,8000])[1])/1000)
             if not force and tt[-1]<event['onset']+end+.03: continue
             t=tt-event['onset']; use=(t>=-pre)&(t<=end); rt=t[use]; x=raw[use]; y=filt[use]; sx=spectral[use]
+            if s['mode']=='tf':
+                spectral_channels=channel_windows(x,sx,rt,s['window'],s['thresholds'])
+                trial=dict(index=event['index'],condition=event['condition'],condition_index=event['condition_index'],onset=event['onset'],accepted=any(v['accepted'] for v in spectral_channels.values()),reasons=[],feature=None,wave=None,times=[],tf=None,spectral_channels=spectral_channels)
+                self.trials.append(trial);self.pending.remove(event);self.revision+=1
+                d=DATA_ROOT/s['id'];np.savez_compressed(d/f"trial-{event['index']:04d}.npz",times=rt,raw=x,filtered=y,notched=sx)
+                (d/'trials.json').write_text(dumps(self.trials));continue
             idx=[CHANNELS.index(c) for c in s['channels']]
             reasons=[]
             expected=int((pre+end)*FS)
@@ -319,8 +341,25 @@ class Engine:
             (d/'trials.json').write_text(dumps(self.trials))
     def analysis(self):
         if not self.session: return {}
+        if self.session['mode']=='tf' and self.pending and hasattr(self,'times') and self.times:
+            tick=int(self.times[-1]*2)
+            if getattr(self,'tf_tick',None)!=tick:self.tf_tick=tick;self.cache_revision=None
         if self.cache_revision==self.revision: return self.cache_analysis
-        s=self.session; groups=[]
+        s=self.session
+        if s['mode']=='tf':
+            for trial in self.trials:
+                if 'spectral_channels' not in trial:
+                    path=DATA_ROOT/s['id']/f"trial-{trial['index']:04d}.npz"
+                    if path.exists():
+                        with np.load(path,allow_pickle=False) as z:trial['spectral_channels']=channel_windows(z['raw'],z['notched'],z['times'],s['window'],s['thresholds'])
+            result=summarize_tf(self.trials,s,getattr(self,'review_band',s['band']));result['pending']=len(self.pending)
+            if self.pending and hasattr(self,'times') and self.times:
+                event=self.pending[-1];relative=np.asarray(self.times)-event['onset'];end=min(float(relative[-1]),s['window'][1])
+                if end>=s['window'][0]+2:
+                    latest=channel_windows(np.asarray(self.raw),np.asarray(self.spectral),relative,[end-2,end],s['thresholds'])
+                    result['live_preview']={ch:r['preview_psd'] for ch,r in latest.items()};result['live_condition']=event['condition_index'];result['live_second']=end
+            self.cache_revision=self.revision;self.cache_analysis=result;return result
+        groups=[]
         for c,label in enumerate(s['conditions']):
             all_trials=[t for t in self.trials if t['condition_index']==c]; good=[t for t in all_trials if t['accepted']]
             waves=[t['wave'] for t in good]; features=[t['feature'] for t in good]
@@ -423,6 +462,15 @@ class Engine:
             current_artifacts=list(dict.fromkeys(e['label']+('*' if e.get('uncertain',True) else '') for e in current_events))
             self.update_artifact_regions(current_events)
             return clean(dict(typing=self.typing.status(),developer=self.developer.status(),source=self.source,status=self.status,stale=stale,live_artifacts=current_artifacts,artifact_regions=list(self.artifact_regions),motion=self.motion_state(),contact=self.contact_state(),quality=[] if stale else self.quality,band=None if stale else self.band,trace=dict(times=list(self.times)[-FS*8::2],values=list(self.filtered)[-FS*8::2]),session=self.session,analysis=self.analysis(),notifications=list(self.notifications),packet_loss=self.assembler.missing))
+    def result_band(self,ident,low,high):
+        band=[float(low),float(high)]
+        if not all(math.isfinite(v) for v in band) or not 2<=band[0]<band[1]<=40:raise ValueError('Choose 2 ≤ low < high ≤ 40 Hz')
+        view=self.saved_view(ident)
+        if view.session['mode']!='tf':raise ValueError('Frequency review requires a time-frequency session')
+        with view.lock:
+            view.review_band=band;view.cache_revision=None
+            return dict(session=view.session,analysis=view.analysis())
+
     def result_window(self,ident,start,end):
         import copy
         start,end=float(start),float(end)
@@ -479,6 +527,14 @@ class Engine:
                     out=io.StringIO(); writer=csv.writer(out); writer.writerow(['trial','condition','accepted','feature','unit','reasons'])
                     for t in self.trials: writer.writerow([t['index'],t['condition'],t['accepted'],t['feature'],self.analysis()['unit'],'; '.join(t['reasons'])])
                     z.writestr('trial-summary.csv',out.getvalue())
+                    if self.session['mode']=='tf':
+                        out=io.StringIO();writer=csv.writer(out);writer.writerow(['trial','condition','channel','accepted','clean_seconds','power_dB','band_low_Hz','band_high_Hz'])
+                        band=self.analysis()['band'];f=np.arange(2,40.01,.5);mask=(f>=band[0])&(f<=band[1])
+                        for t in self.trials:
+                            for ch,r in t.get('spectral_channels',{}).items():
+                                value=float(10*np.log10(max(np.sum(np.asarray(r['psd'])[mask])*.5,1e-12))) if r['accepted'] else ''
+                                writer.writerow([t['index'],t['condition'],ch,r['accepted'],r['clean_seconds'],value,*band])
+                        z.writestr('channel-bandpower.csv',out.getvalue())
                     for g in self.analysis()['groups']:
                         if g['erp']:
                             out=io.StringIO(); writer=csv.writer(out); writer.writerow(['time_s','mean_uV','se_uV','pointwise_ci95_halfwidth_uV'])

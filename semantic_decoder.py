@@ -145,6 +145,14 @@ def fit_semantic(rows,root,look,encoder=encode):
  gains=score-np.maximum.reduce([base,history,noise]);block_gains=[float(gains[[j for j,i in enumerate(val) if phrases[i]['block']==b]].mean()) for b in dict.fromkeys(phrases[i]['block'] for i in val)]
  wins=sum(g>0 for g in block_gains);n=len(block_gains);p=sum(math.comb(n,k) for k in range(wins,n+1))/2**n;alpha=.01/(look*(look+1));ready=n>=8 and np.mean(gains)>.02 and p<=alpha
  report['four_choice']=four_choice_scores(pred,y[val],{'typical':np.tile(mean,(len(val),1)),'text_history':previous[val],'signal_quality':nuisance},[phrases[i]['text'] for i in val])
+ # Nested chronological training subsets; fixed held-out phrases and distractors.
+ curve=[]
+ for size in sorted(set([max(8,int(len(train)*f)) for f in (.25,.5,.75,1.)])):
+  subset=train[:size]
+  subset_pred=pred if size==len(train) else apply(ridge(x[subset],y[subset]),x[val])
+  result=four_choice_scores(subset_pred,y[val],{},[phrases[i]['text'] for i in val])
+  if result:curve.append(dict(training_phrases=len(subset),accuracy=result['eeg'],correct=result['correct'],n=result['n']))
+ report['learning_curve']=dict(points=curve,chance=.25,chance_range=report['four_choice']['chance_range'] if report['four_choice'] else None,method='Nested chronological training subsets; fixed later validation phrases and distractors. Exploratory, not an independent confirmation.')
  report.update(ready=bool(ready),training_phrases=len(train),validation_trials=len(val),validation_blocks=n,cosine=float(score.mean()),mean_baseline=float(base.mean()),text_history_baseline=float(history.mean()),mask_baseline=float(noise.mean()),gain=float(gains.mean()),p_block_sign=p,alpha=alpha,reason='Semantic retrieval passed later-block checks.' if ready else 'Semantic retrieval has not yet outperformed text-history and signal-quality baselines on later phrases.',peak_worker_MB=memory_check()/1e6)
  # Retrieval library contains only training phrases. The current phrase is never added as a candidate.
  bank_ids=list(dict.fromkeys(phrases[i]['text'] for i in train));bank_ids=[next(i for i in train if phrases[i]['text']==t) for t in bank_ids][-256:]

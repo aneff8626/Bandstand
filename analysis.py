@@ -24,22 +24,23 @@ class Filters:
         if notch_only: self.coefs=self.coefs[:1]
     def process(self, x):
         x=np.asarray(x,float); output=np.empty_like(x)
+        # Missing data resets only that electrode's filter state.
+        if not hasattr(self,'channel_ready'):self.channel_ready=np.zeros(4,dtype=bool)
         for i,row in enumerate(x):
-            if not np.isfinite(row).all():
-                output[i]=np.nan; self.z[:]=0; self.ready=False; continue
-            if not self.ready:
-                # Steady-state states avoid DC startup transients.
-                v=row.copy()
+            valid=np.isfinite(row);self.z[:,:,~valid]=0;self.channel_ready[~valid]=False
+            fresh=valid&~self.channel_ready
+            if fresh.any():
+                v=np.where(valid,row,0.).copy()
                 for j,(b,a) in enumerate(self.coefs):
-                    gain=sum(b)/sum(a); y=v*gain
-                    self.z[j,0]=y-b[0]*v; self.z[j,1]=b[2]*v-a[2]*y; v=y
-                self.ready=True
-            v=row.copy()
+                    gain=sum(b)/sum(a);y=v*gain
+                    self.z[j,0,fresh]=(y-b[0]*v)[fresh];self.z[j,1,fresh]=(b[2]*v-a[2]*y)[fresh];v=y
+                self.channel_ready[fresh]=True
+            v=np.where(valid,row,0.).copy()
             for j,(b,a) in enumerate(self.coefs):
                 y=b[0]*v+self.z[j,0]
                 self.z[j,0]=b[1]*v-a[1]*y+self.z[j,1]
-                self.z[j,1]=b[2]*v-a[2]*y; v=y
-            output[i]=v
+                self.z[j,1]=b[2]*v-a[2]*y;v=y
+            output[i]=np.where(valid,v,np.nan)
         return output
 
 def artifacts(raw, times=None, thresholds=None, channels=None):
