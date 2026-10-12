@@ -16,8 +16,9 @@ function initWorkspace(){
  document.querySelector('.steps').remove();$('pageSubtitle').hidden=true;
  const connection=document.querySelector('.connection');const headset=workspaceSection('headsetSetup','1 · Headset setup',connection);headset.append(connection,$('signalPanel'));
  const writing=$('writingSetup');const paradigm=workspaceSection('writingParadigm','2 · Paradigm setup',writing);
- paradigm.append($('typingRequirements'),$('writingEditor'),$('typingCapture'),writing.querySelector('.writing-controls'),$('typingAccess'),$('typingCheckAccess'),$('typingRestart'));
+ paradigm.append($('typingModes'),$('typingRequirements'),$('writingEditor'),$('typingCapture'),writing.querySelector('.writing-controls'),$('typingAccess'),$('typingCheckAccess'),$('typingRestart'));
  for(const id of ['typingRestart','typingExport','typingRequirements'])$(id).hidden=true;
+ const preview=document.createElement('p');preview.id='typingCapturePreview';preview.className='capture-preview';preview.hidden=true;paradigm.append(preview);
  const results=workspaceSection('writingResults','3 · Results',$('writingAnalysis'));results.append($('typingStatus'),$('typingCounts'),$('writingAnalysis'));
  $('writingAnalysis').querySelector('.panel-heading').remove();writing.remove();
  // Keep model assumptions as its existing, independent disclosure.
