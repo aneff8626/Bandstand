@@ -1,0 +1,11 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const classes=new Set();const events={},calls=[];let axis=0;
+const el={style:{},getBoundingClientRect:()=>({left:0,top:0}),onpointerdown:()=>axis++,onpointermove(){}};
+const context={requestAnimationFrame:()=>1,document:{documentElement:{classList:{add:k=>classes.add(k),remove:k=>classes.delete(k),contains:k=>classes.has(k)}},querySelectorAll:()=>[]},performance:{now:()=>1000},window:{addEventListener:(k,f)=>events[k]=f,removeEventListener:k=>delete events[k]}};
+vm.createContext(context);vm.runInContext(fs.readFileSync(__dirname+'/../web/tf-view.js','utf8'),context);context.setTFBand=(s,b)=>calls.push(Array.from(b));
+context.setupFrequencyDrag(el,{l:50,r:430,t:20,b:220},{id:'saved'});
+el.onpointermove({clientX:100,clientY:100});assert.equal(el.style.cursor,'crosshair');
+el.onpointerdown({clientX:10,clientY:20});assert.equal(axis,1);
+el.onpointerdown({clientX:160,clientY:100,preventDefault(){}});assert(classes.has('tf-selecting'));el.onpointermove({clientX:10,clientY:20});assert.equal(el.style.cursor,'crosshair');events.pointermove({clientX:110,clientY:100});assert.deepEqual(calls[0],[8,13]);events.pointerup();assert.equal(calls.length,2);assert.equal(events.pointermove,undefined);assert(!classes.has('tf-selecting'));
+el.onpointerdown({clientX:160,clientY:100,preventDefault(){}});events.blur();assert(!classes.has('tf-selecting'));assert.equal(events.pointercancel,undefined);
+console.log('Frequency selection: reverse drag, live updates, release and axis delegation passed.');

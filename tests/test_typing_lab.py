@@ -84,3 +84,36 @@ class RecordingDurationTests(unittest.TestCase):
    self.assertEqual(lab.recording_minutes(),1)
    lab.recording_sessions['a']['ended']=None
    self.assertEqual(lab.recording_minutes(),1)
+
+class CapturePreviewTests(unittest.TestCase):
+ def test_preview_is_bounded_session_local_and_handles_backspace(self):
+  with tempfile.TemporaryDirectory() as root:
+   lab=TypingLab(root)
+   lab.start(capture='system')
+   lab.native_event(dict(kind='status',reason='Recording new typing in Google Chrome'),[],[],[])
+   for char in 'I went to the store':
+    lab.native_event(dict(kind='key',text=char,keycode=0,app='com.google.Chrome'),[],[],[])
+   self.assertEqual(lab.capture_preview['text'],'I went to the store')
+   self.assertEqual(lab.capture_preview['app'],'Google Chrome')
+   lab.native_event(dict(kind='key',text='',keycode=51,app='com.google.Chrome'),[],[],[])
+   self.assertEqual(lab.capture_preview['text'],'I went to the stor')
+   lab.native_event(dict(kind='key',text='secret',shortcut=True,keycode=0,app='com.google.Chrome'),[],[],[])
+   self.assertNotIn('secret',lab.capture_preview['text'])
+   lab.stop();self.assertEqual(lab.status()['capture_preview'],{})
+   lab.start(capture='system');self.assertEqual(lab.capture_preview,{})
+   lab.stop()
+
+class ContinuousTextTests(unittest.TestCase):
+ def test_stream_saved_before_stop_preserves_edits_and_boundaries(self):
+  with tempfile.TemporaryDirectory() as root:
+   lab=TypingLab(root);lab.start(capture='system')
+   for char in 'hello world':lab.native_event(dict(kind='key',text=char,keycode=0,app='test'),[],[],[])
+   lab.native_event(dict(kind='key',text='',keycode=51,app='test'),[],[],[])
+   lab.native_event(dict(kind='boundary'),[],[],[])
+   events=[json.loads(line) for line in (lab.directory/'events.jsonl').read_text().splitlines()]
+   edits=[e for e in events if e['kind']=='edit']
+   self.assertEqual(''.join(e['data'] for e in edits),'hello world')
+   self.assertEqual(edits[-1]['keycode'],51)
+   self.assertTrue(any(e['kind']=='boundary' for e in events))
+   self.assertTrue(all('focus_id' in e for e in edits))
+   lab.stop()

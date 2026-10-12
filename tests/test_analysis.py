@@ -89,6 +89,17 @@ class PipelineTests(unittest.TestCase):
                     else:self.assertIn('trial-summary.csv',z.namelist());self.assertIn('erp-0.csv',z.namelist())
                 data,_,_=e.export('pdf');self.assertTrue(data.startswith(b'%PDF'))
                 dest=Path(__file__).resolve().parents[1]/'build/qa';dest.mkdir(parents=True,exist_ok=True);(dest/'example-report.pdf').write_bytes(data)
+    def test_disclosure_plan_and_clips(self):
+        with tempfile.TemporaryDirectory() as tmp, patch('engine.DATA_ROOT',Path(tmp)):
+            e=Engine();e.source='simulation';now=__import__('time').time();t=now-4+np.arange(FS*4)/FS
+            e.ingest(t,np.random.default_rng(8).normal(0,3,(len(t),4)))
+            s=e.begin({'protocol':'disclosure','allow_noisy_start':True})
+            self.assertEqual(len(s['plan']),4)
+            labels=[p['condition_index'] for p in s['plan']]
+            self.assertIn(labels,[[0,1,1,0],[1,0,0,1]])
+            self.assertTrue(all(p['duration']==30000 for p in s['plan']))
+            self.assertTrue(e.analysis()['clip_inference']);e.stop()
+
     def test_time_frequency_block_pipeline(self):
         with tempfile.TemporaryDirectory() as tmp, patch('engine.ROOT',Path(tmp)),patch('engine.DATA_ROOT',Path(tmp)/'data'):
             (Path(tmp)/'data').mkdir(); (Path(tmp)/'stimuli').mkdir()
@@ -102,8 +113,13 @@ class PipelineTests(unittest.TestCase):
                 t=onset+np.arange(FS*9)/FS;clock[0]=t[-1]
                 e.ingest(t,rng.normal(0,3,(len(t),4))+8*np.sin(2*np.pi*10*t[:,None]))
                 e.stop();self.assertEqual(len(e.trials),1);self.assertTrue(e.trials[0]['accepted'])
-                self.assertIsNotNone(e.trials[0]['tf']);self.assertAlmostEqual(e.trials[0]['feature'],32,delta=4)
+                self.assertEqual(len(e.trials[0]['spectral_channels']),4);self.assertAlmostEqual(e.analysis()['channels']['TP10']['groups'][0]['mean'],10*np.log10(32),delta=1)
                 self.assertFalse(e.analysis()['stats']['ready'])
+                original=list(e.session['band']);review=e.result_band(e.session['id'],20,30)
+                self.assertEqual(review['analysis']['band'],[20.,30.]);self.assertEqual(e.session['band'],original)
+                self.assertEqual(len(review['analysis']['channels']),4)
+                data,_,_=e.export('processed');self.assertIn('channel-bandpower.csv',zipfile.ZipFile(io.BytesIO(data)).namelist())
+                pdf,_,_=e.export('pdf');self.assertTrue(pdf.startswith(b'%PDF'))
 
     def test_no_live_data_cannot_start(self):
         with tempfile.TemporaryDirectory() as tmp, patch('engine.ROOT',Path(tmp)),patch('engine.DATA_ROOT',Path(tmp)/'data'):

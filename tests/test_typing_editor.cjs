@@ -1,6 +1,6 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert');
 const els={},sent=[];
-function el(id){return els[id]??=( {value:'',selectionStart:0,selectionEnd:0,classList:{toggle(){}},handlers:{},addEventListener(k,v){this.handlers[k]=v},closest(){return this},focus(){},setSelectionRange(a,b){this.selectionStart=a;this.selectionEnd=b}})}
+function el(id){return els[id]??=( {value:'',selectionStart:0,selectionEnd:0,classList:{toggle(){}},setAttribute(k,v){this[k]=v},handlers:{},addEventListener(k,v){this.handlers[k]=v},closest(){return this},focus(){},setSelectionRange(a,b){this.selectionStart=a;this.selectionEnd=b}})}
 const context={console,$:el,api:async(path,body)=>{sent.push({path,body});return {}},toast:()=>{},now:()=>100,crypto:{randomUUID:()=>String(sent.length)+'-word'},state:{typing:{running:true}},active:false,show:()=>{},setMode:()=>{},mode:'erp',document:{body:{classList:{toggle(){}}},querySelectorAll:()=>[],addEventListener(){}},window:{addEventListener(){}},setTimeout:()=>1,clearTimeout:()=>{},Promise};
 vm.createContext(context);vm.runInContext(fs.readFileSync(require('path').join(__dirname,'../web/inference-feed.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require('path').join(__dirname,'../web/typing.js'),'utf8'),context);
 const editor=el('writingEditor');function input(type,data,next){editor.selectionStart=editor.selectionEnd=editor.value.length;editor.handlers.beforeinput({target:editor,inputType:type,data,isComposing:false});editor.value=next;editor.handlers.input({target:editor})}
@@ -10,5 +10,8 @@ const editor=el('writingEditor');function input(type,data,next){editor.selection
  await vm.runInContext('typingChain',context);
  const onset=sent.filter(r=>r.body?.kind==='onset'),commit=sent.filter(r=>r.body?.kind==='commit');assert.equal(onset.length,1);assert.equal(commit.length,1);assert.equal(commit[0].body.text,'hello');assert.equal(commit[0].body.edited,true);assert.equal(commit[0].body.unsupported,false);
  sent.length=0;input('insertFromPaste','pasted text ','hello pasted text ');await vm.runInContext('typingChain',context);assert.equal(sent.filter(r=>r.body?.kind==='onset').length,0);
+ context.state.typing.running=false;vm.runInContext("chooseTypingMode('editor')",context);assert.equal(el('writingEditor').hidden,false);assert.equal(el('typingCheckAccess').hidden,true);assert.equal(el('typingModeEditor')['aria-pressed'],'true');
+ context.state.typing={running:true,session:{capture:'editor'}};vm.runInContext("chooseTypingMode('system');updateTypingMode()",context);assert.equal(el('typingCapture').value,'editor');assert.equal(el('typingModeSystem').disabled,true);
+ context.state.typing.session.capture='system';vm.runInContext('updateTypingMode()',context);assert.equal(el('writingEditor').hidden,true);sent.length=0;input('insertText','x',editor.value+'x');await vm.runInContext('typingChain',context);assert.equal(sent.length,0);
  console.log('Editor onset, typo/backspace correction, word commit and paste exclusion checks passed');
 })().catch(e=>{console.error(e);process.exitCode=1});
