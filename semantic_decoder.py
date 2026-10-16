@@ -73,14 +73,21 @@ class SemanticModel:
   candidates=[dict(text=self.texts[i],similarity=float(scores[i])) for i in ids] if outlier<.1 else []
   return dict(word=candidates[0]['text'] if self.ready and candidates else None,candidates=candidates,validated=self.ready,model_look=self.look,reason=('Semantic retrieval · held-out checks passed' if self.ready else 'Unvalidated semantic matches · similarity is not probability') if candidates else 'EEG outside training range; no semantic match')
 
-def encode(texts):
+from functools import lru_cache
+
+@lru_cache(maxsize=1)
+def encoder_components():
  import torch
  from transformers import AutoTokenizer,AutoModel
  torch.set_num_threads(1)
  path=Path(__file__).parent/'models/all-MiniLM-L6-v2'
  tokenizer=AutoTokenizer.from_pretrained(path,local_files_only=True)
  model=AutoModel.from_pretrained(path,local_files_only=True,use_safetensors=True).eval()
- model.requires_grad_(False);out=[]
+ model.requires_grad_(False);return tokenizer,model
+
+def encode(texts):
+ import torch
+ tokenizer,model=encoder_components();out=[]
  for start in range(0,len(texts),8):
   batch=tokenizer(texts[start:start+8],padding=True,truncation=True,max_length=96,return_tensors='pt')
   with torch.inference_mode():
@@ -173,6 +180,11 @@ if __name__=='__main__':
     os._exit(0)
    time.sleep(.5)
  threading.Thread(target=watchdog,daemon=True).start()
- try:path,report=fit_semantic(body['rows'],root,body['look']);result=dict(path=path,report=report)
+ try:
+  if body.get('cumulative',True):
+   from cumulative_semantic import fit_cumulative
+   path,report=fit_cumulative(root,body['look'])
+  else:path,report=fit_semantic(body['rows'],root,body['look'])
+  result=dict(path=path,report=report)
  except Exception as e:result=dict(path=None,report=dict(kind='semantic',ready=False,reason='Semantic training paused: '+str(e)))
  (root/'semantic_result.json').write_text(json.dumps(result))

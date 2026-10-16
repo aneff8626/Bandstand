@@ -93,6 +93,10 @@ class TypingLab:
   if saved_evaluation.exists():
    try:self.reports['context']=json.loads(saved_evaluation.read_text())['report']
    except (ValueError,KeyError,OSError):pass
+  checkpoint=self.root/'semantic_checkpoint.npz'
+  if checkpoint.exists():
+   try:self.sequence_model=SemanticModel(checkpoint)
+   except (ValueError,KeyError,OSError):pass
   replacements={};recent_ids={(r.get("session"),r.get("id")) for r in self.rows}
   for p in sorted(self.root.glob('*/context_trials.jsonl')):
    for line in read_lines(p):
@@ -257,11 +261,10 @@ class TypingLab:
   if len(self.rows)<100:
    if force:raise ValueError("Collect at least 100 word records before updating the test.")
    return
-  if not force and ((len(self.rows)-self.last_fit<100 and len(self.rows)<MAX_WORDS) or time.time()-self.last_semantic_fit<300):return
-  self.last_fit=len(self.rows);self.last_semantic_fit=time.time();self.fitting=True;self.look+=1;look=self.look
-  rows=[{k:r[k] for k in ('id','onset','committed','session','typed','label','context_block','context_file','accepted','cancelled','unsupported','incomplete','focus_id') if k in r} for r in self.rows]
+  if not force and ((self.total_words-self.last_fit<100) or time.time()-self.last_semantic_fit<300):return
+  self.last_fit=self.total_words;self.last_semantic_fit=time.time();self.fitting=True;self.look+=1;look=self.look
   (self.root/'semantic_evaluation_count.json').write_text(json.dumps({'looks':look}))
-  request=self.root/'semantic_request.json';request.write_text(json.dumps(dict(root=str(self.root.resolve()),look=look,rows=rows)))
+  request=self.root/'semantic_request.json';request.write_text(json.dumps(dict(root=str(self.root.resolve()),look=look,cumulative=True)))
   def worker():
    try:
     result=self.root/'semantic_result.json'
@@ -270,11 +273,12 @@ class TypingLab:
     subprocess.run([sys.executable,str(Path(__file__).with_name('semantic_decoder.py')),str(request)],check=True,timeout=180,env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     output=json.loads(result.read_text());output['report']['evaluated_at']=time.time();result.write_text(json.dumps(output));model=SemanticModel(output['path']) if output.get('path') else None
     with self.lock:
-     self.sequence_model=model;self.reports['context']=output['report']
+     if model is not None or output['report'].get('invalidate_model'):self.sequence_model=model
+     self.reports['context']=output['report']
      (self.root/'decoder_review.json').write_text(json.dumps(self.reports,indent=2))
      with (self.root/'evaluation_history.jsonl').open('a') as history:
       history.write(json.dumps(dict(evaluated_at=time.time(),look=look,report=output['report']))+'\n');history.flush();os.fsync(history.fileno())
-   except Exception as e:self.reports['context']=dict(kind='semantic',ready=False,reason='Semantic training paused: '+str(e));self.sequence_model=None
+   except Exception as e:self.reports['context']=dict(kind='semantic',ready=False,reason='Semantic training paused: '+str(e))
    finally:self.fitting=False
   threading.Thread(target=worker,daemon=True).start()
  def stop(self,reason='Stopped'):
@@ -292,4 +296,4 @@ class TypingLab:
   if matches:
    waves=np.asarray([r['erp_values'] for r in matches],float);valid=np.isfinite(waves);mean=np.nansum(waves,axis=0)/np.maximum(valid.sum(0),1);mean[valid.sum(0)==0]=np.nan;erp=dict(n=len(waves),times=matches[-1]['erp_times'],mean=[[float(v) if np.isfinite(v) else None for v in row] for row in mean])
   semantic=phrase_examples(self.rows)
-  return dict(lifetime_words=self.total_words,session_count=len(self.recording_sessions),recording_minutes=self.recording_minutes(),semantic_blocks=len(set(r['block'] for r in semantic)),semantic_phrases=len(semantic),dataset_scope='Most recent '+str(MAX_WORDS)+' words in memory; all recordings remain on disk',resource_policy='Compressed EEG · 512 phrases/fit · one CPU thread · 180-second worker limit · 10 GiB disk reserve',capture_preview=self.capture_preview if self.running else {},capture_status=self.capture_status,erp=erp,running=self.running,session=self.session,counts=dict(counts.most_common(20)),total=len(self.rows),accepted=sum(counts.values()),rejected=rejected,pending=len(self.pending),prediction=self.prediction,decoder=self.reports[w],fitting=self.fitting,last_epoch=self.last_epoch,revision=self.revision)
+  return dict(lifetime_words=self.total_words,session_count=len(self.recording_sessions),recording_minutes=self.recording_minutes(),semantic_blocks=len(set(r['block'] for r in semantic)),semantic_phrases=self.reports['context'].get('phrases',len(semantic)),dataset_scope='Cumulative training from all eligible archived sessions; recent '+str(MAX_WORDS)+' words retained for live display',resource_policy='Disk-backed feature/embedding cache · bounded training batches · one CPU thread · 180-second worker limit · 256 retrieval candidates · 10 GiB disk reserve',capture_preview=self.capture_preview if self.running else {},capture_status=self.capture_status,erp=erp,running=self.running,session=self.session,counts=dict(counts.most_common(20)),total=len(self.rows),accepted=sum(counts.values()),rejected=rejected,pending=len(self.pending),prediction=self.prediction,decoder=self.reports[w],fitting=self.fitting,last_epoch=self.last_epoch,revision=self.revision)

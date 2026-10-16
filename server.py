@@ -68,9 +68,9 @@ class Handler(BaseHTTPRequestHandler):
                 if not file.exists():file=ROOT/'stimuli'/Path(path).name
                 if file.suffix!='.png' or not file.exists(): return self.send(404,'Not found','text/plain')
                 return self.send(200,file.read_bytes(),'image/png')
-            mapping={'/':'index.html','/style.css':'style.css',**{'/'+p.name:p.name for p in (ROOT/'web').glob('*.js')}}
+            mapping={'/':'index.html','/style.css':'style.css','/bandstand-logo.png':'bandstand-logo.png','/favicon.png':'favicon.png',**{'/'+p.name:p.name for p in (ROOT/'web').glob('*.js')}}
             if path not in mapping: return self.send(404,'Not found','text/plain')
-            file=ROOT/'web'/mapping[path]; mime={'html':'text/html; charset=utf-8','js':'text/javascript','css':'text/css'}[file.suffix[1:]]
+            file=ROOT/'web'/mapping[path]; mime={'html':'text/html; charset=utf-8','js':'text/javascript','css':'text/css','png':'image/png'}[file.suffix[1:]]
             self.send(200,file.read_bytes(),mime)
         except (ValueError,KeyError) as e: self.send(400,dumps({'error':str(e)}))
         except Exception as e:

@@ -52,7 +52,7 @@ class Engine:
         self.lock=threading.RLock(); self.raw=deque(maxlen=FS*90); self.filtered=deque(maxlen=FS*90); self.times=deque(maxlen=FS*90)
         self.filters=Filters(); self.notch=Filters(notch_only=True); self.spectral=deque(maxlen=FS*90); self.source='live'; self.status={'state':'starting','message':'Checking existing Bluetooth authorization'}
         self.session=None; self.events=[]; self.trials=[]; self.pending=[]; self.notifications=deque(maxlen=20)
-        self.motion_samples={k:deque(maxlen=104) for k in ('acc','gyro')}; self.last_quality=0; self.quality=[]; self.band=None; self.signal_count=0; self.bridge=None; self.bridge_enabled=threading.Event(); self.bridge_enabled.set()
+        self.motion_samples={k:deque(maxlen=52*8) for k in ('acc','gyro')}; self.last_quality=0; self.quality=[]; self.band=None; self.signal_count=0; self.bridge=None; self.bridge_enabled=threading.Event(); self.bridge_enabled.set()
         self.assembler=PacketAssembler(self.ingest); self.last_notify=0; self.demo_time=None; self.rng=np.random.default_rng(472)
         self.cache_revision=None; self.cache_analysis={}; self.revision=0
         self.artifact_regions=deque(maxlen=200); self.open_artifact_regions={}; self.artifact_region_time=None
@@ -455,13 +455,22 @@ class Engine:
         self.artifact_region_time=end
         while self.artifact_regions and self.artifact_regions[0]['offset']<end-10:self.artifact_regions.popleft()
         self.open_artifact_regions={k:v for k,v in self.open_artifact_regions.items() if v['offset']>=end-1}
+    def live_spectra(self, stale):
+        if stale: return {}
+        stamp=self.times[-1]
+        cached=getattr(self,'_spectrum_cache',None)
+        if cached and 0<=stamp-cached[0]<.25: return cached[1]
+        from live_spectrum import rolling_spectra
+        result=rolling_spectra(list(self.times)[-FS*30:],list(self.spectral)[-FS*30:])
+        self._spectrum_cache=(stamp,result)
+        return result
     def snapshot(self):
         with self.lock:
             stale=not self.times or time.time()-self.times[-1]>2
             current_events=self.live_artifact_events()
             current_artifacts=list(dict.fromkeys(e['label']+('*' if e.get('uncertain',True) else '') for e in current_events))
             self.update_artifact_regions(current_events)
-            return clean(dict(typing=self.typing.status(),developer=self.developer.status(),source=self.source,status=self.status,stale=stale,live_artifacts=current_artifacts,artifact_regions=list(self.artifact_regions),motion=self.motion_state(),contact=self.contact_state(),quality=[] if stale else self.quality,band=None if stale else self.band,trace=dict(times=list(self.times)[-FS*8::2],values=list(self.filtered)[-FS*8::2]),session=self.session,analysis=self.analysis(),notifications=list(self.notifications),packet_loss=self.assembler.missing))
+            return clean(dict(typing=self.typing.status(),developer=self.developer.status(),source=self.source,status=self.status,stale=stale,live_artifacts=current_artifacts,artifact_regions=list(self.artifact_regions),motion=self.motion_state(),motion_trace={k:list(v) for k,v in self.motion_samples.items()},live_spectra=self.live_spectra(stale),contact=self.contact_state(),quality=[] if stale else self.quality,band=None if stale else self.band,trace=dict(times=list(self.times)[-FS*8::2],values=list(self.filtered)[-FS*8::2]),session=self.session,analysis=self.analysis(),notifications=list(self.notifications),packet_loss=self.assembler.missing))
     def result_band(self,ident,low,high):
         band=[float(low),float(high)]
         if not all(math.isfinite(v) for v in band) or not 2<=band[0]<band[1]<=40:raise ValueError('Choose 2 ≤ low < high ≤ 40 Hz')

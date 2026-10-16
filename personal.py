@@ -51,6 +51,9 @@ class PersonalActivities:
    r=json.loads(p.read_text());result.append({k:v for k,v in r.items() if k not in ('answers','clips')})
   return result
  def request(self,action,body,engine):
+  if action in ('context','context-link'):
+   from participant_context import participant_context
+   return participant_context(self.root.parent,action,body,engine)
   if action=='catalog':return self.catalog()
   if action=='preferences':
    if body.get('version')!='personal-v1':raise ValueError('Review the current connected-data explanation')
