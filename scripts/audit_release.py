@@ -9,13 +9,14 @@ out.mkdir(parents=True,exist_ok=True)
 allowed=list(ROOT.glob('*.py'))+[ROOT/'README.md',ROOT/'.gitignore',ROOT/'Launch Muse Lab.command',ROOT/'LICENSE',ROOT/'requirements.txt',ROOT/'Muse Lab.app/Contents/Info.plist']
 for directory,extensions in [('web',{'.js','.css','.html'}),('native',{'.swift'}),('tests',{'.py','.cjs'}),('scripts',{'.py','.swift'}),('supabase',{'.sql'}),('hosting',{'.py'}),('docs',{'.html'})]:
  allowed.extend(p for p in (ROOT/directory).rglob('*') if p.is_file() and p.suffix in extensions)
+allowed.extend([ROOT/'web/bandstand-logo.png',ROOT/'web/favicon.png',ROOT/'assets/branding/book-waves-master.png',ROOT/'assets/demo/mind-reference.json',ROOT/'assets/demo/subject-database.json'])
 allowed.extend([ROOT/'hosting/Dockerfile',ROOT/'hosting/.dockerignore',ROOT/'docs/.nojekyll'])
 for p in allowed:
  assert not p.is_symlink()
  q=out/p.relative_to(ROOT);q.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(p,q)
 # Independent content checks: secret patterns, local identity paths, and exact private strings.
 patterns=[r'/Users/[A-Za-z0-9_-]+',r'\b(?:sb_secret_|ghp_|github_pat_)[A-Za-z0-9_]+',r'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----']
-corpus='\n'.join(p.read_text() for p in out.rglob('*') if p.is_file())
+corpus='\n'.join(p.read_text() for p in out.rglob('*') if p.is_file() and p.suffix!='.png')
 findings=[{'type':'sensitive_pattern','pattern':i} for i,pat in enumerate(patterns) if re.search(pat,corpus)]
 private_strings=set()
 def collect(value):
