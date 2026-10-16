@@ -2,12 +2,12 @@
 const hiddenTraceChannels=new Set();
 let displayFilterKey='',displayFilterTime=-Infinity,displayFilterState=[],displayFilterCache=new Map();
 function displayTrace(trace){
- if(!trace?.times?.length||!$('displayBandpass')?.checked)return trace;
- const low=Number($('displayLow').value),high=Number($('displayHigh').value),key=`${low}/${high}`;
+ if(!trace?.times?.length||!$('displayHighPass')?.checked&&!$('displayLowPass')?.checked)return trace;
+ const low=Number($('displayLow').value),high=Number($('displayHigh').value),key=`${low}/${high}/${$('displayHighPass').checked}/${$('displayLowPass').checked}`;
  if(!(low>=.1&&high>low&&high<=30))return trace;
  if(key!==displayFilterKey||trace.times.at(-1)<displayFilterTime){displayFilterKey=key;displayFilterTime=-Infinity;displayFilterState=[];displayFilterCache.clear()}
  // First-order causal high/low pass, applied to the existing 0.1–30 Hz notched trace.
- const values=trace.times.map((t,i)=>{if(t>displayFilterTime){const dt=Number.isFinite(displayFilterTime)?Math.min(.1,t-displayFilterTime):1/128;const hp=1/(1+2*Math.PI*low*dt),lp=1-Math.exp(-2*Math.PI*high*dt);const out=trace.values[i].map((x,ch)=>{if(!Number.isFinite(x)){displayFilterState[ch]=null;return null}const q=displayFilterState[ch]||{x,h:0,l:0};q.h=hp*(q.h+x-q.x);q.x=x;q.l+=lp*(q.h-q.l);displayFilterState[ch]=q;return q.l});displayFilterCache.set(t,out);displayFilterTime=t}return displayFilterCache.get(t)||trace.values[i]});
+ const values=trace.times.map((t,i)=>{if(t>displayFilterTime){const dt=Number.isFinite(displayFilterTime)?Math.min(.1,t-displayFilterTime):1/128;const hp=1/(1+2*Math.PI*low*dt),lp=1-Math.exp(-2*Math.PI*high*dt);const out=trace.values[i].map((x,ch)=>{if(!Number.isFinite(x)){displayFilterState[ch]=null;return null}const q=displayFilterState[ch]||{x,h:0,l:0};q.h=$('displayHighPass').checked?hp*(q.h+x-q.x):x;q.x=x;q.l=$('displayLowPass').checked?q.l+lp*(q.h-q.l):q.h;displayFilterState[ch]=q;return q.l});displayFilterCache.set(t,out);displayFilterTime=t}return displayFilterCache.get(t)||trace.values[i]});
  for(const t of displayFilterCache.keys())if(t<trace.times[0])displayFilterCache.delete(t);
  return {...trace,values};
 }
@@ -27,7 +27,7 @@ function initWorkspace(){
  const erpResults=workspaceSection('experimentResults','3 · Results',$('recordSection'));erpResults.append($('recordSection'));$('recordSection').classList.remove('hidden');
  erpResults.append(document.querySelector('.export-actions'));
  $('designSection').querySelector('.section-heading').hidden=true;
- const resultLabelNode=document.createElement('label');resultLabelNode.textContent='Experiment';const resultMenu=document.createElement('select');resultMenu.id='resultExperiment';resultLabelNode.append(resultMenu);erpResults.querySelector('summary').after(resultLabelNode);
+ const resultLabelNode=document.createElement('label');resultLabelNode.textContent='Experiment';resultLabelNode.hidden=true;const resultMenu=document.createElement('select');resultMenu.id='resultExperiment';resultLabelNode.append(resultMenu);erpResults.querySelector('summary').after(resultLabelNode);
  resultMenu.onchange=async()=>{++reviewRequest;clearTimeout(reviewTimer);try{selectedResult=resultMenu.value?await api('results/'+resultMenu.value):null;renderRevision='';updateResultExports();render()}catch(e){toast(e.message)}};
  erpResults.addEventListener('toggle',()=>{if(erpResults.open)refreshResultSessions().then(()=>{renderRevision='';if(state)render()}).catch(e=>toast(e.message))});
  refreshResultSessions().catch(e=>toast(e.message));
@@ -37,7 +37,7 @@ function initWorkspace(){
  $('recordSection').querySelector('h2').textContent='Recorded response';$('sessionSummary').textContent='No experiment recorded yet.';
  $('start').textContent='Review & start recording';
  const heading=$('signalPanel').querySelector('.panel-heading');heading.querySelector('p').textContent='Click an electrode name below to hide or restore its trace.';
- const controls=document.createElement('div');controls.className='display-filter-controls';controls.innerHTML='<span class="pill">60 Hz notch · 0.1–30 Hz</span><label><input id="displayBandpass" type="checkbox"> Additional display bandpass</label><label>Low (Hz)<input id="displayLow" type="number" min="0.1" max="29.9" step="0.1" value="1"></label><label>High (Hz)<input id="displayHigh" type="number" min="0.2" max="30" step="0.1" value="30"></label><span id="displayFilterNote" class="muted">Display only; recorded data and analysis filters are unchanged.</span>';
+ const controls=document.createElement('div');controls.className='display-filter-controls';controls.innerHTML='<span class="pill">60 Hz notch · 0.1–30 Hz</span><label><input id="displayHighPass" type="checkbox"> High pass (Hz)<input id="displayLow" type="number" min="0.1" max="29.9" step="0.1" value="1"></label><label><input id="displayLowPass" type="checkbox"> Low pass (Hz)<input id="displayHigh" type="number" min="0.2" max="30" step="0.1" value="30"></label><span id="displayFilterNote" class="muted"></span>';
  heading.querySelector('.pill').remove();
  const filters=document.createElement('details');filters.className='signal-disclosure filter-disclosure';const filterSummary=document.createElement('summary');filterSummary.textContent='Filters';filters.append(filterSummary,controls);heading.querySelector('.inline').append(filters);
  const helpRow=document.createElement('div');helpRow.className='signal-help-row';heading.after(helpRow);
@@ -51,8 +51,8 @@ function initWorkspace(){
  context.append(privacy);try{$('redactNames').value=JSON.parse(localStorage.getItem('decoderRedactNames')||'[]').join('\n')}catch{};$('redactNames').oninput=()=>{try{localStorage.setItem('decoderRedactNames',JSON.stringify($('redactNames').value.split('\n')))}catch{};if(state)renderTyping()};
 
 
- for(const id of ['displayLow','displayHigh','displayBandpass'])$(id).onchange=()=>{const valid=+$('displayLow').value>=.1&&+$('displayHigh').value<=30&&+$('displayLow').value<+$('displayHigh').value;$('displayFilterNote').textContent=valid?'Display only; recorded data and analysis filters are unchanged.':'Enter 0.1 ≤ low < high ≤ 30 Hz.';if(!valid)$('displayBandpass').checked=false;displayFilterKey='';displayFilterTime=-Infinity;displayFilterCache.clear();displayFilterState=[]};
- $('contactReadout').setAttribute('aria-label','Electrode contact and trace visibility');
+ for(const id of ['displayLow','displayHigh','displayHighPass','displayLowPass'])$(id).onchange=()=>{const valid=+$('displayLow').value>=.1&&+$('displayHigh').value<=30&&+$('displayLow').value<+$('displayHigh').value;$('displayFilterNote').textContent=valid?'':'Enter 0.1 ≤ low < high ≤ 30 Hz.';if(!valid){$('displayHighPass').checked=false;$('displayLowPass').checked=false;}displayFilterKey='';displayFilterTime=-Infinity;displayFilterCache.clear();displayFilterState=[]};
+ $('contactReadout').setAttribute('aria-label','Estimated electrode contact');
  $('typingRestart').onclick=async()=>{try{if(state?.typing?.running)await stopTyping('New recording requested');paradigm.open=true;paradigm.scrollIntoView({behavior:'smooth'});await $('typingStart').onclick()}catch(e){toast(e.message)}};
  erpResults.addEventListener('toggle',()=>{renderRevision='';if(state)render()});
 }

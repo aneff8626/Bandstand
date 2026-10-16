@@ -188,3 +188,195 @@ body.questionnaire-recording #personalWorkspace{display:flex;flex-direction:colu
 .personal-live-feedback{width:100%;max-width:760px;border:1px solid var(--line);border-radius:12px;background:#fffefa;padding:14px;text-align:left;flex-shrink:0}.personal-live-feedback h3{margin:0 0 8px;font-size:16px}.personal-live-feedback select{width:auto;max-width:100%;margin-bottom:8px}.personal-live-feedback small{font-size:11px;color:var(--muted);line-height:1.4;display:block}.live-band-row{display:grid;grid-template-columns:45px 100px minmax(80px,1fr);align-items:center;gap:8px;font-size:12px}.live-band-row svg{width:100%;height:60px}.live-band-row>span{font-variant-numeric:tabular-nums}#personalExercise{justify-content:flex-start;gap:14px;padding:24px}#personalExercise h2{font-size:clamp(19px,2.2vw,28px);margin:0}#personalExercise .personal-orb{width:48px;height:48px;margin:8px auto}#personalExercise>p{margin:4px}#personalExercise .live-band-row svg{height:42px}@media(max-width:600px){.live-band-row{grid-template-columns:38px 75px minmax(50px,1fr);gap:4px}}
 
 .typing-modes{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}.typing-modes button[aria-pressed="true"]{background:#dcebe1;border-color:#167c6c;color:#185b50}#writingEditor{box-sizing:border-box;width:100%;min-height:200px;resize:vertical;font:inherit;line-height:1.6;padding:16px;margin-bottom:16px}
+
+.activity-step-nav{display:flex;align-items:center;flex-wrap:wrap;gap:16px;margin:16px 0 20px}.activity-step-nav button{font-size:.9rem}.activity-step-nav strong,.activity-step-label{font-size:1rem;color:var(--muted,#66796e)}
+
+/* Persistent file tabs and a quiet, real acquisition preview. */
+.activity-step-nav{gap:0;border-bottom:1px solid #d8dfd8;align-items:end}
+.activity-step-nav [role=tab]{border-radius:9px 9px 0 0;border:1px solid transparent;background:transparent;padding:12px 16px;margin-bottom:-1px}
+.activity-step-nav [role=tab][aria-selected=true]{background:var(--paper,#fffef9);border-color:#d8dfd8;border-bottom-color:var(--paper,#fffef9);font-weight:650}
+.activity-eeg-preview{margin-left:auto;display:flex;align-items:center;gap:6px;padding:4px 8px;background:transparent;border:0;min-width:0}
+.activity-eeg-preview canvas{width:120px!important;height:30px!important;min-height:0!important}.activity-eeg-preview small{font-size:10px;white-space:nowrap}
+.personal-card-wrap{position:relative;display:flex}.personal-card-wrap>.personal-card{width:100%;padding-right:45px}.personality-help{position:absolute;right:10px;top:10px;border-radius:50%;padding:3px 9px}
+.typing-start-feedback{font-size:14px;color:#267369;min-height:1.4em}#typingStart[hidden]{display:none!important}
+@media(max-width:600px){.activity-step-nav [role=tab]{padding:10px 8px;font-size:12px}.activity-eeg-preview canvas{width:60px!important}.activity-eeg-preview small{display:none}}
+
+.activity-types[hidden]{display:none!important}
+
+/* Dark application chrome; task stimulus luminance remains protocol-controlled. */
+body.journey-theme{color-scheme:light;--ink:#233d57;--muted:#64778a;--teal:#315d82;--bg:#f6f8fb;--line:#dce3eb;--gold:#ba963b;--white:#ffffff;background:var(--bg);color:var(--ink)}
+body.journey-theme>aside{display:none!important}body.journey-theme>main{margin:0!important;max-width:1400px;padding:100px 32px 130px;margin-inline:auto!important}
+.journey-theme .panel,.journey-theme dialog,.journey-theme .dataset-section,.journey-theme .personal-live-feedback{background:var(--white);color:var(--ink);border-color:var(--line)}
+.journey-theme input,.journey-theme select,.journey-theme textarea,.journey-theme button:not(.primary):not(.danger){background:#edf2f7;color:var(--ink);border-color:var(--line)}
+.journey-theme .primary{background:#315d82;color:#fff}.journey-theme .muted,.journey-theme label,.journey-theme summary,.journey-theme .nav,.journey-theme .protocol-notes p{color:var(--muted)}
+.journey-theme .settings-disclosure,.journey-theme .signal-disclosure>summary,.journey-theme .stats-text,.journey-theme .pill,.journey-theme .personal-card,.journey-theme .paradigm-choice,.journey-theme .paradigm-card,.journey-theme .personal-card-wrap{background:#ffffff;color:var(--ink);border-color:var(--line)}
+.journey-theme .selected,.journey-theme [aria-selected=true],.journey-theme [aria-current=page],.journey-theme [aria-current=step]{background:#e6eef7!important;color:#254e78!important;border-color:#9ab2ca!important}
+.journey-theme .contact-green{background:#eaf4ec;color:#326343}.journey-theme .contact-yellow{background:#fff5d9;color:#755d22}.journey-theme .contact-red,.journey-theme .warning{background:#fff0ed;color:#963f36}
+#journeyHeader{position:fixed;inset:0 0 auto;z-index:90;min-height:68px;padding:10px 24px;display:flex;gap:20px;align-items:center;background:#f6f8fbf5;border-bottom:1px solid var(--line);backdrop-filter:blur(12px)}
+.journey-brand{white-space:nowrap;font-size:20px;color:#294d70}#journeySteps{display:flex;gap:4px;flex:1}#journeySteps button{font-size:12px;white-space:nowrap;padding:10px}#journeyAccount{display:flex;align-items:center;gap:8px}#journeyAccount button{font-size:12px}#journeyAccount .needs-choice{animation:none!important;color:#f1cc8d!important;background:#393321!important}
+#journeyAreas{display:flex;gap:8px;margin:18px 0;flex-wrap:wrap}#journeyAreas button{flex:1;min-width:170px;padding:14px;text-align:left;font-size:14px}
+.journey-theme .activity-step-nav>.activity-eeg-preview{display:none}.journey-theme .paradigm-buttons,.journey-theme .personal-cards{display:flex;flex-direction:column;gap:0;max-width:none}.journey-theme .paradigm-card,.journey-theme .personal-card-wrap{display:flex;border:0;border-bottom:1px solid var(--line);border-radius:0;align-items:center;gap:8px}.journey-theme .paradigm-choice,.journey-theme .personal-card{display:flex;flex:1;align-items:center;justify-content:space-between;gap:16px;border:0!important;border-radius:0!important;min-height:62px;padding:14px!important;text-align:left}.journey-theme .personal-card span,.journey-theme .paradigm-choice small{font-size:12px;color:var(--muted);max-width:55%;text-align:right}.journey-theme .paradigm-card .card-action{display:none}.journey-theme .personality-help{position:static}.journey-theme .activity-types{display:none!important}
+#journeyBrief{padding:12px 0 22px}#journeyBrief h2{font-size:25px;margin-bottom:16px}#briefTask{font-size:21px;line-height:1.45;margin:8px 0}#briefDuration{font-size:14px}.brief-actions{display:flex;gap:8px;margin-top:20px}#participantSetup{margin-top:18px}#participantSetup input[type=checkbox]{width:auto;margin:0 8px 0 0}#participantSetup fieldset{border:1px solid var(--line);padding:14px;border-radius:8px}#participantSetup fieldset label{padding:8px}#participantSetup small{font-weight:normal}
+#eegDock{position:fixed;right:20px;bottom:16px;z-index:160;width:300px;border:1px solid #c8d7e5;border-radius:12px;background:#ffffffee;box-shadow:0 8px 32px #0005;padding:10px;backdrop-filter:blur(10px)}.dock-heading{display:flex;align-items:center;justify-content:space-between;font-size:11px;gap:8px}#dockToggle{font-size:11px;padding:5px 8px}#dockSignal .activity-eeg-preview{width:100%;margin:8px 0 0;background:transparent;border:0;padding:0}#dockSignal canvas{width:100%!important;height:52px!important}#dockSignal small{display:none}
+.journey-theme #liveResultsToggle{width:auto;min-width:100px;font-size:12px;padding:8px;left:12px;top:12px;height:36px}.journey-theme #stage .stage-top{left:160px}.journey-theme #stageMetrics{background:var(--white);color:var(--ink)}
+.journey-theme #personalExercise{background:var(--bg);color:var(--ink);padding-bottom:130px}.journey-theme.eeg-view-hidden #stageMetrics,.journey-theme.eeg-view-hidden .personal-live-feedback,.journey-theme.eeg-view-hidden.questionnaire-recording #headsetSetup{display:none!important}.journey-theme.eeg-view-hidden #stage{padding-left:48px}.journey-theme.eeg-view-hidden #stageInstruction{left:60px}
+.run-forms{width:min(860px,94vw);padding:32px}.run-forms .form-question{font-size:24px;min-height:90px}.run-forms .form-answers{display:flex;gap:8px;flex-wrap:wrap}.run-forms .form-answers button{flex:1;min-width:110px;min-height:55px}.run-forms .form-eeg{float:right}
+.journey-theme #headsetSetup{scroll-margin-top:90px}.journey-theme .workspace-section{scroll-margin-top:90px}.journey-theme button:focus-visible,.journey-theme summary:focus-visible{outline:2px solid #315d82;outline-offset:3px}
+.journey-theme #headsetSetup .connection #connectMuse{padding:12px 16px;border:1px solid var(--line);border-radius:8px}.journey-theme #connectMuse.connection-loading{opacity:1;cursor:wait}.journey-theme #headsetSetup .connection:has(#connectMuse[aria-busy=true]) .connection-main{display:flex!important}.journey-theme #headsetSetup .connection:has(#connectMuse[aria-busy=true]) #connectionMessage{display:block!important}
+.journey-theme [hidden]{display:none!important}
+@media(max-width:900px){#journeyHeader{flex-wrap:wrap;gap:8px;padding:8px 12px}.journey-brand{font-size:16px}#journeySteps{order:3;flex-basis:100%;overflow-x:auto}#journeyAccount{margin-left:auto}body.journey-theme>main{padding:130px 14px 120px}#journeyAreas button{min-width:130px;font-size:12px}.journey-theme .personal-card,.journey-theme .paradigm-choice{align-items:flex-start;flex-direction:column;gap:5px}.journey-theme .personal-card span,.journey-theme .paradigm-choice small{max-width:none;text-align:left}.journey-theme #stageMetrics{display:block;width:40vw}.journey-theme #stage{padding-left:43vw}.journey-theme #stage.results-collapsed{padding-left:48px}.journey-theme #stageInstruction{left:44vw}#eegDock{width:230px;right:10px}.brief-actions{flex-wrap:wrap}}
+@media(prefers-reduced-motion:reduce){.journey-theme *{scroll-behavior:auto!important;animation-duration:0s!important;transition:none!important}}
+/* Legacy button rules use several :not selectors; override their light surfaces. */
+body.journey-theme button:not(.primary):not(.danger){background:#edf2f7!important;color:#233d57!important;border-color:#cfdbe6!important}body.journey-theme button[aria-current=page],body.journey-theme button[aria-current=step],body.journey-theme button[aria-selected=true],body.journey-theme .paradigm-choice.selected{background:#e6eef7!important;color:#254e78!important}body.journey-theme button.contact-green{background:#eaf4ec!important;color:#326343!important}body.journey-theme button.contact-yellow{background:#fff5d9!important;color:#755d22!important}body.journey-theme button.contact-red{background:#fff0ed!important;color:#963f36!important}body.journey-theme .contact-card{background:#edf2f7!important;color:#233d57!important}body.journey-theme .contact-card.contact-green{background:#eaf4ec!important}body.journey-theme .contact-card.contact-yellow{background:#fff5d9!important}body.journey-theme .contact-card.contact-red{background:#fff0ed!important}body.journey-theme .above-chance{background:#e9f3ec}body.journey-theme .simulation{background:#fff7df;color:#79612a;border-color:#e9d7a4}
+/* One workflow page at a time. Selection and configuration never share a page. */
+body.journey-theme>main{padding-top:100px}
+#journeySteps button:not(:last-child)::after{content:'›';position:absolute;right:-11px;color:#9babc0;pointer-events:none}#journeySteps button{position:relative;margin-right:13px}#journeySteps button[aria-current=step]{box-shadow:inset 0 -3px #e4c766}#journeySteps{gap:3px}
+body[data-journey-step] #headsetSetup,body[data-journey-step] #journeyAreas,body[data-journey-step] #experimentParadigm,body[data-journey-step] #writingParadigm,body[data-journey-step] #personalSetup,body[data-journey-step] #experimentResults,body[data-journey-step] #writingResults,body[data-journey-step] #personalResults{display:none!important}
+body[data-journey-step=headset] #headsetSetup{display:block!important}
+body[data-journey-step=choose] #journeyAreas{display:flex!important}
+body[data-journey-step=choose]:not(.personal-view):not(.typing-view) #experimentParadigm,body[data-journey-step=setup]:not(.personal-view):not(.typing-view) #experimentParadigm{display:block!important}
+body[data-journey-step=choose].personal-view #personalSetup,body[data-journey-step=setup].personal-view #personalSetup,body[data-journey-step=run].personal-view #personalSetup{display:block!important}
+body[data-journey-step=setup].typing-view #writingParadigm,body[data-journey-step=run].typing-view #writingParadigm{display:block!important}
+body[data-journey-step=summary].typing-view #writingResults,body[data-journey-step=summary].personal-view #personalResults,body[data-journey-step=summary]:not(.typing-view):not(.personal-view) #experimentResults{display:block!important}
+body[data-journey-step]:not([data-journey-step=summary]) main>details:not(.workspace-section){display:none!important}
+body[data-journey-step=choose] #participantSetup,body[data-journey-step=choose] .lab-tools{display:none!important}
+body.journey-theme .activity-step-nav{display:none!important}body.journey-theme .workspace-section>summary{pointer-events:none;list-style:none}body.journey-theme .workspace-section>summary::marker{content:''}
+body[data-journey-step=choose] #experimentParadigm>summary,body[data-journey-step=choose] #personalSetup>summary{font-size:0}body[data-journey-step=choose] #experimentParadigm>summary::after,body[data-journey-step=choose] #personalSetup>summary::after{content:'Choose an activity';font-size:19px}
+body[data-journey-step=setup] .workspace-section>summary{font-size:0}body[data-journey-step=setup] .workspace-section>summary::after{content:'Task setup';font-size:19px}
+.headset-map{border:0!important;background:transparent!important;display:block;margin:auto;width:100%;padding:0!important}.headset-map svg{display:block;width:100%;height:auto}.head-outline{fill:#f3f6fa;stroke:#b6c7d8;stroke-width:1.6}.head-band{fill:none;stroke:#6d8da9;stroke-width:5;stroke-linecap:round}.electrode-glow{fill:#346a9d;transition:opacity .18s linear}.artifact-ring{fill:none;stroke:#c56560;stroke-width:1.5;opacity:0;transition:opacity .1s}.has-artifact .artifact-ring{opacity:.7}.headset-map text{font:10px -apple-system,sans-serif;fill:#5b7188}
+#headsetAmplitude{max-width:360px;margin:20px auto 26px}#dockSignal .headset-map{max-width:180px}#eegDock{width:220px;background:#ffffffef;box-shadow:0 5px 22px #17334d10}#dockState{color:#496783}
+body.journey-theme:not(.show-raw-eeg) #trace,body.journey-theme:not(.show-raw-eeg) #traceEmpty,body.journey-theme:not(.show-raw-eeg) #traceScaleLabel,body.journey-theme:not(.show-raw-eeg) #signalPanel>.artifact-key{display:none!important}
+body.journey-theme #headsetSetup .connection{justify-content:flex-end;flex-direction:row;gap:8px;padding:0;margin:0;min-height:34px}body.journey-theme #headsetSetup .connection #connectMuse,body.journey-theme #headsetSetup .connection #disconnectMuse{padding:7px 10px!important;font-size:12px;white-space:nowrap}body.journey-theme #headsetSetup .connection-main{margin-right:auto}body.journey-theme #headsetSetup .connection #previewSource{display:none}
+#headsetDisplaySettings input[type=checkbox]{width:auto;margin:0 8px 0 0}#headsetDisplaySettings label{padding:8px 0}#headsetDisplaySettings fieldset{border:1px solid var(--line);border-radius:6px;padding:10px}#headsetDisplaySettings fieldset label{display:inline-flex;margin-right:14px;align-items:center}#headsetNext{display:block;margin:22px 0 0 auto}
+#contactReadout .contact-card{cursor:default}#headsetSetup #contactReadout{margin:12px 0}.journey-theme .signal-help-row{border-top:1px solid var(--line);padding-top:14px}.journey-theme .signal-disclosure>summary{background:#f2f5f9}body.journey-theme #journeyAccount .needs-choice{background:#fff5d8!important;color:#745b22!important;border-color:#e6d39c!important}
+@media(max-width:900px){body.journey-theme>main{padding-top:130px}#journeySteps button{margin-right:10px;font-size:11px;padding:9px 7px}#journeyHeader{min-height:100px}#eegDock{width:175px}#headsetAmplitude{max-width:290px}}
+body.journey-theme #headsetSetup{position:relative}body.journey-theme #headsetSetup>.connection{position:absolute;right:24px;top:18px}body.journey-theme #headsetSetup>.connection:has(#connectMuse[aria-busy=true]){position:static;margin-top:4px}#headsetAmplitude{margin-top:8px}#headsetInformation .signal-disclosure{width:100%;margin:8px 0}#headsetInformation .signal-help-body{min-width:0}.journey-theme #headsetInformation p{font-size:12px}body.journey-theme #headsetSetup #signalPanel{padding-bottom:0;margin-bottom:0}
+@media(max-width:600px){body.journey-theme #headsetSetup>.connection{position:static;margin-top:0}#headsetAmplitude{max-width:260px}}
+/* Open, connected sections instead of stacked boxes inside boxes. */
+body.journey-theme .workspace-section{background:transparent;border:0;border-radius:0;padding:10px 0;box-shadow:none}body.journey-theme .workspace-section>summary{color:#294d70;font-size:20px;padding:0 0 18px;border-bottom:1px solid #dce3eb;margin-bottom:16px}body.journey-theme .workspace-section>.panel,body.journey-theme .workspace-section .setup{background:transparent;border:0;border-radius:0;box-shadow:none}
+body.journey-theme #headsetSetup>.connection{right:0;top:0}body.journey-theme #signalPanel{background:transparent;border:0;padding-top:0}body.journey-theme #headsetSetup #contactReadout{margin:0 0 16px}.contact-help-row{display:flex;justify-content:flex-end;margin:0 0 4px}.info-dot{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0!important;border-radius:50%!important;font-size:12px;font-weight:600;margin-left:8px}.signal-toolbar{display:flex;align-items:center;justify-content:flex-end;gap:6px;width:100%}.signal-help-row{padding:8px 0;border:0!important}.text-action{border:0!important;background:transparent!important;font-size:12px;text-decoration:underline;text-underline-offset:4px}body.journey-theme .display-settings-dialog h2{display:flex;align-items:center;justify-content:space-between}.display-settings-dialog h3{margin:24px 0 8px;padding-top:18px;border-top:1px solid var(--line)}.setting-switch{display:flex;align-items:center;gap:10px;font-size:13px;margin:16px 0}.display-settings-dialog input[type=checkbox]{width:auto;margin:0}.display-settings-dialog fieldset{border:0;padding:12px 0;margin:12px 0}.display-settings-dialog fieldset label{display:inline-flex;align-items:center;gap:6px;margin-right:20px}.unavailable{color:#7a8791}.plain-help>h2{margin-bottom:20px}.plain-help .contact-summary{display:block!important}.plain-help .contact-summary>*{display:block;margin:8px 0}#headsetAmplitude{max-width:250px;margin:18px auto}#motionReadout{padding:12px 0;font-size:12px}#headsetNext{margin-top:14px}
+body.journey-theme #eegDock{display:none;position:static;inset:auto;width:82px;flex:0 0 82px;padding:0;border:0;border-radius:0;box-shadow:none;background:transparent;backdrop-filter:none}body[data-journey-step=choose] #eegDock,body[data-journey-step=setup] #eegDock,body[data-journey-step=summary] #eegDock{display:block}#eegDock .dock-heading{display:none!important}#eegDock #dockSignal{display:block!important}#eegDock .headset-map{width:80px;margin:0}#eegDock .headset-map text{display:none}body.journey-theme #eegDock button.headset-map{background:transparent!important;border:0!important}#journeyHeader{gap:12px}body.journey-theme>main{padding-bottom:40px}.journey-theme .personal-card-wrap,.journey-theme .paradigm-card{background:transparent!important}.journey-theme .paradigm-choice,.journey-theme .personal-card{background:transparent!important}.journey-theme .settings-disclosure{border:0;border-top:1px solid var(--line);border-radius:0;background:transparent;padding:16px 0}.journey-theme .settings-disclosure>summary{border:0;background:transparent;padding:0 0 10px}
+@media(max-width:900px){#journeyHeader{gap:6px}body.journey-theme #eegDock{width:60px;flex-basis:60px}#eegDock .headset-map{width:60px}#journeyAccount button{font-size:11px;padding:8px}body.journey-theme #headsetSetup>.connection{position:static;margin-bottom:12px}}
+
+/* Nonmodal live trace controls. */
+#signalArtifact{display:none!important}
+.trace-and-settings{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;align-items:start}
+.trace-and-settings.settings-open{grid-template-columns:minmax(220px,1fr) minmax(220px,280px)}
+.trace-column{min-width:0;position:relative}
+#headsetDisplaySettings{position:static;width:auto;max-width:none;margin:0;padding:16px;border:0;border-left:1px solid #d9e2eb;background:transparent;box-shadow:none;color:inherit}
+#headsetDisplaySettings h2{font-size:16px;margin-top:0}
+#headsetDisplaySettings h3{font-size:14px;display:flex;align-items:center;gap:8px}
+#headsetDisplaySettings .display-filter-controls{display:flex;flex-direction:column;align-items:stretch}
+#headsetDisplaySettings input[type=number]{width:100%;box-sizing:border-box}
+@media(max-width:520px){.trace-and-settings.settings-open{grid-template-columns:minmax(150px,1fr) 160px;gap:8px}#headsetDisplaySettings{padding:8px;font-size:12px}}
+
+.contact-card>button{padding:0;border:0;background:transparent;color:inherit;font-size:inherit;font-weight:700;text-align:left;cursor:pointer}.contact-card.trace-hidden>button{text-decoration:line-through;opacity:.6}
+
+.live-view-tabs{display:flex;gap:6px;margin:12px 0}.live-view-tabs [aria-pressed=true]{background:#dce8f2;border-color:#6d8da9}.spectrum-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.spectrum-controls label{display:flex;align-items:center;gap:6px;font-size:12px}.spectrum-controls select{width:auto}.spectrum-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.spectral-hidden{display:none!important}@media(max-width:750px){.spectrum-grid{grid-template-columns:minmax(0,1fr)}}
+
+/* Compact, readable channel contact controls. */
+body.journey-theme #headsetSetup #contactReadout{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:6px 0}
+body.journey-theme #contactReadout .contact-card{padding:6px 9px;gap:2px;border-radius:5px;font-size:10px;grid-template-columns:auto 1fr;align-items:center}
+body.journey-theme #contactReadout .contact-card>button{background:transparent!important;border:0!important;padding:0!important;margin:0;font-size:11px;min-height:0;text-align:left}
+#contactReadout .contact-card>span{font-size:10px;text-align:right}
+#contactReadout .contact-card>small{grid-column:1/-1;font-size:9px}
+@media(max-width:640px){body.journey-theme #headsetSetup #contactReadout{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.journey-brand{display:flex;align-items:center;gap:8px}.journey-brand img{width:44px;height:44px;border-radius:10px}#startupScreen .startup-logo{width:100px;height:100px;border-radius:22px;margin:auto}
+
+#spectrumBandControls{margin:12px 0}.band-chips{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:6px 0}.band-chips button{font-size:11px;padding:5px 9px}.hidden-bands{border-top:1px solid #e0e5eb;padding-top:7px}.hidden-bands span{font-size:11px;color:#84909b}body.journey-theme .hidden-bands button{color:#88929c!important;background:#f1f2f3!important;border-color:#dde0e3!important}
+
+.mind-demo-warning{background:#fff5d8;border-left:3px solid #d8b551;padding:10px 14px;font-size:12px;color:#705a25}.personal-score{border:0;background:transparent}
+
+#activityBranch{display:flex;flex-direction:column;border-left:1px solid #d1dce7;padding-left:12px;gap:4px}#activityBranchName{font-size:11px;color:#58718a;max-width:340px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#activityBranch>div{display:flex;gap:8px}#journeySteps{align-items:flex-end}.result-navigation{display:flex;gap:8px;margin:12px 0}.run-instruction-gate{max-width:520px}.run-instruction-gate button{margin:8px 8px 0 0}.plain-help>button{margin:5px}
+
+body.journey-theme .band-chips button.band-disabled{text-decoration:line-through;color:#8c959e!important;background:#f0f1f2!important}.band-chips button.band-disabled::after{content:' ×';display:inline-block;margin-left:3px}
+
+#activityBranch.activity-locked{border:1px dashed #b7c1cb;border-radius:8px;padding:6px 10px;background:#f3f5f7}#activityBranch.activity-locked button{opacity:.5;cursor:not-allowed}#activityBranch.activity-locked #activityBranchName::before{content:"🔒 ";}
+
+/* Activity categories are file tabs; individual activities remain simple choices. */
+.retired-research-tools{display:none!important}
+#journeyAreas{gap:4px;border-bottom:2px solid #365a7b;padding:8px 6px 0;background:#edf1f5;border-radius:12px 12px 0 0}
+#journeyAreas button{flex:1;border:1px solid #c5cfda;border-bottom:0;border-radius:10px 10px 0 0;background:#e0e7ef;color:#526477;padding:15px 16px;margin-bottom:0;font-weight:650;position:relative;min-width:140px}
+#journeyAreas button[aria-current=page]{background:#254c70;color:white;border-color:#254c70;box-shadow:inset 0 4px #e4bc56;font-weight:750}
+#journeyAreas button:hover{background:#d1dce7;color:#203e59}
+#journeyAreas button[aria-current=page]:hover{background:#254c70;color:white}
+body[data-area=trainer][data-journey-step=choose] #developerPanel:not(.hidden),body[data-area=trainer][data-journey-step=setup] #developerPanel:not(.hidden),body[data-area=trainer][data-journey-step=run] #developerPanel:not(.hidden){display:block!important}
+body[data-area=trainer] #personalSetup{display:none!important}
+body:not([data-area=trainer]) #developerPanel{display:none!important}
+body[data-area=trainer][data-journey-step=headset] #developerPanel,body[data-area=trainer][data-journey-step=summary] #developerPanel{display:none!important}
+
+#savedResultsBrowser{display:none}body.results-browser #savedResultsBrowser{display:block}body.results-browser #experimentResults,body.results-browser #personalResults,body.results-browser #writingResults{display:none!important}
+
+/* Selection needs only category tabs and the available activities. */
+body[data-journey-step=choose] #experimentParadigm>summary,body[data-journey-step=choose] #personalSetup>summary{display:none!important}
+body[data-journey-step=choose] #experimentParadigm,body[data-journey-step=choose] #personalSetup{border-top:0;padding-top:0}
+body[data-journey-step=choose] #journeyAreas{border-bottom:0}
+
+/* Keep every workflow button on the same baseline, including the grouped steps. */
+#journeySteps{align-items:center;padding-top:20px;overflow-y:visible}
+#journeySteps button{height:40px;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box}
+#activityBranch,#activityBranch.activity-locked{position:relative;flex-direction:row;align-items:center;height:40px;padding:0 6px;border:1px solid transparent;border-radius:8px;gap:0}
+#activityBranch.activity-locked{border:1px dashed #b7c1cb}
+#activityBranchName{position:absolute;bottom:calc(100% + 4px);left:6px;max-width:240px;line-height:14px}
+#activityBranch>div{align-items:center;gap:3px}
+#journeySteps button[data-step=run]::after{content:'›';position:absolute;right:-17px;color:#9babc0;pointer-events:none}
+#journeySteps button[data-step=summary]::after{content:none}
+#activityBranch.activity-locked #activityBranchName::before{content:'◇ ';}
+.activity-category-icon{width:23px;height:23px;flex:0 0 23px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+#journeyAreas button{display:flex;align-items:center;gap:10px}
+
+#journeySteps button[data-step=run]{margin-right:0}
+#journeySteps button[data-step=run]::after{content:none}
+.results-step-arrow{flex:0 0 14px;text-align:center;color:#9babc0;align-self:center;pointer-events:none}
+
+body[data-journey-step=setup].personal-view #personalSetup>summary{display:none!important}
+.personal-setup-sequence{max-width:680px;margin:12px auto 28px}
+.personal-setup-sequence>h2{text-align:center;font-size:25px;margin:12px 0 32px}
+.setup-sequence{list-style:none;counter-reset:setup-step;padding:0;margin:0}
+.setup-sequence>li{counter-increment:setup-step;position:relative;padding:0 0 24px 48px;animation:setup-step-appear .24s ease both}
+.setup-sequence>li:nth-child(2){animation-delay:.16s}.setup-sequence>li:nth-child(3){animation-delay:.32s}
+.setup-sequence>li::before{content:counter(setup-step);position:absolute;left:0;top:5px;width:28px;height:28px;border-radius:50%;background:#e7edf3;color:#294d70;display:grid;place-items:center;font-weight:700}
+.setup-sequence>li:not(:last-child)::after{content:'';position:absolute;left:13px;top:35px;bottom:3px;width:1px;background:#cdd8e2}
+.setup-sequence #participantSetup{border:0;padding:12px 0 0;margin:0}
+@keyframes setup-step-appear{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){.setup-sequence>li{animation:none}}
+
+#participantSetup>summary{list-style:none;display:flex;align-items:center;gap:8px}#participantSetup>summary::-webkit-details-marker{display:none}#participantSetup>summary::marker{content:''}#participantDataToggle{padding:10px 16px;border:1px solid var(--line);border-radius:7px;background:var(--wash);color:var(--ink)}#participantSetup>summary small{font-weight:400;color:#71808a}#participantSetup>.info-dot{display:block;margin:12px 0 0 auto}
+
+/* Questionnaire execution: task at left, reusable EEG feedback at right. */
+body[data-journey-step=run] #participantSetup{display:none!important}
+body.questionnaire-recording #personalSetup>summary,body.questionnaire-recording #personalSetup>.activity-step-nav{display:none!important}
+body.questionnaire-recording #personalWorkspace{display:block}
+body.questionnaire-recording #personalSetup{width:100%;max-width:none}
+.questionnaire-run-layout{display:grid;grid-template-columns:minmax(280px,1fr) minmax(330px,.85fr);gap:32px;align-items:start}
+.questionnaire-task{padding:24px 12px;max-width:700px;margin:auto;width:100%;box-sizing:border-box}
+.questionnaire-task h3{font-size:26px;line-height:1.4;margin:32px 0}
+.questionnaire-task .personal-answers{display:flex;flex-direction:column;align-items:stretch}
+.questionnaire-viewer{min-width:0;border-left:1px solid var(--line);padding-left:22px;max-height:calc(100vh - 180px);overflow:auto}
+.questionnaire-viewer[hidden]{display:none!important}.questionnaire-run-layout.viewer-hidden{grid-template-columns:1fr}
+.questionnaire-view-toggle{display:block;margin:0 0 10px auto;font-size:12px}
+.questionnaire-viewer .mind-demo-warning{font-size:12px;line-height:1.4}.questionnaire-viewer h3{font-size:16px}
+@media(max-width:760px){.questionnaire-run-layout{grid-template-columns:minmax(0,1fr)}.questionnaire-viewer{border-left:0;border-top:1px solid var(--line);padding:16px 0;max-height:none}.questionnaire-task{padding:12px 0}}
+
+body[data-journey-step=setup]:not(.typing-view):not(.personal-view) #experimentParadigm>summary{display:none!important}
+#journeyBrief.personal-setup-sequence>h2,#journeyBrief #briefDuration{text-align:center}
+#journeyBrief .brief-actions{justify-content:center;margin-top:12px}#journeyBrief .brief-actions button{font-size:12px;padding:6px 10px}
+#journeyBrief .start-row{border:0;padding:0;margin:0}#journeyBrief .setup-sequence{margin-top:28px}
+/* The activity branch remains a persistent group after selection. */
+#activityBranch{border:1px solid #7192ae;background:#edf3f8;border-radius:8px}
+#activityBranch:not(.activity-locked) #activityBranchName{color:#294d70;font-weight:650}
+#activityBranch.activity-locked{border:1px dashed #b7c1cb;background:#f3f5f7}
+
+.setup-sequence>li:nth-child(4){animation-delay:.48s}
+
+/* Separate the branch outline from its button borders. */
+#activityBranch,#activityBranch.activity-locked{height:50px;box-sizing:border-box;padding:4px 6px;flex-shrink:0}
+#activityBranch>div{height:40px}
+#journeySteps #activityBranch button{height:38px}
+#journeySteps{align-items:center}
+#journeyAreas button{font-family:inherit;font-size:14px;font-style:normal;line-height:1.35;font-weight:650;letter-spacing:normal;text-transform:none}
+#journeyAreas button[aria-current=page]{font-weight:650}
+@media(max-width:900px){#journeyAreas button{font-size:12px}}
+
+.personal-answers button[aria-pressed=true]:disabled{opacity:1;background:#254c70;color:#fff;border-color:#254c70}
