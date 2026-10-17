@@ -1,3 +1,4 @@
+let typingStaleSince=null;
 const inferenceFeed=createInferenceFeed();
 let typingWasRunning=false,typingStarting=false;
 /* Free-writing acquisition. Text is sent as labels; it is never a decoder input. */
@@ -34,7 +35,7 @@ async function stopTyping(reason='Stopped by writer'){
  if(state.typing?.session?.capture==='system')await api('system_typing/stop',{}).catch(()=>{});state.typing=await api('typing/stop',{reason});$('headsetSetup').open=false;renderTyping();await checkTypingAccess();}finally{typingStopping=false}
 }
 function renderTyping(){
- const d=state?.typing;if(!d)return;const running=d.running;updateTypingMode();const feedback=$('typingStartFeedback');if(feedback&&running)feedback.textContent=(d.capture_status?.paused?'● EEG recording · typing paused · ':'● Recording · ')+Math.floor(Math.max(0,Date.now()/1000-(d.session?.started||Date.now()/1000))/60)+' min · '+(d.lifetime_words??d.total??0)+' dataset words · '+(d.semantic_phrases||0)+' phrases · '+(d.session?.capture==='system'?'Across apps':'In Bandstand')+' · saved automatically';if(feedback&&!running&&typingWasRunning)feedback.textContent='Recording saved. Choose where to write to start a new session.';if(running&&state.stale){stopTyping('EEG signal lost').catch(e=>toast(e.message));return}
+ const d=state?.typing;if(!d)return;const running=d.running;updateTypingMode();const feedback=$('typingStartFeedback');if(feedback&&running)feedback.textContent=(d.capture_status?.paused?'● EEG recording · typing paused · ':'● Recording · ')+Math.floor(Math.max(0,Date.now()/1000-(d.session?.started||Date.now()/1000))/60)+' min · '+(d.lifetime_words??d.total??0)+' dataset words · '+(d.semantic_phrases||0)+' phrases · '+(d.session?.capture==='system'?'Across apps':'In Bandstand')+' · saved automatically';if(feedback&&!running&&typingWasRunning)feedback.textContent='Recording saved. Choose where to write to start a new session.';if(running&&state.stale){typingStaleSince??=Date.now()}else typingStaleSince=null;if(running&&state.stale&&Date.now()-typingStaleSince>=3000){typingStaleSince=null;stopTyping('EEG signal lost').catch(e=>toast(e.message));return}
  $('typingExport').disabled=running||!d.session;
  $('typingStart').textContent=running?(d.capture_status?.paused?'Keystroke monitoring paused':'Keystroke monitoring in progress'):'Start recording';
  const preview=$('typingCapturePreview');if(preview){preview.hidden=!running;const last=d.session?.capture==='system'?d.capture_preview:{text:$('writingEditor').value.slice(-160),app:'Bandstand',at:Date.now()/1000};preview.textContent=last?.text?'Last captured: “'+redactPhrase(last.text)+'” · '+(last.app||'Another app')+' · '+new Date(last.at*1000).toLocaleTimeString():(d.session?.capture==='system'?'Waiting for typing in another app…':'Ready for your writing below…');}
@@ -56,11 +57,11 @@ function renderTyping(){
  const r=d.decoder;$('typingEvidence').textContent=r?.accuracy!==undefined?`Later-block accuracy ${(r.accuracy*100).toFixed(1)}% · balanced ${(r.balanced_accuracy*100).toFixed(1)}% · chance ${(r.chance*100).toFixed(1)}% · majority ${(r.majority_accuracy*100).toFixed(1)}% · ${r.validation_trials} validation words. ${r.reason}`:r?.reason||'';
  if(r?.kind==='semantic')$('typingEvidence').textContent=r.cosine!==undefined?`${r.training_phrases} live-model training phrases · ${r.validation_trials} held-out phrases · EEG cosine ${r.cosine.toFixed(3)} · text-history baseline ${r.text_history_baseline.toFixed(3)} · quality baseline ${r.mask_baseline.toFixed(3)} · gain over strongest baseline ${r.gain.toFixed(3)}. ${r.reason}`:r.reason;
  const feed=inferenceFeed.update(d.prediction,performance.now());
- if(feed.current){$('typingPrediction').textContent=redactPhrase(feed.current.gist||'Meaning unclear');$('typingPredictionNote').textContent=(feed.current.validated?'Exploratory':'Ultra-tentative · unvalidated')+' · similarity '+feed.current.score.toFixed(3)+' · '+(running?'Receiving live EEG matches':'Recording stopped; last match shown')+'. Similarity is not probability.';}
+ if(feed.current){$('typingPrediction').textContent=feed.current.gist?redactPhrase(feed.current.gist):'Meaning unclear';$('typingPredictionNote').textContent=(feed.current.validated?'Exploratory':'Ultra-tentative · unvalidated')+' · similarity '+feed.current.score.toFixed(3)+' · '+(running?'Receiving live EEG matches':'Recording stopped; last match shown')+'. Similarity is not probability.';}
  $('semanticCandidates').textContent=feed.mode==='best'?'Stronger or repeated matches, held for reading time plus up to 5 seconds.':'All received matches in history; the headline stays long enough to read.';
  const details=$('gistMatches');if(details){const key=JSON.stringify(feed.current?.matches||[]);if(details.dataset.key!==key){details.dataset.key=key;const list=$('gistMatchList');list.replaceChildren(...(feed.current?.matches||[]).map(m=>{const p=document.createElement('p');p.textContent=redactPhrase(m.text)+' · similarity '+m.similarity.toFixed(3);return p}));}}
  const historyKey=feed.mode+JSON.stringify(feed.previous.map(x=>[redactPhrase(x.text),x.time]));
- if($('inferenceHistory').dataset.key!==historyKey){$('inferenceHistory').dataset.key=historyKey;$('inferenceHistory').replaceChildren(...feed.previous.map(item=>{const row=document.createElement('div');const phrase=document.createElement('p');phrase.textContent=redactPhrase(item.gist||'Meaning unclear');const meta=document.createElement('small');meta.textContent=new Date(item.time*1000).toLocaleTimeString()+' · similarity '+item.score.toFixed(3);row.append(phrase,meta);return row}));}
+ if($('inferenceHistory').dataset.key!==historyKey){$('inferenceHistory').dataset.key=historyKey;$('inferenceHistory').replaceChildren(...feed.previous.map(item=>{const row=document.createElement('div');const phrase=document.createElement('p');phrase.textContent=item.gist?redactPhrase(item.gist):'Meaning unclear';const meta=document.createElement('small');meta.textContent=new Date(item.time*1000).toLocaleTimeString()+' · similarity '+item.score.toFixed(3);row.append(phrase,meta);return row}));}
  renderLearningCurve(r?.learning_curve);
  $('typingUpdateTest').disabled=!!d.fitting;
  $('typingUpdateTest').textContent=d.fitting?'Updating test…':'Update test';
@@ -96,6 +97,8 @@ window.addEventListener('focus',()=>checkTypingAccess());
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkTypingAccess()});
 async function startWriting(capture=$('typingCapture').value){
  if(typingStarting||state?.typing?.running)return;
+ // Writing records live EEG only; say so before the instruction gate and participant forms, not after.
+ if(state?.source!=='live'||state?.stale)return toast('Writing needs the live headset. Demo EEG cannot be used for writing; connect your Muse first.');
  chooseTypingMode(capture);typingStarting=true;updateTypingMode();
  let started=false;
  const feedback=$('typingStartFeedback');if(feedback)feedback.textContent='Checking recording readiness…';

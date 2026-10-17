@@ -204,6 +204,17 @@ class TypingLab:
     self.stop('Low disk space: recording stopped with less than 10 GiB free');return
   for t,r,f in zip(times,raw,filtered):self.writer.writerow([float(t),*r,*f])
   self.rawfile.flush()
+ def next_due(self):
+  """Earliest sample time at which any pending word has a window, context or ERP epoch ready. Lets the engine skip
+  converting the whole sample buffer on every packet while nothing is due."""
+  due=float('inf');delay=self.session.get('prediction_delay',0) if self.session else 0
+  for trial in self.pending.values():
+   onset=trial['onset']
+   for window,(lo,hi) in WINDOWS.items():
+    if window not in trial['accepted']:due=min(due,onset+hi+.04)
+   if 'context' not in trial['accepted']:due=min(due,onset+delay+.04)
+   if 'committed' in trial:due=min(due,onset+1.05)
+  return due
  def process(self,times,raw,filtered):
   if not self.running or not len(times):return
   t=np.asarray(times);x=np.asarray(raw);f=np.asarray(filtered)
@@ -295,5 +306,8 @@ class TypingLab:
   erp=None
   if matches:
    waves=np.asarray([r['erp_values'] for r in matches],float);valid=np.isfinite(waves);mean=np.nansum(waves,axis=0)/np.maximum(valid.sum(0),1);mean[valid.sum(0)==0]=np.nan;erp=dict(n=len(waves),times=matches[-1]['erp_times'],mean=[[float(v) if np.isfinite(v) else None for v in row] for row in mean])
-  semantic=phrase_examples(self.rows)
+  # Rebuilt only when the word records change; status is polled several times a second.
+  key=(self.revision,len(self.rows),id(self.rows))
+  if getattr(self,'_semantic_key',None)!=key:self._semantic=phrase_examples(self.rows);self._semantic_key=key
+  semantic=self._semantic
   return dict(lifetime_words=self.total_words,session_count=len(self.recording_sessions),recording_minutes=self.recording_minutes(),semantic_blocks=len(set(r['block'] for r in semantic)),semantic_phrases=self.reports['context'].get('phrases',len(semantic)),dataset_scope='Cumulative training from all eligible archived sessions; recent '+str(MAX_WORDS)+' words retained for live display',resource_policy='Disk-backed feature/embedding cache · bounded training batches · one CPU thread · 180-second worker limit · 256 retrieval candidates · 10 GiB disk reserve',capture_preview=self.capture_preview if self.running else {},capture_status=self.capture_status,erp=erp,running=self.running,session=self.session,counts=dict(counts.most_common(20)),total=len(self.rows),accepted=sum(counts.values()),rejected=rejected,pending=len(self.pending),prediction=self.prediction,decoder=self.reports[w],fitting=self.fitting,last_epoch=self.last_epoch,revision=self.revision)
