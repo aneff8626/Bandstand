@@ -238,6 +238,8 @@ class Engine:
             if len(window)!=2 or not 0<=window[0]<window[1]<= (p['stim_ms'][1]/1000 if p['mode']!='erp' else .8): raise ValueError('Invalid analysis window')
             band=list(map(float,cfg.get('band',p.get('band',[8,13]))))
             if len(band)!=2 or not 2<=band[0]<band[1]<=40: raise ValueError('Band must be within 2–40 Hz')
+            gain=(cfg.get('calibration') or {}).get('audio_gain') if isinstance(cfg.get('calibration') or {},dict) else None
+            if p['id'] in ('auditory','alpha') and not (type(gain) in (int,float) and 0<gain<=.2): raise ValueError('Audio gain must be above 0 and at most 0.2.')
             conditions=p['conditions']; assets=self.manifest(); pools=None
             if p['id']=='custom':
                 conditions=[str(s).strip()[:80] for s in cfg.get('conditions',conditions)]
