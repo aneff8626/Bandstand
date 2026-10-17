@@ -4,6 +4,8 @@ import accounts
 class AccountsTests(unittest.TestCase):
  def setUp(self):
   self.vault=patch('accounts._forget');self.vault.start();self.addCleanup(self.vault.stop)
+  # Independent of any developer backend.json: link checks assume the production address.
+  url=patch.object(accounts,'URL',accounts.backend_config.PRODUCTION['url']);url.start();self.addCleanup(url.stop)
  def tearDown(self):accounts._session=None
  def test_only_credentials_uploaded_and_token_not_returned(self):
   calls=[]

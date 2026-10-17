@@ -3,7 +3,13 @@ from pathlib import Path
 import os,sys,shutil,subprocess,plistlib,importlib.metadata as metadata,json,hashlib
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
-ROOT=Path(__file__).resolve().parents[1]
+ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
+import backend_config
+# One fixed account backend per installation. Production is built in; a development or staging
+# build names a validated backend file explicitly. Validate before any slow work.
+BACKEND_FILE=os.environ.get('BANDSTAND_BACKEND_CONFIG','').strip()
+BACKEND=backend_config.validate(json.loads(Path(BACKEND_FILE).read_text())) if BACKEND_FILE else None
+TARGET=BACKEND['name'] if BACKEND else 'production'
 # Persistent certificate signing is required for normal updates. Never silently
 # replace a permission-bearing app with a different ad-hoc identity.
 SIGN_ID=os.environ.get('BANDSTAND_SIGN_IDENTITY','').strip()
@@ -21,6 +27,7 @@ source=ROOT/'.audit/source'
 for p in source.glob('*.py'):shutil.copy2(p,app/p.name)
 shutil.copytree(source/'web',app/'web')
 for name in ('LICENSE','README.md'):shutil.copy2(source/name,app/name)
+if BACKEND:(app/'backend.json').write_text(json.dumps(BACKEND))
 # CPython standalone runtime is relocatable. Exclude all preinstalled packages;
 # copy the declared libraries and their platform-specific dependency closure.
 base=Path(sys.base_prefix)
@@ -72,8 +79,8 @@ subprocess.run([str(resources/'python/bin/python3.12'),'-c','import numpy,PIL,re
 subprocess.run(['/usr/bin/codesign','--force','--deep','--sign',SIGN_ID,str(out)],check=True)
 subprocess.run(['/usr/bin/codesign','--verify','--deep','--strict',str(out)],check=True)
 manifest={str(p.relative_to(out)):hashlib.sha256(p.read_bytes()).hexdigest() for p in out.rglob('*') if p.is_file()}
-(ROOT/'release/bundle-manifest.json').write_text(json.dumps({'version':'0.2.2','architecture':'arm64','dependencies':versions,'files':manifest},indent=2))
-archive=ROOT/'release/Bandstand-0.2.2-macos-arm64.zip'
+(ROOT/'release/bundle-manifest.json').write_text(json.dumps({'version':'0.2.2','architecture':'arm64','backend':TARGET,'dependencies':versions,'files':manifest},indent=2))
+archive=ROOT/('release/Bandstand-0.2.2-macos-arm64.zip' if TARGET=='production' else f'release/Bandstand-0.2.2-{TARGET}-macos-arm64.zip')
 if archive.exists():archive.unlink()
 subprocess.run(['/usr/bin/ditto','-c','-k','--sequesterRsrc','--keepParent',str(out),str(archive)],check=True)
 print(archive)

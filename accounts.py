@@ -1,7 +1,9 @@
 """Supabase identity only: explicit field allowlists; tokens stay in process memory."""
 import json, os, time, threading, urllib.request, urllib.error, urllib.parse
-URL='https://ovoxgrqhdvzcjqjzgnqk.supabase.co'
-PUBLISHABLE_KEY='sb_publishable_YxUASj1-IWhc9YAo_Qf-hw_NxlqkiJf'
+import backend_config
+BACKEND=backend_config.load()
+URL=BACKEND['url']
+PUBLISHABLE_KEY=BACKEND['publishable_key']
 _lock=threading.RLock()
 _session=None
 _restore_attempted=False
@@ -76,7 +78,7 @@ def _restore():
   raise ValueError(_session_notice) from None
 
 def _status():
- return {'display_name':_session.get('display_name','') if _session else '', 'signed_in':_session is not None,'email':_session['email'] if _session else None,'remembered':bool(_session and _session.get('remembered')),'message':_session_notice if not _session else '', 'preferences':_session.get('preferences',{}) if _session else {}}
+ return {'display_name':_session.get('display_name','') if _session else '', 'signed_in':_session is not None,'email':_session['email'] if _session else None,'remembered':bool(_session and _session.get('remembered')),'message':_session_notice if not _session else '', 'preferences':_session.get('preferences',{}) if _session else {},'backend':BACKEND['name']}
 
 def account(action,body=None):
  global _session,_restore_attempted,_session_notice

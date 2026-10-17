@@ -7,7 +7,7 @@ out=ROOT/'.audit/source'
 if out.exists():shutil.rmtree(out)
 out.mkdir(parents=True,exist_ok=True)
 allowed=list(ROOT.glob('*.py'))+[ROOT/'README.md',ROOT/'.gitignore',ROOT/'Launch Muse Lab.command',ROOT/'LICENSE',ROOT/'requirements.txt',ROOT/'Muse Lab.app/Contents/Info.plist']
-for directory,extensions in [('web',{'.js','.css','.html'}),('native',{'.swift'}),('tests',{'.py','.cjs'}),('scripts',{'.py','.swift'}),('supabase',{'.sql'}),('hosting',{'.py'}),('docs',{'.html'})]:
+for directory,extensions in [('web',{'.js','.css','.html'}),('native',{'.swift'}),('tests',{'.py','.cjs'}),('scripts',{'.py','.swift'}),('supabase',{'.sql','.toml','.html'}),('hosting',{'.py'}),('docs',{'.html'})]:
  allowed.extend(p for p in (ROOT/directory).rglob('*') if p.is_file() and p.suffix in extensions)
 allowed.extend([ROOT/'web/bandstand-logo.png',ROOT/'web/favicon.png',ROOT/'assets/branding/book-waves-master.png',ROOT/'assets/demo/mind-reference.json',ROOT/'assets/demo/subject-database.json'])
 allowed.extend([ROOT/'hosting/Dockerfile',ROOT/'hosting/.dockerignore',ROOT/'docs/.nojekyll'])
@@ -18,6 +18,8 @@ for p in allowed:
 patterns=[r'/Users/[A-Za-z0-9_-]+',r'\b(?:sb_secret_|ghp_|github_pat_)[A-Za-z0-9_]+',r'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----']
 corpus='\n'.join(p.read_text() for p in out.rglob('*') if p.is_file() and p.suffix!='.png')
 findings=[{'type':'sensitive_pattern','pattern':i} for i,pat in enumerate(patterns) if re.search(pat,corpus)]
+# A local backend.json selects a non-production server; only the builder may embed one, explicitly.
+if any(p.name=='backend.json' for p in out.rglob('*')):findings.append({'type':'local_backend_config'})
 private_strings=set()
 def collect(value):
  if isinstance(value,dict):
