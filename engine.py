@@ -18,6 +18,17 @@ def clean(v):
 
 def dumps(v): return json.dumps(clean(v),allow_nan=False)
 
+
+def image_sequence(pool,n,rng):
+    """n images for one condition: every image once per shuffled pass, never the same image twice in a row
+    (also across pass boundaries), so repetition does not differ between images or conditions."""
+    out=[]
+    while len(out)<n:
+        deck=list(pool);rng.shuffle(deck)
+        if out and len(deck)>1 and deck[0] is out[-1]:deck[0],deck[1]=deck[1],deck[0]
+        out.extend(deck)
+    return out[:n]
+
 class PacketAssembler:
     def __init__(self,callback):
         self.callback=callback; self.pending={}; self.last=None; self.last_t=None; self.missing=0
@@ -236,7 +247,8 @@ class Engine:
                 if len(categories)!=2 or categories[0]==categories[1]: raise ValueError('Choose two different expertise categories')
                 pools=[[a for a in assets if a['category']==cat] for cat in categories]
                 if any(len(pool)<20 for pool in pools): raise ValueError('Import at least 20 distinct documented images per category first')
-                conditions=categories
+                # Keep the protocol's roles in every label, export and report.
+                conditions=['Faces','Cars'] if p['id']=='faces' else [f'{p["conditions"][0]}: {categories[0]}',f'{p["conditions"][1]}: {categories[1]}']
             a=np.array(list(self.raw)[-FS*2:]); times=np.array(list(self.times)[-FS*2:])
             reasons=artifacts(a,times,thresholds,[CHANNELS.index(c) for c in selected])
             if reasons and cfg.get('allow_noisy_start') is not True: raise ValueError('Improve contact before recording: '+', '.join(reasons))
@@ -245,10 +257,10 @@ class Engine:
             labels=[1]*round(count*p['probability'])+[0]*(count-round(count*p['probability'])); rng.shuffle(labels)
             if p['id']=='disclosure':labels=[seed%2,1-seed%2,1-seed%2,seed%2]
             if p['id']=='alpha':labels= [(i+seed%2)%2 for i in range(count)]
-            plan=[]
+            plan=[];decks=[image_sequence(pool,labels.count(c),rng) for c,pool in enumerate(pools)] if pools else None
             for i,c in enumerate(labels):
                 item=dict(index=i,condition_index=c,condition=conditions[c],duration=rng.randint(*p['stim_ms']),isi=rng.randint(*p['isi_ms']),direction=rng.choice(['left','right']),number=rng.randint(600,999))
-                if pools: item['asset']=pools[c][(i//2)%len(pools[c])]['file']
+                if pools: item['asset']=decks[c].pop(0)['file']
                 plan.append(item)
             session_id=time.strftime('%Y%m%d-%H%M%S')+'-'+uuid.uuid4().hex[:6]
             directory=DATA_ROOT/session_id; directory.mkdir()
