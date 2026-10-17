@@ -81,6 +81,8 @@ Installed runtime is the existing Codex Python 3.12 distribution, exposed throug
 
 `server.py` is an optional loopback web frontend on port 8765 for environments that permit a listening socket. The desktop app uses `desktop_service.py` and needs no port. `build/qa/example-report.pdf` is a synthetic pipeline-test artifact, not a human recording. The 2026-10-08 release checks passed 92 Python tests and all JavaScript regression scripts. A synthetic 100-trial benchmark covered processing and raw/processed/PDF exports. These do not validate physical stimulus timing or current Bluetooth behavior.
 
+Accounts use the production Supabase project unless a validated, git-ignored `backend.json` selects a development or staging project; there is no runtime override. A local staging stack, ordered migrations, a permission inventory and the account acceptance harness are described in `docs/milestone-1-accounts-and-consent.md`.
+
 ## Primary sources
 
 - [Krigolson et al. 2017: Choosing MUSE](https://pmc.ncbi.nlm.nih.gov/articles/PMC5344886/)
