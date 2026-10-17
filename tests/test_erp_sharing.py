@@ -27,3 +27,23 @@ class ERPSharingTests(unittest.TestCase):
   with self.assertRaises(ValueError):erp_sharing.payload('abc123')
  def test_path_traversal_rejected(self):
   with self.assertRaises(ValueError):erp_sharing.payload('../typing')
+ def test_client_still_sends_v1_until_notice_updated(self):
+  self.assertEqual(erp_sharing.SCHEMA,'bandstand-erp-v1')
+  _,result=erp_sharing.payload('abc123');self.assertEqual(set(result),{'schema','protocol','trials'})
+  self.assertEqual(set(result['trials'][0]['channels']['TP9']),{'accepted','wave'})
+ def test_v2_adds_only_allowlisted_metadata_and_categories(self):
+  self.session.update(channels=['TP9','TP10'],window=[.3,.5],trials_planned=120,end_reason='PRIVATE_TEXT stopped');self.write()
+  self.trial['channel_trials']['AF7']={'accepted':False,'wave':None,'reasons':['probable blink','signal clipping','PRIVATE_TEXT']};self.write()
+  _,result=erp_sharing.payload('abc123','bandstand-erp-v2');encoded=json.dumps(result)
+  self.assertNotIn('PRIVATE_TEXT',encoded);self.assertNotIn('onset',encoded)
+  self.assertEqual(set(result),{'schema','protocol','trials','recording'})
+  self.assertEqual(set(result['recording']),{'app_version','sample_rate_hz','units','reference','channels','preprocessing','grid','epoch_s','baseline_s','analysis_window_s','trials_planned','trials_presented','end'})
+  r=result['recording'];self.assertEqual((r['trials_planned'],r['trials_presented'],r['end'],r['channels'],r['reference']),(120,1,'interrupted',['TP9','TP10'],'FPz'))
+  self.assertEqual(result['trials'][0]['channels']['AF7']['rejection'],['blink','clipping','other'])
+  self.assertEqual(result['trials'][0]['channels']['TP9']['rejection'],['other'])
+ def test_v2_end_categories(self):
+  for reason,want in (('completed','completed'),('stopped by participant','stopped'),('signal lost','interrupted'),(None,'interrupted')):
+   self.session.update(window=[.3,.5],end_reason=reason);self.write()
+   self.assertEqual(erp_sharing.payload('abc123','bandstand-erp-v2')[1]['recording']['end'],want)
+ def test_unknown_schema_refused(self):
+  with self.assertRaises(ValueError):erp_sharing.payload('abc123','bandstand-erp-v9')

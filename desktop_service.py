@@ -81,6 +81,10 @@ def dispatch(path,body):
         return {'message':'Saved to '+str(dest),'file':str(dest)}
     raise ValueError('Unknown request')
 
+# Consented ERP uploads retry in the background; failures never affect recording.
+try:
+    from accounts import start_outbox; start_outbox()
+except ValueError as e: print('ERP sharing uploader not started:',e,file=sys.stderr,flush=True)
 try:
     for line in sys.stdin:
         try:

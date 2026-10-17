@@ -58,7 +58,7 @@ function journeyTick(){
  const runButton=document.querySelector('[data-step="run"]');runButton.disabled=!chosenActivityTitle;runButton.textContent=running?'4 Recording ●':'4 Run';
  drawHeadsetMaps();
  const connection=$('connectMuse');if(state&&!state.stale){connection.textContent=state.source==='simulation'?'◉ Demo':'● Streaming';connection.title='Device connected, streaming'}
- if(protocol){const key=protocol.id+'/'+$('trialCount').value;if(key!==journeyLastBrief){journeyLastBrief=key;$('briefTitle').textContent=protocol.title;$('briefTask').textContent='Task: '+participantInstruction(protocol.id);const duration=(Number($('trialCount').value)||protocol.trials)*((protocol.stim_ms[0]+protocol.stim_ms[1]+protocol.isi_ms[0]+protocol.isi_ms[1])/2)/60000+(protocol.mode==='erp'?Math.floor(((Number($('trialCount').value)||protocol.trials)-1)/40)/6:0)+2/60;$('briefDuration').textContent='Time: about '+Math.max(1,Math.ceil(duration))+' minutes'+(protocol.mode==='erp'?' · ERP':' · Spectral power')}}
+ if(protocol){const key=protocol.id+'/'+$('trialCount').value;if(key!==journeyLastBrief){journeyLastBrief=key;$('briefTitle').textContent=protocol.title;$('briefTask').textContent='Task: '+participantInstruction(protocol.id);const duration=(Number($('trialCount').value)||protocol.trials)*((protocol.stim_ms[0]+protocol.stim_ms[1]+protocol.isi_ms[0]+protocol.isi_ms[1])/2)/60000+(protocol.mode==='erp'?Math.floor(((Number($('trialCount').value)||protocol.trials)-1)/40)/6:0)+2/60;$('briefDuration').textContent='Time: about '+Math.max(1,Math.ceil(duration))+(Math.max(1,Math.ceil(duration))===1?' minute':' minutes')+(protocol.mode==='erp'?' · ERP':' · Spectral power')}}
 }
 async function journeyCapture(path,body){
 

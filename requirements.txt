@@ -4,3 +4,4 @@ reportlab>=4,<5
 torch>=2.6,<3
 transformers>=4.57,<5
 packaging>=24
+cryptography>=43,<47
