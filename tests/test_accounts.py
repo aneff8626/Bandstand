@@ -102,3 +102,18 @@ class AccountsTests(unittest.TestCase):
   with patch.object(accounts,'_request',return_value={}) as request:
    accounts.account('signup',{'email':'test@example.org','password':'synthetic-password','acknowledged':True,'policy_version':POLICY_VERSION})
    self.assertEqual(request.call_args.args[0],'/auth/v1/signup')
+ def _auth_error(self,status,body):
+  import io,urllib.error
+  error=urllib.error.HTTPError(accounts.URL,status,'synthetic',{},io.BytesIO(body));self.addCleanup(error.close)
+  opener=type('Opener',(),{'open':lambda self,*a,**k:(_ for _ in ()).throw(error)})()
+  with patch('urllib.request.build_opener',return_value=opener),self.assertRaises(accounts.AccountError) as caught:
+   accounts._request('/auth/v1/signup',{'email':'test@example.org','password':'synthetic-password'})
+  return caught.exception
+ def test_known_auth_error_codes_get_fixed_wording_without_remote_text(self):
+  e=self._auth_error(422,b'{"error_code":"user_already_exists","msg":"REMOTE_TEXT synthetic-password"}')
+  self.assertEqual(str(e),accounts.AUTH_MESSAGES['user_already_exists']);self.assertEqual(e.status,422)
+  self.assertNotIn('REMOTE_TEXT',str(e))
+ def test_unknown_or_unparseable_auth_errors_stay_generic(self):
+  for body in (b'{"error_code":"REMOTE_TEXT","msg":"REMOTE_TEXT"}',b'not json REMOTE_TEXT',b'["REMOTE_TEXT"]'):
+   e=self._auth_error(400,body)
+   self.assertEqual(str(e),'Account request failed. Check your details and email confirmation.');self.assertNotIn('REMOTE_TEXT',str(e))

@@ -13,6 +13,19 @@ ERP_SHARING_AVAILABLE=True
 class AccountError(ValueError):
  def __init__(self,message,status=0):super().__init__(message);self.status=status
 
+# Fixed wording for Supabase Auth error codes. Remote messages are never shown. Auth already reveals an
+# existing account to any direct caller (user_already_exists), so saying so here exposes nothing new.
+AUTH_MESSAGES={'invalid_credentials':'Email or password is incorrect.',
+ 'email_not_confirmed':'Confirm your email with the code we sent before signing in.',
+ 'user_already_exists':'This email already has an account. Sign in, or use Forgot password? to reset it.',
+ 'email_exists':'This email already has an account. Sign in, or use Forgot password? to reset it.',
+ 'weak_password':'Choose a stronger password.',
+ 'same_password':'Choose a password different from your current one.',
+ 'otp_expired':'This code is wrong, expired or already used. Request a new email.',
+ 'email_address_invalid':'Enter a valid email address.',
+ 'email_address_not_authorized':'The account server cannot email this address yet. Its participant email delivery is not configured.',
+ 'signup_disabled':'New accounts are not being accepted right now.'}
+
 class NoRedirect(urllib.request.HTTPRedirectHandler):
  def redirect_request(self,*args,**kwargs):return None
 
@@ -31,6 +44,10 @@ def _request(path,body=None,token=None,method=None):
   # Never echo remote payloads, passwords or tokens into logs/UI.
   if e.code==429:raise AccountError('Too many attempts. Please wait before trying again.',429) from None
   if e.code>=500:raise ValueError('The account server failed to complete this request. For signup or recovery, the administrator should check the email delivery configuration. No email delivery is confirmed.') from None
+  # Only the machine-readable error code is read, and only allowlisted codes change the wording.
+  try:code=json.loads(e.read(65536)).get('error_code')
+  except (OSError,ValueError,AttributeError):code=None
+  if code in AUTH_MESSAGES:raise AccountError(AUTH_MESSAGES[code],e.code) from None
   raise AccountError('Account request failed. Check your details and email confirmation.',e.code) from None
  except (OSError,ValueError):raise ValueError('Account service unavailable. Local recording remains available.') from None
 
