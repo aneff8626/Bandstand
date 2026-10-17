@@ -35,6 +35,16 @@ class AccountsTests(unittest.TestCase):
    accounts.account('delete',{'confirmation':'DELETE','user_id':'someone-else'})
    request.assert_called_once_with('/rest/v1/rpc/bandstand_delete_own_account',{},'dummy')
    self.assertIsNone(accounts._session)
+ def test_resend_only_sends_email_and_signup_type(self):
+  with patch.object(accounts,'_request',return_value={}) as request:
+   result=accounts.account('resend',{'email':' test@example.org ','password':'synthetic-password','redirect_to':'https://evil.example','type':'recovery'})
+   request.assert_called_once_with('/auth/v1/resend',{'type':'signup','email':'test@example.org'})
+   self.assertIn('If this address',result['message']);self.assertNotIn('synthetic',str(result))
+ def test_resend_rejects_invalid_email_without_network(self):
+  with patch.object(accounts,'_request') as request:
+   for email in ('','not-an-email','a@'+'x'*260):
+    with self.assertRaises(ValueError):accounts.account('resend',{'email':email})
+   request.assert_not_called()
  def test_recovery_only_sends_email(self):
   with patch.object(accounts,'_request',return_value={}) as request:
    result=accounts.account('recover',{'email':'test@example.org','redirect_to':'https://evil.example','text':'private'})

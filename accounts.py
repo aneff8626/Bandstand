@@ -15,7 +15,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
  def redirect_request(self,*args,**kwargs):return None
 
 def _request(path,body=None,token=None,method=None):
- if path not in ('/auth/v1/token?grant_type=refresh_token','/rest/v1/rpc/bandstand_sharing_status','/rest/v1/rpc/bandstand_list_erp','/rest/v1/rpc/bandstand_set_erp_consent','/rest/v1/rpc/bandstand_upload_erp','/rest/v1/rpc/bandstand_delete_erp','/auth/v1/signup','/auth/v1/recover','/auth/v1/verify','/auth/v1/token?grant_type=password','/auth/v1/logout','/auth/v1/user','/rest/v1/rpc/bandstand_delete_own_account'):
+ if path not in ('/auth/v1/token?grant_type=refresh_token','/rest/v1/rpc/bandstand_sharing_status','/rest/v1/rpc/bandstand_list_erp','/rest/v1/rpc/bandstand_set_erp_consent','/rest/v1/rpc/bandstand_upload_erp','/rest/v1/rpc/bandstand_delete_erp','/auth/v1/signup','/auth/v1/resend','/auth/v1/recover','/auth/v1/verify','/auth/v1/token?grant_type=password','/auth/v1/logout','/auth/v1/user','/rest/v1/rpc/bandstand_delete_own_account'):
   raise ValueError('Account endpoint not allowed')
  if method is not None and (path!='/auth/v1/user' or method!='PUT'):
   raise ValueError('Account method not allowed')
@@ -125,6 +125,12 @@ def account(action,body=None):
    _request('/auth/v1/user',{'data':{'bandstand_preferences':preferences}},_session['token'],method='PUT')
    _session['preferences']=preferences
    return {'saved':True,'message':'Data sharing settings saved.'}
+  if action=='resend':
+   # Only the address is sent. The answer is the same whether or not the address has an unconfirmed account.
+   email=str(body.get('email','')).strip()
+   if '@' not in email or len(email)>254:raise ValueError('Enter your account email address.')
+   _request('/auth/v1/resend',{'type':'signup','email':email})
+   return {'message':'If this address has an unconfirmed account, a new code will arrive within a few minutes. Check spam, junk and Promotions too.'}
   if action=='recover':
    email=str(body.get('email','')).strip()
    if '@' not in email or len(email)>254:raise ValueError('Enter your account email address.')
