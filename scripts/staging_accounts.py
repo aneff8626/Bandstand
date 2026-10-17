@@ -143,14 +143,14 @@ def mint(sub,exp,secret_key):
 
 def main():
  parser=argparse.ArgumentParser();parser.add_argument('--mail',choices=('mailpit','prompt'),default='mailpit')
- for k in 'abcd':parser.add_argument('--email-'+k)
+ for k in 'abcde':parser.add_argument('--email-'+k)
  args=parser.parse_args()
  if args.mail=='mailpit' and not LOCAL:sys.exit('Mailpit capture exists only on the local stack; use --mail prompt for a cloud project.')
  mail=Mailpit() if args.mail=='mailpit' else Prompt()
  run=time.strftime('%Y%m%d-%H%M%S')+'-'+secrets.token_hex(2)
- email={k:(getattr(args,'email_'+k) or f'bandstand-{k}-{run}@example.test') for k in 'abcd'}
+ email={k:(getattr(args,'email_'+k) or f'bandstand-{k}-{run}@example.test') for k in 'abcde'}
  if not LOCAL and not all(getattr(args,'email_'+k) for k in 'abc'):sys.exit('A cloud run needs --email-a, --email-b and --email-c inboxes you can read.')
- pw={k:secret('Synthetic-'+secrets.token_urlsafe(15)) for k in ('a','a2','b','c','d')}
+ pw={k:secret('Synthetic-'+secrets.token_urlsafe(15)) for k in ('a','a2','b','c','d','e')}
  state={}
  print(f'Backend: {B["name"]} {B["url"]}  run {run}',flush=True)
  try:session_vault.clear()
@@ -372,6 +372,17 @@ def main():
   try:e=app_error('signup',{'email':email['d'],'password':pw['d'],'policy_version':POLICY_VERSION,'acknowledged':True})
   finally:subprocess.run([DOCKER,'start',container],capture_output=True,check=True,timeout=60)
   expect('No email delivery is confirmed' in str(e),str(e));return str(e)
+ @check('E04','email','A failed confirmation send leaves no account behind, so Resend has nothing to send (documents behavior)',local_only=True)
+ def _():
+  n=db(f"select count(*) from auth.users where lower(email)=lower({quote(email['d'])})");expect(n=='0',f'{n} rows')
+  return 'observed',"Auth rolled the signup back when the email could not be sent: 0 user rows. The person must sign up again once email works; Resend answers OK but sends nothing."
+ @check('E05','email','Resend delivers a fresh code for an unconfirmed account whose first email was lost, and the code confirms it',local_only=True)
+ def _():
+  app('signup',{'email':email['e'],'password':pw['e'],'policy_version':POLICY_VERSION,'acknowledged':True});mail.code(email['e'],'confirmation')  # first code "lost": read and discarded
+  time.sleep(6);r=app('resend',{'email':email['e']});expect(r['message'].startswith('If this address has an unconfirmed account'),r)
+  u=app('resend',{'email':f'nobody-{run}@example.test'});expect(u['message']==r['message'],'resend answer differs for an unknown address')
+  code=mail.code(email['e'],'confirmation')['code'];c=app('confirm',{'email':email['e'],'code':code});expect('Email confirmed' in c['message'],c)
+  return 'same answer for an unknown address; the resent code confirmed the account'
 
  # Network faults.
  @check('N01','network','Unreachable account server: clear message, local recording unaffected')
