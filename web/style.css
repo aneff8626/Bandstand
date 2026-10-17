@@ -380,3 +380,4 @@ body[data-journey-step=setup]:not(.typing-view):not(.personal-view) #experimentP
 @media(max-width:900px){#journeyAreas button{font-size:12px}}
 
 .personal-answers button[aria-pressed=true]:disabled{opacity:1;background:#254c70;color:#fff;border-color:#254c70}
+#journeyAccount #accountNav.avatar,#accountNav.avatar{width:36px;height:36px;padding:0!important;border-radius:50%;display:inline-grid;place-items:center;flex:none;font-size:13px!important;font-weight:650;letter-spacing:.04em;line-height:1;background:var(--teal)!important;border:1px solid var(--teal)!important;color:var(--white)!important}

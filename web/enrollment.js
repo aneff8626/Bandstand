@@ -23,7 +23,9 @@ async function initEnrollment(){
  let identity={signed_in:false},settings=await api('enrollment'),verificationEmail='',resendReady=0;
  function open(d){if(!d.open)d.showModal()}
  function switchTo(from,to){from.close();open(to)}
- function updateAccountName(){el('accountNav').textContent=identity.signed_in?(identity.display_name?identity.display_name+'’s account':'Your account'):'Account';el('profileName').value=identity.display_name||''}
+ // Signed in: a circle with initials (first and last name, else the email's first letter); the full name stays as tooltip and accessible label.
+ function initials(){const words=(identity.display_name||'').trim().split(/\s+/).filter(Boolean),parts=words.length>1?[words[0],words.at(-1)]:words.length?words:[identity.email||''];return parts.map(w=>Array.from(w)[0]||'').join('').toLocaleUpperCase()||'?'}
+ function updateAccountName(){const nav=el('accountNav'),name=identity.signed_in?(identity.display_name?identity.display_name+'’s account':'Your account'):'Account';nav.textContent=identity.signed_in?initials():'Account';nav.classList.toggle('avatar',!!identity.signed_in);nav.title=name;nav.setAttribute('aria-label',name);el('profileName').value=identity.display_name||''}
  async function refreshIdentity(){identity=await api('account/status');updateAccountName();el('accountIdentity').textContent=identity.email||'';el('rememberedStatus').textContent=identity.remembered?'Sign-in remembered in macOS Keychain.':'Sign-in lasts for this app session.';el('accountMessage').textContent=identity.message||'';return identity}
  async function run(form,status,work){if(form.dataset.busy)return;form.dataset.busy='1';const buttons=[...form.querySelectorAll('button')];const disabled=buttons.map(b=>b.disabled);buttons.forEach(b=>b.disabled=true);el(status).textContent='Working…';try{await work()}catch(e){el(status).textContent=e.message}finally{delete form.dataset.busy;buttons.forEach((b,i)=>b.disabled=disabled[i])}}
  const onForm=(id,status,work)=>{el(id).onsubmit=e=>{e.preventDefault();run(el(id),status,work)}};

@@ -1,0 +1,4 @@
+const fs=require('fs'),assert=require('assert');const src=fs.readFileSync(__dirname+'/../web/enrollment.js','utf8');const body=src.match(/function initials\(\)\{[\s\S]*?\|\|'\?'\}/)[0];
+let identity;const initials=new Function('get',`return ()=>{const identity=get();return (${body.replace('function initials()','function()')})()}`)(()=>identity);
+for(const [id,want] of [[{display_name:'Synthetic Tester'},'ST'],[{display_name:'Madonna'},'M'],[{display_name:'  ana  maría  lópez '},'AL'],[{display_name:'élodie durand'},'ÉD'],[{display_name:'',email:'jane@example.org'},'J'],[{display_name:'李 小龙'},'李小'],[{display_name:'😀 Smile'},'😀S'],[{display_name:'',email:''},'?']]){identity=id;assert.equal(initials(),want,JSON.stringify(id))}
+console.log('Account initials: first and last name, single names, extra spaces, accents, CJK, emoji and email fallback passed');
