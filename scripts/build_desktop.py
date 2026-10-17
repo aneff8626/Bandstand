@@ -41,7 +41,7 @@ for link in (resources/'python').rglob('*'):
   link.unlink();link.symlink_to(sibling.name)
 site=resources/'python/lib/python3.12/site-packages';site.mkdir(parents=True,exist_ok=True)
 versions={}
-pending=['numpy','pillow','reportlab','torch','transformers']
+pending=['numpy','pillow','reportlab','torch','transformers','cryptography']
 while pending:
  name=canonicalize_name(pending.pop())
  if name in versions:continue
