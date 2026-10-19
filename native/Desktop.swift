@@ -43,10 +43,10 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
         config.userContentController.addUserScript(WKUserScript(source:script,injectionTime:.atDocumentStart,forMainFrameOnly:true))
         web=MuseWebView(frame:.zero,configuration:config);web.navigationDelegate=self;web.uiDelegate=self
         window=NSWindow(contentRect:NSRect(x:0,y:0,width:1450,height:960),styleMask:[.titled,.closable,.miniaturizable,.resizable],backing:.buffered,defer:false)
-        window.title="Bandstand";window.contentView=web;window.center();window.makeKeyAndOrderFront(nil)
+        window.title=CommandLine.arguments.contains("--development-source") ? "Bandstand · Development" : "Bandstand";window.contentView=web;window.center();window.makeKeyAndOrderFront(nil)
         let mainMenu=NSMenu();let appItem=NSMenuItem();mainMenu.addItem(appItem);let appMenu=NSMenu();appMenu.addItem(withTitle:"Quit Bandstand",action:#selector(NSApplication.terminate(_:)),keyEquivalent:"q");appItem.submenu=appMenu
         let editItem=NSMenuItem();mainMenu.addItem(editItem);let edit=NSMenu(title:"Edit");edit.addItem(withTitle:"Copy",action:#selector(NSText.copy(_:)),keyEquivalent:"c");edit.addItem(withTitle:"Paste",action:#selector(NSText.paste(_:)),keyEquivalent:"v");edit.addItem(withTitle:"Select All",action:#selector(NSText.selectAll(_:)),keyEquivalent:"a");editItem.submenu=edit;NSApp.mainMenu=mainMenu
-        process=Process();let bundledPython=root.deletingLastPathComponent().appendingPathComponent("python/bin/python3.12")
+        process=Process();let bundledPython=Bundle.main.bundleURL.appendingPathComponent("Contents/Resources/python/bin/python3.12")
         process.executableURL=FileManager.default.isExecutableFile(atPath:bundledPython.path) ? bundledPython : root.appendingPathComponent(".venv/bin/python");process.arguments=[root.appendingPathComponent("desktop_service.py").path];process.currentDirectoryURL=root
         var environment=ProcessInfo.processInfo.environment; environment["MUSE_NATIVE_BLUETOOTH"]="1"; process.environment=environment
         input=Pipe();output=Pipe();process.standardInput=input;process.standardOutput=output
@@ -116,7 +116,26 @@ struct MuseMain {
 let executable=URL(fileURLWithPath:CommandLine.arguments[0]).resolvingSymlinksInPath()
 let bundledRoot=Bundle.main.bundleURL.appendingPathComponent("Contents/Resources/app")
 let sourceRoot=CommandLine.arguments.count>1 ? URL(fileURLWithPath:CommandLine.arguments[1]) : executable.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-let root=FileManager.default.fileExists(atPath:bundledRoot.appendingPathComponent("desktop_service.py").path) ? bundledRoot : sourceRoot
+var root=FileManager.default.fileExists(atPath:bundledRoot.appendingPathComponent("desktop_service.py").path) ? bundledRoot : sourceRoot
+// Explicit local development launch; ordinary launches always use the signed resources.
+if let index=CommandLine.arguments.firstIndex(of:"--development-source"), index+1<CommandLine.arguments.count {
+ let candidate=URL(fileURLWithPath:CommandLine.arguments[index+1]).standardizedFileURL.resolvingSymlinksInPath()
+ let required=["desktop_service.py","web/index.html","backend.json"]
+ guard required.allSatisfy({FileManager.default.fileExists(atPath:candidate.appendingPathComponent($0).path)}) else {
+  fputs("Development source needs desktop_service.py, web/index.html and a non-production backend.json.\n",stderr);exit(2)
+ }
+ // Validate before executing checkout code. Production credentials/data must not be inherited.
+ guard let bytes=try? Data(contentsOf:candidate.appendingPathComponent("backend.json")),
+       let config=(try? JSONSerialization.jsonObject(with:bytes)) as? [String:Any],
+       ["development","staging"].contains(config["name"] as? String ?? ""),
+       let endpoint=config["url"] as? String,
+       !endpoint.contains("ovoxgrqhdvzcjqjzgnqk") else {
+  fputs("Development source must explicitly select a non-production backend.\n",stderr);exit(2)
+ }
+ root=candidate
+ let isolated=NSHomeDirectory()+"/Library/Application Support/Bandstand Development/data"
+ setenv("BANDSTAND_DATA_DIR",isolated,1)
+}
 let app=NSApplication.shared
 app.setActivationPolicy(.regular)
 let delegate=App(root:root);app.delegate=delegate;app.run()

@@ -73,11 +73,15 @@ def _check_delta(delta,clip_norm):
 def _child(root,manifest,mean,scale,weights,out):
  import os
  from cumulative_semantic import connect
- os.nice(10)  # training yields to acquisition and the UI
- db=connect(root)
- try:out.put(('ok',contribution(local_round_update(db,manifest,mean,scale,weights,consent=True),float(manifest.get('clip_norm',1.)))))
- except Exception as e:out.put(('error',f'{type(e).__name__}: {e}'[:300]))
- finally:db.close()
+ try:os.nice(10)  # best effort; restricted environments may refuse priority changes
+ except OSError:pass
+ db=None
+ try:
+  db=connect(root)
+  out.put(('ok',contribution(local_round_update(db,manifest,mean,scale,weights,consent=True),float(manifest.get('clip_norm',1.)))))
+ except Exception as e:out.put(('error',type(e).__name__))  # no private paths/text in worker errors
+ finally:
+  if db is not None:db.close()
 
 def train_isolated(root,manifest,model,*,consent=False,timeout=600):
  """Compute one contribution in a separate low-priority process with a time limit, so a slow or failing
