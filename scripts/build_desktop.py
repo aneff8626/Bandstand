@@ -81,10 +81,11 @@ shutil.copy2(icon,resources/'MuseLab.icns')
 mac=out/'Contents/MacOS';mac.mkdir()
 subprocess.run(['/usr/bin/swiftc','-module-cache-path',str(ROOT/'build/module-cache'),str(ROOT/'native/Desktop.swift'),str(ROOT/'native/MuseTransport.swift'),str(ROOT/'native/TypingMonitor.swift'),'-o',str(mac/'MuseLab'),'-framework','AppKit','-framework','WebKit','-framework','CoreBluetooth','-framework','ApplicationServices','-framework','Carbon'],check=True)
 # Use the same certificate and bundle identifier for every update.
-subprocess.run(['/usr/bin/codesign','--force','--deep','--sign',SIGN_ID,str(out)],check=True)
+from sign_app import sign
+sign(out)
 subprocess.run([str(resources/'python/bin/python3.12'),'-c','import numpy,PIL,reportlab,ssl; from semantic_decoder import encode; assert encode(["Synthetic packaging test"]).shape == (1,384); print("Bundled runtime and offline encoder passed")'],check=True,cwd=app)
 # Runtime verification can create bytecode caches; seal the final tested bundle.
-subprocess.run(['/usr/bin/codesign','--force','--deep','--sign',SIGN_ID,str(out)],check=True)
+sign(out)
 subprocess.run(['/usr/bin/codesign','--verify','--deep','--strict',str(out)],check=True)
 manifest={str(p.relative_to(out)):hashlib.sha256(p.read_bytes()).hexdigest() for p in out.rglob('*') if p.is_file()}
 (ROOT/'release/bundle-manifest.json').write_text(json.dumps({'version':VERSION,'architecture':'arm64','backend':TARGET,'dependencies':versions,'files':manifest},indent=2))
