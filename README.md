@@ -1,8 +1,24 @@
 # Bandstand
 
+## Download the desktop app
+
+**[Download Bandstand for macOS — Apple Silicon](https://github.com/aneff8626/Bandstand/releases/download/v0.3.0-alpha.2/Bandstand-0.3.0-build6-macos-arm64.zip)**
+
+Requires macOS 14 or later and an Apple Silicon Mac (M1 or newer).
+
+1. Download and unzip the file.
+2. Drag **Bandstand.app** into **Applications**.
+3. Open **Bandstand** from Applications. Sign in or continue locally, then allow Bluetooth when requested. Across-app writing capture additionally needs Accessibility and Input Monitoring.
+
+No Python, terminal, coding agent, or browser preview is needed. Use the download above, not GitHub's **Code → Download ZIP**, which contains source code.
+
+This is an early development release, signed with Developer ID and notarized by Apple. It packages Andrew's local app source as of October 19, including inline Advanced controls. A clean-Mac installation and headset test remain to be confirmed. The matching audited source snapshot is attached to the release; the contributor integration branch also contains changes that are not part of this local-source snapshot.
+
+---
+
 A local macOS desktop app for Muse 2 EEG experiments and exploratory writing-to-EEG semantic retrieval. The self-contained development build is **Bandstand.app** (Apple Silicon, macOS 14+). Unzip the release and open it. The source checkout also supports **Muse Lab.app** and **Launch Muse Lab.command**. Participant data are stored separately.
 
-Version 0.2.2 is signed with Developer ID Application. Apple notarization is not yet completed. A clean-machine installation and headset check remain necessary before a participant release.
+
 
 ## Current readiness
 
