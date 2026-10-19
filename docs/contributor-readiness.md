@@ -79,3 +79,11 @@ Production dashboard reachable. User list showed two accounts, including Nideesh
 - Production consent, ERP and model-release tables have RLS enabled and no direct anon/authenticated SELECT grants. Full RPC/migration acceptance remains separate.
 - GitHub collaborator management requires owner reauthentication; no invitation has been sent yet.
 - Contributor native code compiles; release signing reached the existing Developer ID key and is awaiting macOS key access. Installed app was not replaced.
+
+## Verified later in this run
+
+- Ordinary production signup **passed** for the reserved assistant address: signup through `accounts.account`, real Gmail confirmation received, code verification, password sign-in and sign-out. Only the public client key was used; no admin API, manual confirmation, invitation, allowlist or account privilege changes. The password was generated in process memory and not retained. This tests the real app backend functions, not an entire click-through on a new Mac.
+- UI checks **passed**: fresh isolated preview opens Sign in; confirmation → Back to create account works; privacy reading enables the required checkbox; close returns to the headset view with Setup/Run locked until an activity is selected.
+- Native desktop build **opens Sign in** with its bundled runtime. Offline embedding smoke test and strict signature verification passed.
+- Gatekeeper **FAILED**: `Unnotarized Developer ID`. The archive is a signed development artifact, not yet a clean-install participant release. Do not instruct contributors to bypass Gatekeeper as a substitute for fixing distribution.
+- Final ordinary-email test did not change mailbox settings, save its password, grant privileges or send a message to Nideesh.
