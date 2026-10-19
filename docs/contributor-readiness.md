@@ -87,3 +87,33 @@ Production dashboard reachable. User list showed two accounts, including Nideesh
 - Native desktop build **opens Sign in** with its bundled runtime. Offline embedding smoke test and strict signature verification passed.
 - Gatekeeper **FAILED**: `Unnotarized Developer ID`. The archive is a signed development artifact, not yet a clean-install participant release. Do not instruct contributors to bypass Gatekeeper as a substitute for fixing distribution.
 - Final ordinary-email test did not change mailbox settings, save its password, grant privileges or send a message to Nideesh.
+
+## Current handoff checkpoint — 2026-10-19, results browser update
+
+This checkpoint supersedes earlier notarization and test-count statements above.
+
+- PR #1 head `4c15508` is already an ancestor of the local `codex/contributor-readiness` branch. The new UI work is still uncommitted/unpublished pending Andrew's next release instruction. Preserve the integration checkout; do not overwrite it with the older development tree.
+- All 24 automated check groups pass: Python discovery plus 23 JavaScript suites. Seven new local-session tests cover confirmation, active-session refusal, path/link refusal, per-channel acceptance counts and deletion isolation. The older plotting tests now isolate their target functions rather than executing unrelated browser handlers.
+- In-app browser checks with disposable synthetic sessions passed: personal and ERP results open directly, Back restores filters, Browse individual sessions restores the list, starring survives return, cancel preserves data, confirmed deletion returns to the browser and removes only the selected fixture. No participant recording was deleted. A physical mouse and real Muse were not retested in this pass.
+- Source-only publication audit: 163 files, 483 private strings compared, no unexplained matches or secret/path findings. 107 exact matches were published questionnaire prompts also saved in local questionnaire records; the audit reports these separately. This does not audit arbitrary Git history or the final binary.
+- Apple submission `35e64479-3248-42e7-b31f-1e605b9a534d` is **Accepted**, verified directly with notarytool. It covers build 5, not these later edits.
+- Status response posted on PR #1: https://github.com/aneff8626/Bandstand/pull/1#issuecomment-6273247491 . No merge, push or release publication was performed.
+
+### Before publishing the final contributor build
+
+1. Finish Andrew's remaining UI edits; rerun the automated suites and source audit against that exact candidate.
+2. Inspect and stage only the intended source/test/documentation files, including the new `session_store.py`, `enneagram_items.py` and regression tests. Keep all participant archives, local settings, keys, logs and generated bundles out of Git.
+3. Commit/push the integration branch when Andrew says to publish. Resolve PR #1 using its already-integrated ancestry; do not reapply or squash away its fixes accidentally.
+4. Package the final source with the stable signing identity, notarize that exact artifact, staple, verify Gatekeeper, and attach a versioned download. Test an install/reopen/update on a separate Mac. Recheck Bluetooth, typing capture and physical mouse Back.
+5. Confirm Nideesh's repository invitation/access; prior owner reauthentication blocked the invitation. Fork/PR contribution is already demonstrated, direct write access is not verified.
+6. Complete live staging two-account isolation/consent/withdrawal/deletion tests and a production ERP delivery smoke test before claiming that shared ERP service is fully accepted. The 31 local migration checks and prior ordinary production signup test are useful but narrower evidence.
+
+**No scientific or protocol decision is required to share this as a developer preview.** It is not a fully accepted participant release yet. Synthetic personality comparisons remain explicitly labeled. Shared decoder aggregation remains disabled by Andrew's instruction; 20 confirmed non-test users triggers reconsideration, not automatic activation. Local session deletion leaves existing shared ERP copies and external exports intact, which the confirmation states explicitly.
+
+## Published-source checkpoint — October 19, custom feedback
+
+Andrew authorized a source push after final interface checks. This update includes the earlier unpublished results/personality work, PR #1 integration, exclusive session/browser navigation, local deletion confirmation and synthetic comparison plots.
+
+Custom feedback now accepts a continuous 1–40 Hz range, with direct numeric limits and graph dragging. The selected limits are saved; power is integrated over interpolated PSD edges and used for baseline, live feedback and training scores. Fine selector precision does not increase the spectral resolution of the underlying two-second EEG clips. Selected electrodes have green rings; excluded electrodes have dashed neutral rings. Wide screens use a two-column customizer. Combined Results retains a prominent provisional banner and is not presented as a finished group-analysis feature.
+
+Verification: all 24 automated check groups pass, including fractional-edge integration and invalid-range rejection. In the isolated browser, 8.15–12.35 Hz with TP9 excluded started, produced live feedback using the remaining channels, and saved 21 clips with custom-band power. The final dialog and results banner were visually inspected. Hardware, live production ERP delivery, and a newly packaged binary were not verified in this pass. The GitHub push is source code; build 5 notarization does not cover these newer edits.

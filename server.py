@@ -34,10 +34,8 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/api/bootstrap': return self.send(200,dumps({'token':TOKEN,**engine.catalog()}))
             if path=='/api/state': return self.send(200,dumps(engine.snapshot()))
             if path=='/api/sessions':
-                sessions=[]
-                for p in sorted((DATA_ROOT).glob('*/session.json'),reverse=True):
-                    s=json.loads(p.read_text()); sessions.append({k:s.get(k) for k in ['id','title','source','started','ended','running','mode','protocol']})
-                return self.send(200,dumps(sessions))
+                from session_store import saved_sessions
+                return self.send(200,dumps(saved_sessions(DATA_ROOT)))
             if path.startswith('/api/tf-band/'):
                 parts=path.split('/');return self.send(200,dumps(engine.result_band(parts[3],parts[4],parts[5])))
             if path.startswith('/api/results/'):
@@ -94,6 +92,9 @@ class Handler(BaseHTTPRequestHandler):
                 result=enrollment(body if body else None)
             elif path in ('/api/bluetooth_connect','/api/bluetooth_disconnect'):
                 result=engine.bluetooth_connection(path.endswith('bluetooth_connect'))
+            elif path=='/api/sessions/delete':
+                from session_store import delete_session
+                result=delete_session(engine,body,DATA_ROOT)
             elif path=='/api/source': engine.switch_source(body['source']); result={'ok':True}
             elif path.startswith('/api/typing/'):result=engine.typing_request(path[5:],body)
             elif path=='/api/start': result=engine.begin(body)

@@ -1,4 +1,4 @@
-const fs=require('fs'),vm=require('vm'),assert=require('assert');const source=fs.readFileSync('web/journey.js','utf8');const c={performance:{now:()=>0},$:()=>({getAttribute:()=> 'false'}),boot:{channels:['TP9']},hiddenTraceChannels:new Set()};vm.createContext(c);vm.runInContext(source.slice(source.indexOf('const fixedSpectrumAxes=')),c);
+const fs=require('fs'),vm=require('vm'),assert=require('assert');const source=fs.readFileSync('web/journey.js','utf8');const c={performance:{now:()=>0},$:()=>({getAttribute:()=> 'false'}),boot:{channels:['TP9']},hiddenTraceChannels:new Set()};vm.createContext(c);vm.runInContext(source.slice(source.indexOf('const fixedSpectrumAxes='),source.indexOf('// Browser history')),c);
 const data=v=>({channels:[{psd:[v],bands:[v]},null]});
 assert.equal(c.smoothSpectrum(data(0),'8',0).channels[0].psd[0],0);
 const target=data(10),out=c.smoothSpectrum(target,'8',500);assert(Math.abs(out.channels[0].psd[0]-6.3212)<.001);assert.equal(target.channels[0].psd[0],10);assert.equal(out.channels[1],null);

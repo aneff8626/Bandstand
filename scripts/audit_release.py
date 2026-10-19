@@ -7,7 +7,7 @@ out=ROOT/'.audit/source'
 if out.exists():shutil.rmtree(out)
 out.mkdir(parents=True,exist_ok=True)
 allowed=list(ROOT.glob('*.py'))+[ROOT/'README.md',ROOT/'.gitignore',ROOT/'Launch Muse Lab.command',ROOT/'LICENSE',ROOT/'requirements.txt',ROOT/'Muse Lab.app/Contents/Info.plist']
-for directory,extensions in [('web',{'.js','.css','.html'}),('native',{'.swift'}),('tests',{'.py','.cjs'}),('scripts',{'.py','.swift'}),('supabase',{'.sql','.toml','.html'}),('hosting',{'.py'}),('federation',{'.py','.txt'}),('docs',{'.html','.md'})]:
+for directory,extensions in [('web',{'.js','.css','.html'}),('native',{'.swift'}),('tests',{'.py','.cjs'}),('scripts',{'.py','.swift','.mjs'}),('supabase',{'.sql','.toml','.html'}),('hosting',{'.py'}),('federation',{'.py','.txt'}),('docs',{'.html','.md'})]:
  allowed.extend(p for p in (ROOT/directory).rglob('*') if p.is_file() and p.suffix in extensions)
 allowed.extend([ROOT/'web/bandstand-logo.png',ROOT/'web/favicon.png',ROOT/'assets/branding/book-waves-master.png',ROOT/'assets/demo/mind-reference.json',ROOT/'assets/demo/subject-database.json'])
 allowed.extend([ROOT/'hosting/Dockerfile',ROOT/'hosting/.dockerignore',ROOT/'docs/.nojekyll'])
@@ -42,9 +42,15 @@ for p in DATA_ROOT.rglob('*'):
      try:collect(json.loads(line))
      except ValueError:pass
   except (ValueError,UnicodeError):pass
-hits=sum(s in corpus for s in private_strings)
+# Saved questionnaires repeat the application's published prompts. Classify exact
+# prompt matches separately; never exempt answers, free writing or arbitrary text.
+from personal import questionnaire
+public_prompts={item['text'].strip() for kind in ('big5','enneagram') for item in questionnaire(kind)}
+matched={value for value in private_strings if value in corpus}
+expected_prompt_matches=matched & public_prompts
+hits=len(matched-public_prompts)
 if hits:findings.append({'type':'private_string_matches','count':hits})
 manifest={str(p.relative_to(out)):hashlib.sha256(p.read_bytes()).hexdigest() for p in out.rglob('*') if p.is_file()}
-report={'source_files':len(manifest),'private_strings_compared':len(private_strings),'findings':findings,'passed':not findings,'scope':'Explicit source bundle only. No recordings, models, binaries, logs, local config, imported stimuli or unrelated parent documents.'}
+report={'source_files':len(manifest),'private_strings_compared':len(private_strings),'expected_questionnaire_prompt_matches':len(expected_prompt_matches),'findings':findings,'passed':not findings,'scope':'Explicit source bundle only. No recordings, models, binaries, logs, local config, imported stimuli or unrelated parent documents.'}
 (ROOT/'.audit/release-manifest.json').write_text(json.dumps(manifest,indent=2));(ROOT/'.audit/report.json').write_text(json.dumps(report,indent=2))
 print(json.dumps(report));sys.exit(bool(findings))

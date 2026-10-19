@@ -1,0 +1,10 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const code=fs.readFileSync('web/journey.js','utf8'),listeners={};let backs=0,forwards=0;
+const context={journeyStep:'summary',history:{forward(){forwards++}},goResultsBack(){backs++},window:{addEventListener(name,fn){listeners[name]=fn}}};
+vm.createContext(context);vm.runInContext(code.slice(code.indexOf('window.bandstandNavigate='),code.indexOf("window.addEventListener('popstate'")),context);
+const event={button:3,preventDefault(){},stopPropagation(){},target:{closest(){return null}}};
+listeners.mousedown(event);assert.equal(backs,0);listeners.mouseup(event);assert.equal(backs,1);listeners.auxclick(event);assert.equal(backs,1);
+listeners.mouseup({...event,button:4});assert.equal(forwards,1);
+listeners.keydown({...event,altKey:true,key:'ArrowLeft'});assert.equal(backs,2);
+context.journeyStep='run';listeners.mouseup(event);assert.equal(backs,2);
+console.log('Mouse Back/Forward, no duplicate auxclick, keyboard and recording-screen guard passed');

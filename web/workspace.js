@@ -22,7 +22,7 @@ function initWorkspace(){
  const results=workspaceSection('writingResults','3 · Results',$('writingAnalysis'));results.append($('typingStatus'),$('typingCounts'),$('writingAnalysis'));
  $('writingAnalysis').querySelector('.panel-heading').remove();writing.remove();
  // Keep model assumptions as its existing, independent disclosure.
- const context=$('writingAnalysis').querySelector(':scope > details');results.after(context);
+ const context=$('writingAnalysis').querySelector(':scope > details');context.id='writingModelSettings';paradigm.append(context);
  const design=workspaceSection('experimentParadigm','2 · Paradigm setup',$('designSection'));design.append($('designSection'));
  const erpResults=workspaceSection('experimentResults','3 · Results',$('recordSection'));erpResults.append($('recordSection'));$('recordSection').classList.remove('hidden');
  erpResults.append(document.querySelector('.export-actions'));
@@ -32,7 +32,7 @@ function initWorkspace(){
  erpResults.addEventListener('toggle',()=>{if(erpResults.open)refreshResultSessions().then(()=>{renderRevision='';if(state)render()}).catch(e=>toast(e.message))});
  refreshResultSessions().catch(e=>toast(e.message));
 
- const guide=document.createElement('details');guide.innerHTML='<summary>Recommended first ERP: visual oddball P300</summary><p>Silently count rare blue circles among frequent green circles. Select Visual oddball: pool TP9 and TP10, referenced to Fpz; compare target and standard mean amplitude at 300–500 ms. Start with 120 trials (about 3 minutes), or choose 240 for more usable targets. Blink during the breaks every 40 trials.</p><p>Muse validation supports this montage. Single-person detection remains uncertain; this is a Muse 2 adaptation with uncalibrated physical onset timing. Reward positivity is a supported second option. N400, ERN and phonetic decoding are less suitable as the first validation task for this setup.</p><a href="https://www.frontiersin.org/journals/neuroscience/articles/10.3389/fnins.2017.00109/full" target="_blank" rel="noreferrer">Krigolson et al. · Muse ERP validation</a>';design.append(guide);
+ const guide=document.createElement('details');guide.innerHTML='<summary>Recommended first ERP: visual oddball P300</summary><p>Silently count rare blue circles among frequent green circles. Select Visual oddball: pool TP9 and TP10, referenced to Fpz; compare target and standard mean amplitude at 300–500 ms. Start with 120 trials (about 3 minutes), or choose 240 for more usable targets. Blink during the breaks every 40 trials.</p><p>Muse validation supports this montage. Single-person detection remains uncertain; this is a Muse 2 adaptation with uncalibrated physical onset timing. Reward positivity is a supported second option. N400, ERN and phonetic decoding are less suitable as the first validation task for this setup.</p><a href="https://www.frontiersin.org/journals/neuroscience/articles/10.3389/fnins.2017.00109/full" target="_blank" rel="noreferrer">Krigolson et al. · Muse ERP validation</a>';/* Protocol help is already available on each activity. */
 
  $('recordSection').querySelector('h2').textContent='Recorded response';$('sessionSummary').textContent='No experiment recorded yet.';
  $('start').textContent='Review & start recording';
@@ -62,7 +62,7 @@ async function refreshResultSessions(){
  const select=$('resultExperiment');if(!select)return;
  const sessions=await api('sessions');const prior=select.value;select.replaceChildren();const current=document.createElement('option');current.value='';current.textContent=state?.session?resultLabel(state.session):'Select an experiment';select.append(current);
  for(const s of sessions){if(s.id===state?.session?.id)continue;const o=document.createElement('option');o.value=s.id;o.textContent=resultLabel(s);select.append(o)}select.value=prior; if(select.selectedIndex<0)select.value='';
- if(!state?.session&&!selectedResult&&sessions.length){select.value=sessions[0].id;selectedResult=await api('results/'+sessions[0].id);renderRevision='';updateResultExports();}
+
 }
 function resultLabel(s){return (s.title||s.protocol||'Experiment')+' · '+new Date(s.started*1000).toLocaleString(undefined,{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'})}
 const axisLimits=new Map();

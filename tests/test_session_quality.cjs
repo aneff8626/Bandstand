@@ -1,0 +1,16 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const code=fs.readFileSync('web/journey.js','utf8');
+const start=code.indexOf('function sessionQuality('),end=code.indexOf('function showResultsBrowser(',start);
+const context={};vm.createContext(context);vm.runInContext(code.slice(start,end),context);
+const q=context.sessionQuality;
+const good={kind:'big5',source:'live',created:100,ended:400,quality_metrics:{usable:100,total:120,answers:50,median_answer_seconds:3}};
+assert.equal(q(good).category,'clean');
+assert.equal(q({...good,source:'simulation'}).category,'test');
+assert.equal(q({...good,ended:110}).category,'test');
+assert.equal(q({...good,quality_metrics:{...good.quality_metrics,median_answer_seconds:.3}}).category,'test');
+assert.equal(q({...good,quality_metrics:{...good.quality_metrics,usable:9}}).category,'test');
+assert.equal(q({...good,quality_metrics:{...good.quality_metrics,usable:20}}).category,'test');
+assert.equal(q({...good,quality_metrics:undefined}).category,'review');
+assert.equal(q({...good,source:undefined}).category,'review');
+assert.equal(q({...good,quality_metrics:{...good.quality_metrics,median_answer_seconds:null}}).category,'review');
+console.log('Clean, short, sparse, fast, simulated and missing-metadata classifications passed');

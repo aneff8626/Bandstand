@@ -237,12 +237,12 @@ body[data-journey-step=choose] #journeyAreas{display:flex!important}
 body[data-journey-step=choose]:not(.personal-view):not(.typing-view) #experimentParadigm,body[data-journey-step=setup]:not(.personal-view):not(.typing-view) #experimentParadigm{display:block!important}
 body[data-journey-step=choose].personal-view #personalSetup,body[data-journey-step=setup].personal-view #personalSetup,body[data-journey-step=run].personal-view #personalSetup{display:block!important}
 body[data-journey-step=setup].typing-view #writingParadigm,body[data-journey-step=run].typing-view #writingParadigm{display:block!important}
-body[data-journey-step=summary].typing-view #writingResults,body[data-journey-step=summary].personal-view #personalResults,body[data-journey-step=summary]:not(.typing-view):not(.personal-view) #experimentResults{display:block!important}
+body[data-journey-step=summary]:not(.results-browser):not(.writing-session-open).typing-view #writingResults,body[data-journey-step=summary]:not(.results-browser):not(.writing-session-open).personal-view #personalResults,body[data-journey-step=summary]:not(.results-browser):not(.writing-session-open):not(.typing-view):not(.personal-view) #experimentResults{display:block!important}
 body[data-journey-step]:not([data-journey-step=summary]) main>details:not(.workspace-section){display:none!important}
 body[data-journey-step=choose] #participantSetup,body[data-journey-step=choose] .lab-tools{display:none!important}
 body.journey-theme .activity-step-nav{display:none!important}body.journey-theme .workspace-section>summary{pointer-events:none;list-style:none}body.journey-theme .workspace-section>summary::marker{content:''}
-body[data-journey-step=choose] #experimentParadigm>summary,body[data-journey-step=choose] #personalSetup>summary{font-size:0}body[data-journey-step=choose] #experimentParadigm>summary::after,body[data-journey-step=choose] #personalSetup>summary::after{content:'Choose an activity';font-size:19px}
-body[data-journey-step=setup] .workspace-section>summary{font-size:0}body[data-journey-step=setup] .workspace-section>summary::after{content:'Task setup';font-size:19px}
+body[data-journey-step=choose] #experimentParadigm>summary,body[data-journey-step=choose] #personalSetup>summary{font-size:0}body[data-journey-step=choose] #experimentParadigm>summary::after,body[data-journey-step=choose] #personalSetup>summary::after{content:none}
+body[data-journey-step=setup] .workspace-section>summary{font-size:0}body[data-journey-step=setup] .workspace-section>summary::after{content:none}
 .headset-map{border:0!important;background:transparent!important;display:block;margin:auto;width:100%;padding:0!important}.headset-map svg{display:block;width:100%;height:auto}.head-outline{fill:#f3f6fa;stroke:#b6c7d8;stroke-width:1.6}.head-band{fill:none;stroke:#6d8da9;stroke-width:5;stroke-linecap:round}.electrode-glow{fill:#346a9d;transition:opacity .18s linear}.artifact-ring{fill:none;stroke:#c56560;stroke-width:1.5;opacity:0;transition:opacity .1s}.has-artifact .artifact-ring{opacity:.7}.headset-map text{font:10px -apple-system,sans-serif;fill:#5b7188}
 #headsetAmplitude{max-width:360px;margin:20px auto 26px}#dockSignal .headset-map{max-width:180px}#eegDock{width:220px;background:#ffffffef;box-shadow:0 5px 22px #17334d10}#dockState{color:#496783}
 body.journey-theme:not(.show-raw-eeg) #trace,body.journey-theme:not(.show-raw-eeg) #traceEmpty,body.journey-theme:not(.show-raw-eeg) #traceScaleLabel,body.journey-theme:not(.show-raw-eeg) #signalPanel>.artifact-key{display:none!important}
@@ -386,3 +386,164 @@ body[data-journey-step=setup]:not(.typing-view):not(.personal-view) #experimentP
 #expertiseFields:not(.hidden),#imageFields:not(.hidden){grid-column:1/-1;justify-self:center;width:min(520px,100%);margin:18px auto 0;display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;justify-items:stretch;text-align:left}#imageFields:not(.hidden){grid-template-columns:1fr;text-align:center}#imageFields #openImageLibrary{justify-self:center;width:auto;padding:10px 18px}
 /* Per-condition tallies are operator information; hide them with the EEG panel. */
 #stage.results-collapsed #stageTrials{display:none}
+
+/* Personality setup and live estimates. */
+.personal-setup-sequence .setup-sequence{display:grid;gap:24px}
+.personal-setup-sequence .setup-sequence>li{padding-bottom:0;min-height:44px}
+.personal-setup-sequence .setup-sequence #participantSetup{padding:0;margin:0}
+.personal-setup-sequence .setup-sequence>li>button,#participantDataToggle{min-height:44px}
+.personal-setup-sequence .setup-sequence>li:not(:last-child)::after{bottom:-20px}
+.questionnaire-task progress{display:block;width:100%;height:7px;accent-color:var(--teal);margin:8px 0 28px}
+.questionnaire-progress-label{display:block;text-align:right;font-size:12px;color:var(--muted)}
+.personality-section-heading{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.personality-section-heading h3{margin:10px 0}.personality-demo-badge{font-size:10px;color:#795e20;background:#fff5d8;border-radius:4px;padding:3px 6px}
+.personality-features{margin:24px 0}.personality-features table{width:100%;border-collapse:separate;border-spacing:4px;font-size:12px;table-layout:fixed}
+.personality-features td{text-align:center;padding:10px 3px;border-radius:5px;font-variant-numeric:tabular-nums}.personality-features th{font-size:11px;font-weight:500}.personality-features small,.partial-survey small{font-size:11px;color:var(--muted)}
+.partial-survey{margin-top:20px}.partial-survey[hidden]{display:none!important}
+
+/* Shared header stream indicator and compact insight disclosures. */
+body.journey-theme #eegDock{display:block!important}body.journey-theme #journeyHeader{z-index:220}
+.map-bluetooth{display:none;fill:none;stroke:#426b9c;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.map-disconnected .map-bluetooth{display:block}
+.electrode-glow{transition:opacity 80ms linear}.map-disconnected .electrode-glow{opacity:.06!important}
+.insight-disclosure{border:0;border-bottom:1px solid var(--line);padding:14px 0;margin:0}
+.insight-disclosure>summary{font-size:17px;font-weight:600;cursor:pointer;padding:4px 0 12px}
+.personality-series{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:12px}.personality-series label{display:flex;align-items:center;gap:5px}.personality-series input{width:auto;margin:0}
+.trait-comparison{padding:12px 0}.trait-name{font-size:13px;font-weight:550;margin-bottom:6px}.trait-series{display:grid;grid-template-columns:42px 1fr 28px;align-items:center;gap:8px;font-size:10px;margin:5px 0;font-variant-numeric:tabular-nums}
+.trait-track{height:10px;background:#e7ebf0;border-radius:3px;overflow:hidden}.trait-fill{height:100%;background:#587c9f;border-radius:3px;transition:width .3s ease}.trait-series.eeg .trait-fill{background:#d6b657}
+.personality-features{margin:0}.personality-features>.info-dot{display:block;margin-left:auto}.personality-features td{transition:background .4s ease}
+.setup-sequence{display:grid;gap:24px}.setup-sequence>li{padding-bottom:0;min-height:44px}.setup-sequence #participantSetup{padding:0}.setup-sequence>li:not(:last-child)::after{bottom:-20px}
+@media(prefers-reduced-motion:reduce){.trait-fill,.personality-features td,.electrode-glow{transition:none}}
+.personality-series .series-survey{border-bottom:3px solid #587c9f}.personality-series .series-eeg{border-bottom:3px solid #d6b657}.personality-comparison{max-width:760px;margin:auto}.feedback-sound-controls{display:flex;gap:12px;align-items:center;justify-content:center}.feedback-sound-controls input{max-width:150px}.feedback-ripples{box-shadow:0 0 0 20px #d6b65722,0 0 0 42px #d6b65715,0 0 0 68px #d6b65708!important}#personalExercise:has(.feedback-sound-controls){background:#101f2d;color:#e7eef5}#personalExercise:has(.feedback-sound-controls) h2{color:inherit}
+.results-tabs,.results-filters{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0}.results-tabs button[aria-pressed=true]{background:#e2eaf2;border-color:#587c9f}.results-filters select{width:auto;max-width:100%}.saved-session-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #e2e7ec}.saved-session-row small{color:#6c7d8a}.saved-session-row input{width:18px}
+
+body[data-journey-step=summary].results-browser #experimentResults,body[data-journey-step=summary].results-browser #personalResults,body[data-journey-step=summary].results-browser #writingResults{display:none!important}
+
+.journey-theme #personalExercise{padding-top:120px}#personalExercise:has(.feedback-sound-controls) .personal-orb{width:150px;height:150px;margin:35px auto}#personalExercise details.personal-live-feedback{background:#192c3e;color:#e7eef5;border-color:#344b61}#personalExercise details.personal-live-feedback summary{cursor:pointer}.combined-metrics{width:100%;border-collapse:collapse;font-size:13px}.combined-metrics th,.combined-metrics td{padding:9px;border-bottom:1px solid #dce4eb;text-align:left}.combined-metrics td:not(:first-child){white-space:nowrap;font-variant-numeric:tabular-nums}
+
+/* One purpose per workflow step. */
+#writingRun{display:none}body[data-journey-step=run].typing-view #writingRun,body[data-journey-step=run].typing-view #writingResults{display:block!important}body[data-journey-step=run].typing-view #writingParadigm,body[data-journey-step=summary].typing-view #writingResults{display:none!important}body[data-journey-step=run].typing-view #writingResults>summary,body[data-journey-step=run].typing-view #writingResults>.result-navigation{display:none!important}body[data-journey-step=run] #participantSetup{display:none!important}#writingRun .writing-controls{margin:12px 0}#writingRun #writingEditor{width:100%}#writingModelSettings .model-options{display:flex;flex-wrap:wrap;gap:18px;align-items:end}#writingModelSettings .model-options label{flex:1;min-width:180px}#developerPanel>:not(.trainer-unavailable){display:none!important}#developerPanel .trainer-unavailable{font-size:18px;margin:24px}#stimulus.run-task-intro{font-size:clamp(24px,4vw,48px);line-height:1.35;animation:task-intro-in .45s ease-out}#stimulus.run-task-intro.fade-out{opacity:0;transition:opacity .35s ease-in}@keyframes task-intro-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}@media(prefers-reduced-motion:reduce){#stimulus.run-task-intro{animation:none}#stimulus.run-task-intro.fade-out{transition:none}}
+
+body[data-journey-step=setup] .workspace-section>summary{display:none}#stageContact,#stageTrials,#readiness{display:none!important}#writingRun:has(#typingStop:disabled) #typingStop{display:none}#writingResults #typingStatus{display:block;margin-bottom:8px}
+
+.journey-theme #stage{top:var(--journey-header-height,100px)}
+
+/* Connected category tabs and compact, expandable activity rows. */
+body[data-journey-step=choose] #journeyAreas{margin-bottom:0}
+body[data-journey-step=choose] #experimentParadigm,body[data-journey-step=choose] #personalSetup{margin-top:0;border-radius:0 0 12px 12px;padding:16px 20px}
+body[data-journey-step=choose] #personalSetupBody{padding-top:0}
+.activity-list{display:flex;flex-direction:column;gap:0;width:100%}
+.activity-row{border-bottom:1px solid #dce3e8;padding:18px 0}
+.activity-row:last-child{border-bottom:0}
+.activity-row-header{display:flex;align-items:center;justify-content:space-between;gap:20px}
+.activity-row-heading h3{margin:0;font-size:17px;font-weight:650;color:#254c70}
+.activity-row-meta{margin:5px 0 0;color:#6b7884;font-size:13px}
+.activity-row-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.activity-row-actions button{font-size:13px;padding:9px 12px;border-radius:7px}
+.activity-row-actions .activity-proceed{background:#edf3f7;border-color:#bdccd8;color:#254c70}
+.activity-row-info{margin-top:14px;padding:16px 18px;background:#f2f5f8;border-left:3px solid #b8cad8;border-radius:0 8px 8px 0;color:#475967;font-size:14px;line-height:1.6}
+.activity-row-info[hidden]{display:none}
+.activity-row-info>p{margin:0 0 10px}.activity-row-info>p:last-child{margin-bottom:0}
+.activity-advanced{border:0!important;padding:0!important;background:transparent!important;margin:0!important}
+.activity-advanced summary{font-size:13px;color:#536b80;cursor:pointer}.activity-advanced p{margin:10px 0 0}
+@media(max-width:850px){.activity-row-header{align-items:flex-start;flex-direction:column;gap:12px}.activity-row-actions{flex-wrap:wrap}}
+
+.paradigm-scope{display:inline-flex;gap:2px;padding:3px;background:#e8edf3;border-radius:8px;margin:4px 0 12px}.paradigm-scope button{border:0;background:transparent;padding:8px 14px;color:#617182;font-weight:400}.paradigm-scope button[aria-pressed=true]{background:white;color:#254c70;font-weight:700;box-shadow:0 1px 3px #16365220}
+.activity-row{animation:setup-step-appear .16s ease both}.activity-row:nth-child(2){animation-delay:.045s}.activity-row:nth-child(3){animation-delay:.09s}.activity-row:nth-child(4){animation-delay:.135s}.activity-row:nth-child(n+5){animation-delay:.18s}
+.setup-sequence{gap:20px!important}.setup-sequence>li{padding:0 0 0 48px!important;min-height:44px;animation-duration:.16s!important}.setup-sequence>li::before{top:8px}.setup-sequence>li:not(:last-child)::after{top:40px;bottom:-16px!important}.setup-sequence>li:nth-child(2){animation-delay:.06s}.setup-sequence>li:nth-child(3){animation-delay:.12s}.setup-sequence>li:nth-child(4){animation-delay:.18s}
+.setup-sequence #participantSetup{padding:0!important;margin:0!important}.setup-sequence #participantSetup>summary{padding:0;margin:0;list-style:none}.setup-sequence #participantSetup>summary::marker{content:''}.setup-sequence #participantSetup>summary::-webkit-details-marker{display:none}
+.setup-sequence button,#participantDataToggle{min-height:44px;margin:0;box-sizing:border-box}.setup-sequence>li>button,.setup-sequence .start-row>button,#participantDataToggle{width:260px;max-width:100%;text-align:left;justify-content:flex-start}
+#participantDataToggle,#participantDataToggle small,#participantSetupLabel{font-weight:400!important}.feedback-choice-status{font-size:12px;color:#657889;margin:6px 0 0}.protocol-info-button{border-radius:50%;width:28px;height:28px;padding:0;margin-top:12px}
+.feedback-customizer{width:min(820px,94vw);max-height:90vh;overflow:auto;border:1px solid #cbd7e2;border-radius:16px;padding:24px;background:#f8fafc;color:#294357}.feedback-customizer h2{margin-top:0}.feedback-customizer section{margin:20px 0}.feedback-customizer h3{font-size:16px}.feedback-customizer p{font-size:13px}.feedback-customizer canvas{width:100%;cursor:crosshair;touch-action:none}.feedback-customizer input[type=range]{width:100%}.feedback-customizer output{display:block;text-align:center;font-size:14px;font-weight:600}.feedback-band-presets,.feedback-dialog-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.feedback-band-presets [aria-pressed=true]{background:#dae6f2;border-color:#6285a7}.feedback-headset{width:300px!important;max-width:100%;margin:auto}.feedback-headset [data-electrode]{cursor:pointer}.feedback-headset .training-excluded{opacity:.18}.feedback-headset [data-electrode]:focus{outline:2px solid #497bad}.feedback-headset .map-bluetooth{display:none!important}
+@media(prefers-reduced-motion:reduce){.activity-row,.setup-sequence>li{animation:none!important}}
+
+.feedback-customizer section{margin:12px 0}.feedback-customizer h3{margin:10px 0 6px}.feedback-customizer section>p{margin:6px 0}.feedback-customizer .feedback-headset{width:210px!important}.feedback-customizer .feedback-headset svg{width:100%;height:auto}
+
+#resultsNavigation{display:none;margin-bottom:20px}body[data-journey-step=summary] #resultsNavigation{display:block}.results-session-actions{display:flex;gap:8px;margin-top:10px}.results-session-actions[hidden]{display:none}.session-star{font-size:22px;padding:5px 10px;background:transparent;border:0}.session-star[aria-pressed=true]{color:#b48b25}.personality-comparison svg{max-height:520px;width:100%}.insight-disclosure>summary .info-dot{margin-left:8px}.results-ready{animation:ready-wiggle .5s ease 2;background:#e5eef6;color:#254c70}@keyframes ready-wiggle{25%{transform:rotate(-2deg)}75%{transform:rotate(2deg)}}@media(prefers-reduced-motion:reduce){.results-ready{animation:none}}
+
+body[data-journey-step=summary] #resultsNavigation{position:sticky;top:var(--journey-header-height,100px);z-index:30;background:#f5f7fb;padding:10px 0 12px;border-bottom:1px solid #dce4ec}.result-navigation{display:none!important}
+
+/* Results: file tabs own the section; session navigation sits one level below. */
+body[data-journey-step=summary] #resultsNavigation{margin:0;padding:0;border:0;background:#f5f7fb;isolation:isolate}
+#resultsNavigation .results-tabs{display:flex;gap:4px;margin:0;padding:8px 6px 0;background:#edf1f5;border-bottom:1px solid #b9c9d7;border-radius:12px 12px 0 0}
+#resultsNavigation .results-tabs button{margin:0 0 -1px;border:1px solid #c5cfda;border-bottom:1px solid #b9c9d7;border-radius:10px 10px 0 0;background:#e0e7ef;color:#526477;padding:14px 24px;font-size:14px;font-weight:500}
+#resultsNavigation .results-tabs button[aria-selected=true]{background:#fdfefe;border-bottom-color:#fdfefe;color:#254c70;box-shadow:inset 0 3px #d9b85d;font-weight:700}
+#resultsNavigation .results-session-actions{position:absolute;top:62px;left:0;width:166px;display:flex;flex-direction:column;align-items:stretch;gap:6px;margin:0;padding:16px 12px 16px 0;border-right:1px solid #d6e0e8;background:#f5f7fb}
+#resultsNavigation .results-session-actions[hidden]{display:none}
+#resultsNavigation .results-session-actions button{text-align:left;border:0;border-radius:6px;padding:10px 12px;background:transparent;color:#586d80;font-size:13px;font-weight:400}
+#resultsNavigation .results-session-actions button:hover{background:#e9eff5}
+#resultsNavigation .results-session-actions button[aria-current=page]{background:#e3edf6;color:#254c70;font-weight:650}
+body[data-journey-step=summary][data-results-section=individual] #savedResultsBrowser,body[data-journey-step=summary][data-results-section=individual] #personalResults,body[data-journey-step=summary][data-results-section=individual] #experimentResults{margin-left:188px;min-height:200px}
+body[data-journey-step=summary] #savedResultsBrowser,body[data-journey-step=summary] #personalResults,body[data-journey-step=summary] #experimentResults{border-top:0;border-radius:0 0 12px 12px;margin-top:0;padding-top:20px}
+@media(max-width:700px){#resultsNavigation .results-tabs button{padding:12px 14px;flex:1}#resultsNavigation .results-session-actions{position:static;width:auto;flex-direction:row;border-right:0;border-bottom:1px solid #d6e0e8;padding:8px 0}body[data-journey-step=summary][data-results-section=individual] #savedResultsBrowser,body[data-journey-step=summary][data-results-section=individual] #personalResults,body[data-journey-step=summary][data-results-section=individual] #experimentResults{margin-left:0}}
+
+@media(min-width:701px){body[data-journey-step=summary][data-results-section=individual] #simulationBanner{margin-left:188px}}
+
+/* A single Results surface, with subordinate navigation in a quiet toolbar. */
+body[data-journey-step=summary] #resultsNavigation{padding-top:6px;background:#f5f7fb}
+#resultsNavigation .results-tabs{background:transparent;padding:0 0 0 4px;gap:4px;border-radius:0}
+#resultsNavigation .results-tabs button{padding:13px 22px;background:#eaf0f5;border-color:#d2dce5;border-bottom-color:#bdcbd7}
+#resultsNavigation .results-tabs button[aria-selected=true]{background:#fff;border-bottom-color:#fff;box-shadow:inset 0 3px #ceae51}
+.results-toolbar{display:flex;align-items:center;gap:22px;background:#fff;border:1px solid #d5dfe7;border-top:0;padding:10px 16px;min-height:57px}
+#resultsBack{border:0;background:transparent;padding:8px;color:#365973;font-size:14px}#resultsBack:disabled{opacity:.35}
+#resultsNavigation .results-session-actions{position:static;display:flex;flex-direction:row;gap:4px;width:auto;margin:0;padding:0 0 0 18px;border:0;border-left:1px solid #e0e6ec;background:transparent}
+#resultsNavigation .results-session-actions button{padding:8px 12px;background:transparent;border-radius:5px}
+#resultsNavigation .results-session-actions button[aria-current=page]{color:#274e70;background:#eaf1f7}
+body[data-journey-step=summary][data-results-section] #savedResultsBrowser,body[data-journey-step=summary][data-results-section] #personalResults,body[data-journey-step=summary][data-results-section] #experimentResults{margin-left:0;margin-top:0;background:#fff;border:1px solid #d5dfe7;border-top:0;padding:24px;border-radius:0 0 12px 12px}
+body[data-journey-step=summary][data-results-section] #simulationBanner{margin-left:0;margin-top:10px;margin-bottom:10px}
+#savedResultsBrowser .results-filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;padding:0 0 18px;border-bottom:1px solid #e5ebf0}
+#savedResultsBrowser .results-filters select{background:#fff;border-color:#dce4eb;font-size:13px;padding:8px 10px;min-width:130px;max-width:210px}
+#savedResultsBrowser .saved-session-row{display:flex;align-items:center;gap:14px;padding:12px 4px;border-bottom:1px solid #edf0f4;background:transparent}
+#savedResultsBrowser .saved-session-row:hover{background:#f7fafc}
+#savedResultsBrowser .session-star{border:0;background:transparent;font-size:23px;padding:6px;color:#94a3b2;box-shadow:none}
+#savedResultsBrowser .session-star[aria-pressed=true]{color:#b68b28}
+#savedResultsBrowser .session-open{border:0;background:transparent;box-shadow:none;padding:3px 0;text-align:left;flex:1;display:flex;flex-direction:column;gap:4px}
+.session-open strong{font-size:15px;font-weight:600;color:#2d4a61}.session-open span{font-size:12px;color:#7c8a97}
+#savedResultsBrowser .saved-session-row>small{color:#85929c;font-size:12px}
+@media(max-width:700px){.results-toolbar{gap:8px;padding:8px}.results-toolbar .results-session-actions{padding-left:8px!important}.results-session-actions button{font-size:12px!important;padding:8px!important}#savedResultsBrowser .saved-session-row>small{display:none}body[data-journey-step=summary][data-results-section] #savedResultsBrowser{padding:16px}}
+
+#savedResultsBrowser .session-open,#savedResultsBrowser .session-star,#resultsBack{background:transparent!important;border:0!important;box-shadow:none!important}#savedResultsBrowser .session-open:hover{color:#234f76;text-decoration:none}#savedResultsBrowser .session-open:focus-visible{outline:2px solid #9db8cf;outline-offset:4px}#savedResultsBrowser .results-filters{margin-top:0}#savedResultsBrowser .session-star:hover{color:#a17c27}
+
+.recorded-spectrum{margin:16px 0}.recorded-spectrum .spectrum-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.recorded-spectrum canvas{width:100%}.recorded-spectrum-toggles{display:flex;gap:5px;flex-wrap:wrap;margin:10px 0}.recorded-spectrum-toggles button{padding:5px 10px;font-size:12px;background:transparent!important}.recorded-spectrum-toggles [aria-pressed=false]{opacity:.35;text-decoration:line-through}.training-score-card{padding:24px;background:linear-gradient(120deg,#f0f6f8,#f9fafc);border-radius:14px;margin:20px 0}.training-score-heading{display:flex;align-items:center;gap:8px}.training-score-heading h3{margin:0}.training-score-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin:24px 0}.training-score-metrics strong{display:block;font-size:32px;font-weight:550;color:#315c67}.training-score-metrics span{display:block;font-size:12px;color:#728595;margin-top:5px}.training-score-track{height:8px;background:#dde7ec;border-radius:8px;overflow:hidden}.training-score-track>div{height:100%;background:#578e87}.training-score-card svg{width:100%;max-height:180px;margin-top:15px}@media(max-width:700px){.training-score-metrics{grid-template-columns:repeat(2,1fr)}}
+
+/* Recorded spectra share the quiet, open headset presentation. */
+.recorded-spectrum .spectrum-controls{padding:0;border:0;background:none}.recorded-spectrum-toggles button{border:0!important;box-shadow:none!important;border-radius:5px;padding:5px 9px}.recorded-spectrum-toggles button[aria-pressed=true]{background:#eaf0f6!important}.recorded-spectrum .muted{font-size:11px;color:#7c8b99;margin:4px 0}.recorded-spectrum canvas{display:block}
+
+/* Persistent left navigation for activity selection and saved results. */
+body[data-journey-step=choose] main,body[data-journey-step=summary] main{position:relative;padding-left:256px!important;min-height:calc(100vh - 100px)}
+body[data-journey-step=choose] #journeyAreas,body[data-journey-step=summary] #resultsNavigation{position:fixed;left:24px;top:calc(var(--journey-header-height,100px) + 24px);width:208px;max-height:calc(100vh - var(--journey-header-height,100px) - 48px);overflow:auto;display:flex!important;flex-direction:column;gap:7px;padding:10px!important;margin:0;border:1px solid #dce4ec;border-radius:12px;background:#eef2f7;box-sizing:border-box;z-index:20}
+body[data-journey-step=choose] #journeyAreas button,#resultsNavigation .results-tabs button{flex:none;width:100%;min-width:0;text-align:left;margin:0;border:0;border-radius:7px;padding:13px 12px;background:transparent;box-shadow:none;color:#526477;font-size:14px;white-space:normal}
+body[data-journey-step=choose] #journeyAreas button[aria-current=page],#resultsNavigation .results-tabs button[aria-selected=true]{background:#254c70;color:white;box-shadow:inset 3px 0 #e4bc56}
+#resultsNavigation .results-tabs{display:flex;flex-direction:column;padding:0;border:0;background:none;gap:7px}
+#resultsNavigation .results-toolbar{padding:8px 0 0;margin:0;border:0;background:transparent;box-shadow:none}
+body[data-journey-step=summary] #savedResultsBrowser,body[data-journey-step=summary] #personalResults,body[data-journey-step=summary] #experimentResults{margin-left:0!important}
+body[data-journey-step=choose] #experimentParadigm,body[data-journey-step=choose] #personalSetup{border-radius:12px}
+.session-quality-filters{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:0 0 18px}.session-quality-filters label{display:flex;align-items:center;gap:7px;font-size:13px;color:#445d73}.session-quality-filters input{width:auto;margin:0}.saved-session-row .session-quality{font-size:11px;color:#718295}
+@media(max-width:650px){body[data-journey-step=choose] main,body[data-journey-step=summary] main{padding-left:152px!important}body[data-journey-step=choose] #journeyAreas,body[data-journey-step=summary] #resultsNavigation{left:8px;width:136px;padding:6px!important}body[data-journey-step=choose] #journeyAreas button,#resultsNavigation .results-tabs button{font-size:12px;padding:10px 8px;gap:5px}.activity-category-icon{width:18px;flex-basis:18px}.session-quality-filters{gap:10px}}
+
+.spectrum-comparison-note{font-size:12px;color:#8a6d35;display:flex;gap:8px;align-items:center}.combined-session-legend{display:flex;flex-wrap:wrap;gap:12px;margin:18px 0}.combined-session-legend label{display:flex;gap:6px;align-items:center;font-size:12px}.combined-session-legend input{width:auto}.combined-statistics{margin-top:20px}.combined-statistics summary{cursor:pointer}
+
+.results-filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.results-filters select{font:inherit;font-size:12px;min-width:150px;flex:1;padding:10px;border:1px solid #d5dfe7;border-radius:6px;background:#fff}.session-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 16px;padding:0 0 12px;border-bottom:1px solid #e2e8ed}.session-actions strong{font-size:16px}.session-actions button{font-size:12px;padding:7px 11px}.session-delete{color:#9c4949!important}.session-delete-dialog{max-width:480px}.session-delete-dialog p{line-height:1.55}.session-delete-dialog .button-row{justify-content:flex-end}
+body.individual-session-open #personalResults>summary,body.individual-session-open #experimentResults>summary{display:none}body.individual-session-open #sessionSummary,body.individual-session-open #recordSection>.section-heading{display:none}
+
+/* Results surfaces are mutually exclusive, including rules that normally open all summary sections. */
+body[data-journey-step=summary]:not(.results-browser) #savedResultsBrowser{display:none!important}
+body[data-journey-step=summary].results-browser #experimentResults,
+body[data-journey-step=summary].results-browser #personalResults,
+body[data-journey-step=summary].results-browser #writingResults,
+body[data-journey-step=summary].results-browser #recordSection{display:none!important}
+#savedWritingSession{display:none!important}
+body[data-journey-step=summary].writing-session-open #savedWritingSession{display:block!important}
+body[data-journey-step=summary].writing-session-open #experimentResults,
+body[data-journey-step=summary].writing-session-open #personalResults,
+body[data-journey-step=summary].writing-session-open #writingResults{display:none!important}
+body.individual-session-open #personalResults>summary,
+body.individual-session-open #experimentResults>summary,
+body.individual-session-open #recordSection>.section-heading{display:none!important}
+#combinedProvisional{display:none!important}
+body[data-journey-step=summary][data-results-section=combined] #combinedProvisional{display:block!important;background:#fff1d5;border:2px solid #d2a34a;border-radius:10px;padding:24px;margin:0 0 20px;font-size:21px;font-weight:650;color:#77551f}
+
+.feedback-range-controls{display:flex;gap:18px;margin:14px 0}.feedback-range-controls label{flex:1}.feedback-customizer output{display:block;font-size:23px;font-weight:600;color:#315a7b;margin-top:10px}#feedbackBandSpectrum{cursor:crosshair;touch-action:none}.feedback-headset .training-selection-ring{fill:#16a27018;stroke:#15956b;stroke-width:3;pointer-events:none}.feedback-headset .training-excluded .training-selection-ring{fill:none;stroke:#93a4b3;stroke-dasharray:3 3;stroke-width:2}.feedback-headset [data-electrode]{cursor:pointer}.feedback-headset [data-electrode]:focus{outline:none}.feedback-headset [data-electrode]:focus .training-selection-ring{stroke-width:5}
+body[data-journey-step=summary][data-results-section=combined] #combinedProvisional{position:relative;clear:both;width:auto;box-sizing:border-box;margin:0 0 18px;padding:18px 22px;font-size:18px;line-height:1.4;border-width:1px;border-left-width:5px;border-radius:8px}
+
+@media(min-width:900px){.feedback-customizer[open]{display:grid;grid-template-columns:minmax(0,2fr) minmax(220px,1fr);gap:14px 24px;width:min(1000px,94vw);max-width:1000px}.feedback-customizer>h2,.feedback-customizer>.feedback-dialog-actions,.feedback-customizer>p[role=status]{grid-column:1/-1}.feedback-customizer>.feedback-frequency-setup{grid-column:1;grid-row:2/5;margin:0}.feedback-customizer>.feedback-electrode-setup{grid-column:2;grid-row:2;margin:0}.feedback-customizer>label{grid-column:2;grid-row:3}.feedback-customizer>.info-dot{grid-column:2;grid-row:4;justify-self:start}.feedback-customizer .feedback-headset{width:100%;max-width:260px}.feedback-customizer .feedback-dialog-actions{margin:0;padding-top:12px;border-top:1px solid #e2e8ed}}
+#savedResultsBrowser .results-filters select{min-width:190px;max-width:none;flex:1 1 190px}#savedResultsBrowser .results-filters select[aria-label="Recording quality"]{min-width:230px;flex-basis:230px}

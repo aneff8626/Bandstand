@@ -49,3 +49,8 @@ PostgREST, SMTP, concurrent sessions, or hosted Supabase configuration.
 
 The existing production ordinary-user signup/email-confirmation/sign-in test passed
 earlier. That does not replace these remaining staging and installation checks.
+
+
+## Updated notarization status — October 19
+
+Apple accepted build 5 (submission 35e64479-3248-42e7-b31f-1e605b9a534d). Verified with notarytool. Later source edits require a new final artifact and notarization; clean-Mac acceptance and live ERP delivery remain unverified. See contributor-readiness.md for the current handoff checkpoint.

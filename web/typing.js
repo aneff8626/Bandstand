@@ -81,7 +81,7 @@ function renderTyping(){
 $('typingNav').onclick=()=>selectTypingView(true);
 document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{if(typingView)selectTypingView(false)}));
 async function checkTypingAccess(){
- if(!window.museNative){typingAccessState={available:false,reason:'Across-app writing capture requires the Bandstand desktop app. Open Muse Lab.app from Applications, then start recording there. The browser preview cannot capture typing in other apps.'};}
+ if(!window.museNative){typingAccessState={available:false,reason:'Across-app capture requires the Bandstand desktop app.'};}
  else try{typingAccessState=await api('system_typing/status',{});}catch(e){typingAccessState={available:false,reason:'Could not check typing access: '+e.message+'. Quit and reopen Bandstand, then try again.'};}
  const p=typingAccessState;
  $('typingAccess').hidden=!!p.available;
@@ -106,7 +106,7 @@ async function startWriting(capture=$('typingCapture').value){
   if(active||state?.developer?.recording||personalBusy)throw new Error('Stop the current activity before starting a writing recording.');
   if(capture==='system'){await checkTypingAccess();if(!typingAccessState?.available)throw new Error(typingAccessState?.reason||'Enable typing access first.');}
   await syncClock();
-  state.typing=await api('typing/start',{window:'context',history:Number($('typingHistory').value),delay:Number($('typingDelay').value),capture});started=true;
+  state.typing=await api('typing/start',{window:'context',history:Number($('typingHistory').value),delay:Number($('typingDelay').value),capture});started=true;if(typeof journeySetStep==='function'){journeyRun=true;journeySetStep('run')};
   typingWord=null;typingPlotRevision=-1;clearTimeout(typingDocTimer);
   if(capture==='system'){
    const result=await api('system_typing/start',{});if(!result.active)throw new Error(result.reason||'Typing capture could not start.');
