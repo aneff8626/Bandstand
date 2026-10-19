@@ -23,3 +23,6 @@ local-settings.json
 backend.json
 .audit/
 release/
+
+# Generated desktop icon; source artwork is under assets/branding
+Muse Lab.app/Contents/Resources/MuseLab.icns
