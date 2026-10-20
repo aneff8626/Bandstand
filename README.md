@@ -1,8 +1,22 @@
 # Bandstand
 
+## Download and install
+
+**[Download Bandstand build 8 for macOS (Apple Silicon, macOS 14+)](https://github.com/aneff8626/Bandstand/releases/download/v0.3.0-alpha.4/Bandstand-0.3.0-build8-macos-arm64.zip)**
+
+Unzip, drag **Bandstand.app** into **Applications**, and open it. Ordinary use needs no terminal or agent. The release is Developer ID signed and Apple notarized.
+
+## Contributors: edit without rebuilding the app
+
+Install build 8 once, clone this repository, and check out **`codex/desktop-release`**. Copy `backend.development.example.json` to the ignored `backend.json`, configure local Supabase or staging with a publishable client key, then run `python3 scripts/launch_development.py`. Quit other Bandstand windows first. The shell uses bundled Python and your checkout's web/Python code. Use `git pull --ff-only` and relaunch to receive merged changes—no new download for compatible web/Python edits.
+
+All PRs target **`codex/desktop-release`**; releases are cut from it. Work on separate feature branches. New Python dependencies or Swift/native-interface changes need a new contributor build. [Development setup, backend configuration, and second-Mac acceptance checklist](docs/desktop-development.md).
+
+---
+
 A local macOS desktop app for Muse 2 EEG experiments and exploratory writing-to-EEG semantic retrieval. The self-contained development build is **Bandstand.app** (Apple Silicon, macOS 14+). Unzip the release and open it. The source checkout also supports **Muse Lab.app** and **Launch Muse Lab.command**. Participant data are stored separately.
 
-Version 0.2.2 is signed with Developer ID Application. Apple notarization is not yet completed. A clean-machine installation and headset check remain necessary before a participant release.
+A separate clean-Mac and physical-headset check remains required for this development release.
 
 ## Current readiness
 

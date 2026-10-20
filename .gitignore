@@ -22,3 +22,7 @@ models/
 local-settings.json
 .audit/
 release/
+
+# Per-checkout backend and generated desktop icon
+backend.json
+Muse Lab.app/Contents/Resources/MuseLab.icns

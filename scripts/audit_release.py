@@ -10,6 +10,7 @@ allowed=list(ROOT.glob('*.py'))+[ROOT/'README.md',ROOT/'.gitignore',ROOT/'Launch
 for directory,extensions in [('web',{'.js','.css','.html'}),('native',{'.swift'}),('tests',{'.py','.cjs'}),('scripts',{'.py','.swift','.mjs'}),('supabase',{'.sql','.toml','.html'}),('hosting',{'.py'}),('federation',{'.py','.txt'}),('docs',{'.html','.md'})]:
  allowed.extend(p for p in (ROOT/directory).rglob('*') if p.is_file() and p.suffix in extensions)
 allowed.extend([ROOT/'web/bandstand-logo.png',ROOT/'web/favicon.png',ROOT/'assets/branding/book-waves-master.png',ROOT/'assets/demo/mind-reference.json',ROOT/'assets/demo/subject-database.json'])
+allowed.append(ROOT/'backend.development.example.json')
 allowed.extend([ROOT/'hosting/Dockerfile',ROOT/'hosting/.dockerignore',ROOT/'docs/.nojekyll'])
 for p in allowed:
  assert not p.is_symlink()
