@@ -2,13 +2,13 @@
 
 ## Download and install
 
-**[Download Bandstand build 10 for macOS (Apple Silicon, macOS 14+)](https://github.com/aneff8626/Bandstand/releases/download/v0.3.0-alpha.6/Bandstand-0.3.0-build10-macos-arm64.zip)**
+**[Download Bandstand build 11 for macOS (Apple Silicon, macOS 14+)](https://github.com/aneff8626/Bandstand/releases/download/v0.3.0-alpha.7/Bandstand-0.3.0-build11-macos-arm64.zip)**
 
 Unzip, drag **Bandstand.app** into **Applications**, and open it. Ordinary use needs no terminal or agent. The release is Developer ID signed and Apple notarized.
 
 ## Contributors: edit without rebuilding the app
 
-Install build 10 once, clone this repository, and check out **`codex/desktop-release`**. Copy `backend.development.example.json` to the ignored `backend.json`, configure local Supabase or staging with a publishable client key, then run `python3 scripts/launch_development.py`. Quit other Bandstand windows first. The shell uses bundled Python and your checkout's web/Python code. Use `git pull --ff-only` to receive merged changes. While idle on Headset, Activity or Results, CSS refreshes in place and compatible web/Python changes reload in the same window. Recordings, fitting and open forms defer updates; no new download is needed for compatible edits.
+Install build 11 once, clone this repository, and check out **`codex/desktop-release`**. Copy `backend.development.example.json` to the ignored `backend.json`, configure local Supabase or staging with a publishable client key, then run `python3 scripts/launch_development.py`. Quit other Bandstand windows first. The shell uses bundled Python and your checkout's web/Python code. Use `git pull --ff-only` to receive merged changes. While idle on Headset, Activity or Results, CSS refreshes in place and compatible web/Python changes reload in the same window. Recordings, fitting and open forms defer updates; no new download is needed for compatible edits.
 
 All PRs target **`codex/desktop-release`**; releases are cut from it. Work on separate feature branches. New Python dependencies or Swift/native-interface changes need a new contributor build. [Development setup, backend configuration, and second-Mac acceptance checklist](docs/desktop-development.md).
 
