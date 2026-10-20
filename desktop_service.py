@@ -54,6 +54,9 @@ def dispatch(path,body):
     if path=='bootstrap': return {'token':TOKEN,**engine.catalog()}
     if path=='state': return engine.snapshot()
     if path=='source': engine.switch_source(body['source']); return {'ok':True}
+    if path=='speller':
+        from speller import request
+        return request(engine,body)
     if path=='start': return engine.begin(body)
     if path=='event': return engine.event(body)
     if path=='stop': return engine.stop(body.get('reason','stopped'))

@@ -97,6 +97,9 @@ class Handler(BaseHTTPRequestHandler):
                 result=delete_session(engine,body,DATA_ROOT)
             elif path=='/api/source': engine.switch_source(body['source']); result={'ok':True}
             elif path.startswith('/api/typing/'):result=engine.typing_request(path[5:],body)
+            elif path=='/api/speller':
+                from speller import request
+                result=request(engine,body)
             elif path=='/api/start': result=engine.begin(body)
             elif path=='/api/event': result=engine.event(body)
             elif path=='/api/stop': result=engine.stop(str(body.get('reason','stopped'))[:100])

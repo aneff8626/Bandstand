@@ -11,7 +11,7 @@ async function syncClock(){let best={rtt:Infinity};for(let i=0;i<7;i++){const a=
 function chosenChannels(){return [...document.querySelectorAll('#electrodes input:checked')].map(n=>n.value)}
 let paradigmGroup='recommended';
 function buildProtocols(){
- const all=boot.protocols.filter(p=>['erp','tf','bio'].includes(p.mode)),supported=['oddball','reward','alpha'];
+ const all=boot.protocols.filter(p=>p.id!=='speller'&&['erp','tf','bio'].includes(p.mode)),supported=['oddball','reward','alpha'];
  $('protocolCount').textContent='';$('protocols').replaceChildren();
  const filter=document.createElement('div');filter.className='paradigm-scope';filter.setAttribute('role','group');filter.setAttribute('aria-label','Paradigm availability');for(const [value,label]of [['recommended','Muse supported'],['all','All paradigms']]){const button=personalButton(label,()=>{paradigmGroup=value;buildProtocols()});button.disabled=active;button.setAttribute('aria-pressed',String(paradigmGroup===value));filter.append(button)}$('protocols').append(filter);
  const grid=document.createElement('div');grid.className='activity-list';
@@ -138,6 +138,7 @@ function drawLiveERPs(){
  $('stageStats').textContent=entries.length?'Thin lines: recent usable trials. Bold lines: condition averages at the minimum. Scale follows averages; large individual trials may extend beyond the plot.':'Waiting for the first completed trial.';
 }
 function drawChannelERPs(){
+ if(typeof renderSpellerSummary==='function')renderSpellerSummary();
  let panel=$('channelERPs');if(!panel){panel=document.createElement('section');panel.id='channelERPs';panel.className='results-grid';$('recordSection').querySelector('.results-grid').before(panel)}
  if(state.session?.mode==='tf'){$('recordSection').querySelector('.results-grid:not(#channelERPs)').hidden=true;drawTFChannels('channelERPs',state.analysis,state.session);return}
  panel.dataset.tfKey='';panel.replaceChildren();$('recordSection').querySelector('.results-grid:not(#channelERPs)').hidden=state.session?.mode==='erp';syncReviewWindow();const entries=Object.entries(state.analysis?.channels||{});if(state.session?.mode==='tf'){$('recordSection').querySelector('.results-grid:not(#channelERPs)').hidden=true;drawTFChannels('channelERPs',state.analysis,state.session);return}if(state.session?.mode!=='erp')return;

@@ -315,6 +315,7 @@ class Engine:
             self.session['preflight_quality']={'warnings':reasons,'continued_anyway':cfg.get('allow_noisy_start') is True}
             self.session['electrode_warning']=selected!=p['channels']
             self.events=[]; self.trials=[]; self.pending=[]; self.revision+=1
+            self.speller_model=None
             self.raw_file=open(directory/'continuous.csv','w',newline=''); self.writer=csv.writer(self.raw_file)
             self.writer.writerow(['timestamp_unix_s',*['raw_'+c+'_uV' for c in CHANNELS],*['filtered_'+c+'_uV' for c in CHANNELS],'source'])
             self.bio_file=open(directory/'bandpower.csv','w',newline=''); self.bio_writer=csv.writer(self.bio_file); self.bio_writer.writerow(['timestamp','phase','power_uV2','valid','reasons'])
@@ -336,6 +337,13 @@ class Engine:
                 i=int(e['index']); c=int(e['condition_index'])
                 if i<0 or i>=self.session['trials_planned'] or c not in [0,1]: raise ValueError('Invalid trial index/condition')
                 if any(p.get('kind')=='stimulus' and p.get('index')==i for p in self.events): raise ValueError('Duplicate trial marker')
+                if self.session['protocol']=='speller':
+                    meta=e.get('speller',{})
+                    if type(meta.get('group')) is not int or not 0<=meta['group']<16 or type(meta.get('line')) is not int or not 0<=meta['line']<12:raise ValueError('Invalid speller flash')
+                    if meta.get('phase')=='calibration':
+                        target=meta.get('target')
+                        if type(target) is not int or not 0<=target<36 or c!=int(meta['line'] in (target//6,6+target%6)):raise ValueError('Invalid calibration target')
+                    elif meta.get('phase')!='spelling' or meta.get('target') is not None or c!=0:raise ValueError('Spelling must not provide a target label')
                 event['condition']=self.session['conditions'][c]; self.pending.append(event)
             if kind=='phase': self.session['phase']=str(e.get('phase',''))[:100]
             self.events.append(event)
@@ -396,6 +404,7 @@ class Engine:
                     tf=time_frequency(sx[:,idx].mean(1),rt)
             trial=dict(index=event['index'],condition=event['condition'],condition_index=event['condition_index'],onset=event['onset'],accepted=not reasons,reasons=list(dict.fromkeys(reasons)),feature=feature,wave=epoch[:,idx].mean(1).tolist() if epoch is not None else None,times=grid.tolist(),tf=tf)
             trial['channel_trials']=channel_trials
+            if s['protocol']=='speller':trial['speller']=event.get('speller',{})
             self.trials.append(trial); self.pending.remove(event); self.revision+=1
             d=DATA_ROOT/s['id']; np.savez_compressed(d/f"trial-{event['index']:04d}.npz",times=rt,raw=x,filtered=y,notched=sx,grid=grid,processed=epoch if epoch is not None else np.empty((0,4)))
             (d/'trials.json').write_text(dumps(self.trials))
@@ -419,9 +428,10 @@ class Engine:
                     latest=channel_windows(np.asarray(self.raw),np.asarray(self.spectral),relative,[end-2,end],s['thresholds'])
                     result['live_preview']={ch:r['preview_psd'] for ch,r in latest.items()};result['live_condition']=event['condition_index'];result['live_second']=end
             self.cache_revision=(self.revision,len(getattr(self,"events",[])));self.cache_analysis=result;return result
+        analysis_trials=[t for t in self.trials if s.get('protocol')!='speller' or t.get('speller',{}).get('phase')=='calibration']
         groups=[]
         for c,label in enumerate(s['conditions']):
-            all_trials=[t for t in self.trials if t['condition_index']==c]; good=[t for t in all_trials if t['accepted']]
+            all_trials=[t for t in analysis_trials if t['condition_index']==c]; good=[t for t in all_trials if t['accepted']]
             waves=[t['wave'] for t in good]; features=[t['feature'] for t in good]
             group=dict(label=label,accepted=len(good),rejected=len(all_trials)-len(good),features=features,mean=float(np.mean(features)) if features else None,se=float(np.std(features,ddof=1)/np.sqrt(len(features))) if len(features)>1 else None,erp=summarize(waves) if waves else None,recent=[{'wave':t['wave'],'index':t['index']} for t in good[-20:]])
             tfs=[t['tf'] for t in good if t['tf']]
@@ -434,7 +444,7 @@ class Engine:
             for channel in s['channels']:
                 cg=[]; rejected=[]
                 for c,label in enumerate(s['conditions']):
-                    trials=[{**t.get('channel_trials',{}).get(channel,{}),'index':t['index']} for t in self.trials if t['condition_index']==c and channel in t.get('channel_trials',{})]
+                    trials=[{**t.get('channel_trials',{}).get(channel,{}),'index':t['index']} for t in analysis_trials if t['condition_index']==c and channel in t.get('channel_trials',{})]
                     good=[t for t in trials if t['accepted']];features=[t['feature'] for t in good]
                     cg.append(dict(label=label,accepted=len(good),rejected=len(trials)-len(good),features=features,mean=float(np.mean(features)) if features else None,se=float(np.std(features,ddof=1)/np.sqrt(len(features))) if len(features)>1 else None,erp=summarize([t['wave'] for t in good]) if good else None,recent=[{'wave':t['wave'],'index':t['index']} for t in good[-20:]]))
                     rejected.extend(dict(index=t['index'],condition=label,reasons=t['reasons']) for t in trials if not t['accepted'])
