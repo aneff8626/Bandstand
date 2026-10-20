@@ -1,9 +1,19 @@
 """Create a relocatable Apple Silicon development app without participant files."""
 from pathlib import Path
-import os,sys,shutil,subprocess,plistlib,importlib.metadata as metadata,json,hashlib
+import os,sys,shutil,subprocess,plistlib,importlib.metadata as metadata,json,hashlib,re
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
-ROOT=Path(__file__).resolve().parents[1]
+ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
+import backend_config
+VERSION=os.environ.get('BANDSTAND_VERSION','0.3.0')
+BUILD=os.environ.get('BANDSTAND_BUILD','5')
+if not re.fullmatch(r'\d+\.\d+\.\d+',VERSION) or not re.fullmatch(r'\d+',BUILD):
+ raise SystemExit('Use a numeric X.Y.Z version and integer build number.')
+# One fixed account backend per installation. Production is built in; a development or staging
+# build names a validated backend file explicitly. Validate before any slow work.
+BACKEND_FILE=os.environ.get('BANDSTAND_BACKEND_CONFIG','').strip()
+BACKEND=backend_config.validate(json.loads(Path(BACKEND_FILE).read_text())) if BACKEND_FILE else None
+TARGET=BACKEND['name'] if BACKEND else 'production'
 # Persistent certificate signing is required for normal updates. Never silently
 # replace a permission-bearing app with a different ad-hoc identity.
 SIGN_ID=os.environ.get('BANDSTAND_SIGN_IDENTITY','').strip()
@@ -21,6 +31,7 @@ source=ROOT/'.audit/source'
 for p in source.glob('*.py'):shutil.copy2(p,app/p.name)
 shutil.copytree(source/'web',app/'web')
 for name in ('LICENSE','README.md'):shutil.copy2(source/name,app/name)
+if BACKEND:(app/'backend.json').write_text(json.dumps(BACKEND))
 # CPython standalone runtime is relocatable. Exclude all preinstalled packages;
 # copy the declared libraries and their platform-specific dependency closure.
 base=Path(sys.base_prefix)
@@ -34,7 +45,7 @@ for link in (resources/'python').rglob('*'):
   link.unlink();link.symlink_to(sibling.name)
 site=resources/'python/lib/python3.12/site-packages';site.mkdir(parents=True,exist_ok=True)
 versions={}
-pending=['numpy','pillow','reportlab','torch','transformers']
+pending=['numpy','pillow','reportlab','torch','transformers','cryptography']
 while pending:
  name=canonicalize_name(pending.pop())
  if name in versions:continue
@@ -47,33 +58,41 @@ while pending:
   src=Path(dist.locate_file(rel));dst=site/rel
   if src.is_file():dst.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(src,dst)
 # Only the immutable public encoder is distributed, never personal checkpoints.
-model=ROOT/'models/all-MiniLM-L6-v2'
+model=Path(os.environ.get('BANDSTAND_PUBLIC_ENCODER',str(ROOT/'models/all-MiniLM-L6-v2')))
 verified=json.loads((model/'public-manifest.json').read_text())
 for name,digest in verified.items():
+ rel=Path(name)
+ if rel.is_absolute() or '..' in rel.parts or not re.fullmatch(r'[0-9a-f]{64}',digest):raise ValueError('Invalid public model manifest entry')
  p=model/name
  if p.is_symlink() or hashlib.sha256(p.read_bytes()).hexdigest()!=digest:raise ValueError('Public model hash mismatch: '+name)
  target=app/'models/all-MiniLM-L6-v2'/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(p,target)
 info=plistlib.loads((ROOT/'Muse Lab.app/Contents/Info.plist').read_bytes())
-info.update(CFBundleName='Bandstand',CFBundleDisplayName='Bandstand',CFBundleShortVersionString='0.2.2',CFBundleVersion='4',LSMinimumSystemVersion='14.0')
+info.update(CFBundleName='Bandstand',CFBundleDisplayName='Bandstand',CFBundleShortVersionString=VERSION,CFBundleVersion=BUILD,BandstandDevelopmentSourceSupported=True,LSMinimumSystemVersion='14.0')
 (out/'Contents/Info.plist').write_bytes(plistlib.dumps(info))
 icon=ROOT/'Muse Lab.app/Contents/Resources/MuseLab.icns'
 if not icon.exists():
  from PIL import Image
  png=ROOT/'build/app-icon.png';png.parent.mkdir(exist_ok=True)
- subprocess.run(['/usr/bin/swift','-module-cache-path',str(ROOT/'build/module-cache'),str(ROOT/'scripts/make_icon.swift'),str(png)],check=True)
+ approved=ROOT/'assets/branding/book-waves-master.png'
+ if approved.exists():shutil.copy2(approved,png)
+ else:subprocess.run(['/usr/bin/swift','-module-cache-path',str(ROOT/'build/module-cache'),str(ROOT/'scripts/make_icon.swift'),str(png)],check=True)
  icon.parent.mkdir(parents=True,exist_ok=True);Image.open(png).save(icon,format='ICNS')
 shutil.copy2(icon,resources/'MuseLab.icns')
 mac=out/'Contents/MacOS';mac.mkdir()
 subprocess.run(['/usr/bin/swiftc','-module-cache-path',str(ROOT/'build/module-cache'),str(ROOT/'native/Desktop.swift'),str(ROOT/'native/MuseTransport.swift'),str(ROOT/'native/TypingMonitor.swift'),'-o',str(mac/'MuseLab'),'-framework','AppKit','-framework','WebKit','-framework','CoreBluetooth','-framework','ApplicationServices','-framework','Carbon'],check=True)
 # Use the same certificate and bundle identifier for every update.
-subprocess.run(['/usr/bin/codesign','--force','--deep','--sign',SIGN_ID,str(out)],check=True)
+from sign_app import sign
+sign(out)
 subprocess.run([str(resources/'python/bin/python3.12'),'-c','import numpy,PIL,reportlab,ssl; from semantic_decoder import encode; assert encode(["Synthetic packaging test"]).shape == (1,384); print("Bundled runtime and offline encoder passed")'],check=True,cwd=app)
 # Runtime verification can create bytecode caches; seal the final tested bundle.
-subprocess.run(['/usr/bin/codesign','--force','--deep','--sign',SIGN_ID,str(out)],check=True)
+sign(out)
 subprocess.run(['/usr/bin/codesign','--verify','--deep','--strict',str(out)],check=True)
 manifest={str(p.relative_to(out)):hashlib.sha256(p.read_bytes()).hexdigest() for p in out.rglob('*') if p.is_file()}
-(ROOT/'release/bundle-manifest.json').write_text(json.dumps({'version':'0.2.2','architecture':'arm64','dependencies':versions,'files':manifest},indent=2))
-archive=ROOT/'release/Bandstand-0.2.2-macos-arm64.zip'
+(ROOT/'release/bundle-manifest.json').write_text(json.dumps({'version':VERSION,'architecture':'arm64','backend':TARGET,'dependencies':versions,'files':manifest},indent=2))
+archive=ROOT/(f'release/Bandstand-{VERSION}-build{BUILD}-macos-arm64.zip' if TARGET=='production' else f'release/Bandstand-{VERSION}-build{BUILD}-{TARGET}-macos-arm64.zip')
 if archive.exists():archive.unlink()
 subprocess.run(['/usr/bin/ditto','-c','-k','--sequesterRsrc','--keepParent',str(out),str(archive)],check=True)
+digest=hashlib.sha256(archive.read_bytes()).hexdigest()
+archive.with_suffix('.zip.sha256').write_text(digest+'  '+archive.name+'\n')
 print(archive)
+print('Signature verified. Clean-Mac Gatekeeper/notarization acceptance still required; this is not an installation-pass claim.')

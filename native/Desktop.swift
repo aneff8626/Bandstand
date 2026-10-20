@@ -10,6 +10,16 @@ func bandstandDataRoot(_ root:URL)->URL {
 
 final class MuseWebView: WKWebView {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+    override func otherMouseDown(with event: NSEvent) {
+        if event.buttonNumber == 3 || event.buttonNumber == 4 { return }
+        super.otherMouseDown(with:event)
+    }
+    override func otherMouseUp(with event: NSEvent) {
+        guard event.buttonNumber == 3 || event.buttonNumber == 4 else { super.otherMouseUp(with:event); return }
+        let direction = event.buttonNumber == 3 ? -1 : 1
+        evaluateJavaScript("window.bandstandNavigate?.(\(direction))")
+    }
+
 }
 
 final class LocalFiles: NSObject, WKURLSchemeHandler {

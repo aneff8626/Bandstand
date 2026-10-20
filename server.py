@@ -34,10 +34,8 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/api/bootstrap': return self.send(200,dumps({'token':TOKEN,**engine.catalog()}))
             if path=='/api/state': return self.send(200,dumps(engine.snapshot()))
             if path=='/api/sessions':
-                sessions=[]
-                for p in sorted((DATA_ROOT).glob('*/session.json'),reverse=True):
-                    s=json.loads(p.read_text()); sessions.append({k:s.get(k) for k in ['id','title','source','started','ended','running','mode','protocol']})
-                return self.send(200,dumps(sessions))
+                from session_store import saved_sessions
+                return self.send(200,dumps(saved_sessions(DATA_ROOT)))
             if path.startswith('/api/tf-band/'):
                 parts=path.split('/');return self.send(200,dumps(engine.result_band(parts[3],parts[4],parts[5])))
             if path.startswith('/api/results/'):
@@ -68,9 +66,9 @@ class Handler(BaseHTTPRequestHandler):
                 if not file.exists():file=ROOT/'stimuli'/Path(path).name
                 if file.suffix!='.png' or not file.exists(): return self.send(404,'Not found','text/plain')
                 return self.send(200,file.read_bytes(),'image/png')
-            mapping={'/':'index.html','/style.css':'style.css',**{'/'+p.name:p.name for p in (ROOT/'web').glob('*.js')}}
+            mapping={'/':'index.html','/style.css':'style.css','/bandstand-logo.png':'bandstand-logo.png','/favicon.png':'favicon.png',**{'/'+p.name:p.name for p in (ROOT/'web').glob('*.js')}}
             if path not in mapping: return self.send(404,'Not found','text/plain')
-            file=ROOT/'web'/mapping[path]; mime={'html':'text/html; charset=utf-8','js':'text/javascript','css':'text/css'}[file.suffix[1:]]
+            file=ROOT/'web'/mapping[path]; mime={'html':'text/html; charset=utf-8','js':'text/javascript','css':'text/css','png':'image/png'}[file.suffix[1:]]
             self.send(200,file.read_bytes(),mime)
         except (ValueError,KeyError) as e: self.send(400,dumps({'error':str(e)}))
         except Exception as e:
@@ -94,6 +92,9 @@ class Handler(BaseHTTPRequestHandler):
                 result=enrollment(body if body else None)
             elif path in ('/api/bluetooth_connect','/api/bluetooth_disconnect'):
                 result=engine.bluetooth_connection(path.endswith('bluetooth_connect'))
+            elif path=='/api/sessions/delete':
+                from session_store import delete_session
+                result=delete_session(engine,body,DATA_ROOT)
             elif path=='/api/source': engine.switch_source(body['source']); result={'ok':True}
             elif path.startswith('/api/typing/'):result=engine.typing_request(path[5:],body)
             elif path=='/api/start': result=engine.begin(body)

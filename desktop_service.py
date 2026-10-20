@@ -54,7 +54,11 @@ def dispatch(path,body):
     if path=='stop': return engine.stop(body.get('reason','stopped'))
     if path=='import': return Handler.import_image(None,body)
     if path=='sessions':
-        return [{k:s.get(k) for k in ['id','title','source','started','ended','running','mode','protocol']} for s in [json.loads(p.read_text()) for p in sorted((DATA_ROOT).glob('*/session.json'),reverse=True)]]
+        from session_store import saved_sessions
+        return saved_sessions(DATA_ROOT)
+    if path=='sessions/delete':
+        from session_store import delete_session
+        return delete_session(engine,body,DATA_ROOT)
     if path.startswith('tf-band/'):
         parts=path.split('/');return engine.result_band(parts[1],parts[2],parts[3])
     if path.startswith('results/'):
