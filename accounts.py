@@ -193,10 +193,8 @@ def account(action,body=None):
    if body.get('policy_version')!=POLICY_VERSION or body.get('acknowledged') is not True:
     raise ValueError('Read and acknowledge the current privacy notice.')
    # Preferences only, not trusted upload authorization. No text or EEG accepted.
-   preferences={'policy_version':POLICY_VERSION,'acknowledged':True,
-                'erp_sharing_requested':body.get('erp_sharing_requested') is True,
-                'erp_auto_share':body.get('erp_auto_share') is True,
-                'decoder_interest_requested':body.get('decoder_interest_requested') is True,'sharing_choices_reviewed':True,'erp_policy':body.get('erp_policy') if body.get('erp_policy')=='erp-sharing-v1' else None}
+   from sharing_policy import choices
+   preferences=choices(body)
    _request('/auth/v1/user',{'data':{'bandstand_preferences':preferences}},_session['token'],method='PUT')
    _session['preferences']=preferences
    return {'saved':True,'message':'Data sharing settings saved.'}
