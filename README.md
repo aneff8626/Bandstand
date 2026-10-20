@@ -2,7 +2,7 @@
 
 ## Download the desktop app
 
-**[Download Bandstand for macOS — Apple Silicon](https://github.com/aneff8626/Bandstand/releases/download/v0.3.0-alpha.2/Bandstand-0.3.0-build6-macos-arm64.zip)**
+**[Download Bandstand for macOS — Apple Silicon](https://github.com/aneff8626/Bandstand/releases/download/v0.3.0-alpha.3/Bandstand-0.3.0-build7-macos-arm64.zip)**
 
 Requires macOS 14 or later and an Apple Silicon Mac (M1 or newer).
 
@@ -12,7 +12,7 @@ Requires macOS 14 or later and an Apple Silicon Mac (M1 or newer).
 
 No Python, terminal, coding agent, or browser preview is needed. Use the download above, not GitHub's **Code → Download ZIP**, which contains source code.
 
-This is an early development release, signed with Developer ID and notarized by Apple. It packages Andrew's local app source as of October 19, including inline Advanced controls. A clean-Mac installation and headset test remain to be confirmed. The matching audited source snapshot is attached to the release; the contributor integration branch also contains changes that are not part of this local-source snapshot.
+This is an early development release, signed with Developer ID and notarized by Apple. Build 7 fixes the fresh-install startup crash, preserves startup errors, and prevents Python bytecode writes inside the signed application. A separate clean-Mac installation and headset test remain to be confirmed. **[Matching desktop source / PR base](https://github.com/aneff8626/Bandstand/tree/codex/desktop-release)** includes build 6 and build 7 in Git history. The contributor integration branch contains additional changes and is separate.
 
 ---
 
