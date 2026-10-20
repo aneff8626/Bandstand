@@ -1,18 +1,16 @@
 # Bandstand
 
-## Download the desktop app
+## Download and install
 
-**[Download Bandstand for macOS — Apple Silicon](https://github.com/aneff8626/Bandstand/releases/download/v0.3.0-alpha.3/Bandstand-0.3.0-build7-macos-arm64.zip)**
+**[Download Bandstand build 8 for macOS (Apple Silicon, macOS 14+)](https://github.com/aneff8626/Bandstand/releases/download/v0.3.0-alpha.4/Bandstand-0.3.0-build8-macos-arm64.zip)**
 
-Requires macOS 14 or later and an Apple Silicon Mac (M1 or newer).
+Unzip, drag **Bandstand.app** into **Applications**, and open it. Ordinary use needs no terminal or agent. The release is Developer ID signed and Apple notarized.
 
-1. Download and unzip the file.
-2. Drag **Bandstand.app** into **Applications**.
-3. Open **Bandstand** from Applications. Sign in or continue locally, then allow Bluetooth when requested. Across-app writing capture additionally needs Accessibility and Input Monitoring.
+## Contributors: edit without rebuilding the app
 
-No Python, terminal, coding agent, or browser preview is needed. Use the download above, not GitHub's **Code → Download ZIP**, which contains source code.
+Install build 8 once, clone this repository, and check out **`codex/desktop-release`**. Copy `backend.development.example.json` to the ignored `backend.json`, configure local Supabase or staging with a publishable client key, then run `python3 scripts/launch_development.py`. Quit other Bandstand windows first. The shell uses bundled Python and your checkout's web/Python code. Use `git pull --ff-only` and relaunch to receive merged changes—no new download for compatible web/Python edits.
 
-This is an early development release, signed with Developer ID and notarized by Apple. Build 7 fixes the fresh-install startup crash, preserves startup errors, and prevents Python bytecode writes inside the signed application. A separate clean-Mac installation and headset test remain to be confirmed. **[Matching desktop source / PR base](https://github.com/aneff8626/Bandstand/tree/codex/desktop-release)** includes build 6 and build 7 in Git history. The contributor integration branch contains additional changes and is separate.
+All PRs target **`codex/desktop-release`**; releases are cut from it. Work on separate feature branches. New Python dependencies or Swift/native-interface changes need a new contributor build. [Development setup, backend configuration, and second-Mac acceptance checklist](https://github.com/aneff8626/Bandstand/blob/codex/desktop-release/docs/desktop-development.md).
 
 ---
 
