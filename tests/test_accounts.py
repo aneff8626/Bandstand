@@ -81,10 +81,10 @@ class AccountsTests(unittest.TestCase):
   from enrollment import POLICY_VERSION
   accounts._session={'token':'synthetic','email':'test@example.org'}
   with patch.object(accounts,'_request',return_value={}) as request:
-   result=accounts.account('preferences',{'policy_version':POLICY_VERSION,'acknowledged':True,'erp_sharing_requested':True,'decoder_interest_requested':True,'text':'PRIVATE','eeg':[1],'embedding':[2],'decoder_upload_enabled':True})
+   result=accounts.account('preferences',{'policy_version':POLICY_VERSION,'acknowledged':True,'sharing_scope':'non_typing','sharing_choices_reviewed':True,'erp_sharing_requested':True,'decoder_interest_requested':True,'text':'PRIVATE','eeg':[1],'embedding':[2],'decoder_upload_enabled':True})
    payload=request.call_args.args[1]['data']['bandstand_preferences']
-   self.assertEqual(set(payload),{'policy_version','acknowledged','erp_sharing_requested','decoder_interest_requested','sharing_choices_reviewed','erp_policy','erp_auto_share'})
-   self.assertFalse(payload['erp_auto_share'])
+   self.assertEqual(set(payload),{'policy_version','acknowledged','erp_sharing_requested','decoder_interest_requested','sharing_choices_reviewed','erp_policy','erp_auto_share','sharing_scope','typing_risk_acknowledged'})
+   self.assertTrue(payload['erp_auto_share']);self.assertFalse(payload['decoder_interest_requested'])
    self.assertTrue(result['saved']);self.assertNotIn('PRIVATE',str(request.call_args))
  def test_preferences_require_login_and_acknowledgment(self):
   with patch.object(accounts,'_request') as request:
