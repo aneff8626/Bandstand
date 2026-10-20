@@ -47,10 +47,10 @@ Time-frequency results show all four electrodes separately. Eyes-open/closed rec
 | Expertise objects | Import images; choose most/least knowledgeable categories | Birds, dogs, car models, food, plants, instruments, aircraft, chess. Self-report is not an objective expertise test. |
 | Flanker | Congruent/incongruent arrows; left/right key responses | Stimulus-locked N2, with accuracy and RT. Does not implement response-locked ERN. |
 | Reward | Blue/green square choices; wins/losses | .60/.10 reward probability; randomized positions; feedback-locked AF7/AF8 re-referenced to TP9/TP10. Original color changes across blocks omitted. |
-| Eyes open/closed | 8 s rest blocks with tones | Alpha 8–13 Hz, TP9/TP10; primary interval 2–8 s. Posterior sites absent. |
+| Eyes open/closed | 12 s alternating blocks with tones | Alpha 8–13 Hz, all four electrodes (TP9/TP10 strongest on Muse); primary interval 2–12 s. Posterior sites absent. |
 | Rest/arithmetic | Rest vs silent serial sevens | Theta 4–7 Hz, AF7/AF8; primary interval 2–8 s. Fz absent. |
 | Custom conditions | User-defined labels/instructions | Configurable band/electrodes; naturalistic confounds must be controlled. No validated effect implied. |
-| Biofeedback | Five math problems before/after; 30 s pre/post rest; configurable training | Alpha feedback freezes during artifacts. Power and math accuracy/RT outcomes are reported descriptively. No causal efficacy claim. |
+| Biofeedback | Five math problems before/after; six 8 s rest blocks before and after (about a minute each); configurable training | Alpha feedback freezes during artifacts. Power and math accuracy/RT outcomes are reported descriptively. No causal efficacy claim. |
 
 ## Processing and statistical interpretation
 
@@ -60,7 +60,7 @@ Time-frequency results show all four electrodes separately. Eyes-open/closed rec
 - Browser frame callbacks and Web Audio output-clock estimates are mapped to host time with minimum-RTT clock pings. They are software timestamps, not photodiode/audio-loopback measurements. Raw receive timing and event timing are saved.
 - Online ERP processing: causal 60 Hz notch (Q=30), first-order 0.1 Hz high-pass and second-order 30 Hz low-pass. These filters change phase/peak latency; do not treat online peaks as calibrated physiological latency. Raw EEG is retained for offline processing.
 - Epoch: -200 to +800 ms; baseline -200 to 0 ms. Signal is interpolated to a common 256 Hz grid only after checking coverage and gaps. Reward trials additionally use the temporal mean as reference.
-- Time-frequency: 60 Hz notched EEG; 1 s Hann windows, 125 ms hops, 2–40 Hz, absolute log power. Condition differences are differences of mean log power. Welch-style band features use a periodogram over each nonoverlapping block analysis interval. No hidden baseline division.
+- Time-frequency: 60 Hz notched EEG; channel-local 2 s Hann windows every 0.5 s, 2–40 Hz, absolute log power. Condition differences are differences of mean log power. Welch-style band features use a periodogram over each nonoverlapping block analysis interval. No hidden baseline division.
 - Artifact rules operate on raw EEG. Provisional thresholds flag large amplitude/steps, frontal blink-like changes, elevated 25–45 Hz activity, clipping, flatline, missing samples. Frontal blink flags are applied even when temporal channels are selected. ERP rejection is assessed per channel, including baseline and the primary interval, so a noisy channel does not automatically discard clean channels. No ICA or EOG/EMG validation is claimed.
 - ERP display adds condition means and pointwise Student-t 95% intervals from 10 accepted trials per condition. Comparison plots show single trials, then means ± SE.
 - Two-sided Welch tests compare trial-level features after every new usable trial, gated by at least 10 usable trials in both conditions (adjustable upward). Exact numeric p, t, df and thresholds for NS/*/**/*** are stored. Repeated looks are uncorrected, trials may be autocorrelated, and one participant's trials do not establish population effects. The threshold of 10 is for display, not a power calculation.
@@ -94,6 +94,8 @@ Installed runtime is the existing Codex Python 3.12 distribution, exposed throug
 ```
 
 `server.py` is an optional loopback web frontend on port 8765 for environments that permit a listening socket. The desktop app uses `desktop_service.py` and needs no port. `build/qa/example-report.pdf` is a synthetic pipeline-test artifact, not a human recording. The 2026-10-08 release checks passed 92 Python tests and all JavaScript regression scripts. A synthetic 100-trial benchmark covered processing and raw/processed/PDF exports. These do not validate physical stimulus timing or current Bluetooth behavior.
+
+Accounts use the production Supabase project unless a validated, git-ignored `backend.json` selects a development or staging project; there is no runtime override. A local staging stack, ordered migrations, a permission inventory and the account acceptance harness are described in `docs/milestone-1-accounts-and-consent.md`.
 
 ## Primary sources
 
@@ -239,7 +241,7 @@ The shared headset panel now serves three areas: Personal Insights, Growth Activ
 
 Growth Activities provides Find Your Reset (three randomly ordered 45-second activities, each preceded by a 30-second eyes-open baseline) and 2-minute eyes-open meditation following a 30-second baseline. Two-second nonoverlapping EEG clips are checked per electrode. Each clip is autosaved. Results show per-electrode theta, alpha, low-beta, and high-beta power. Reset ranks average absolute spectral change from the preceding baseline, requiring at least five usable clips per electrode in each phase. A larger change does not establish a better state or clinical benefit. There are no inferential p-values for this short within-person comparison.
 
-Personal activity files are under the configured private data directory, in `personal/`. They contain questionnaire answers/scores and timestamped spectral features with rejection reasons; these activity files do not retain continuous raw EEG. Existing research and writing storage is unchanged. Interrupted activity files are recovered as partial results. New optional local personalization settings default off and include explicit disclosure about cross-activity writing data. No personal-insight, writing, embedding, or model-weight upload is enabled by this prototype. Research contribution is interest only; ERP sharing retains its existing separate consent.
+Personal activity files are under the configured private data directory, in `personal/`. They contain questionnaire answers/scores and timestamped spectral features with rejection reasons; these activity files also keep the raw EEG recorded during each activity (typically a few MB per activity). Existing research and writing storage is unchanged. Interrupted activity files are recovered as partial results. New optional local personalization settings default off and include explicit disclosure about cross-activity writing data. No personal-insight, writing, embedding, or model-weight upload is enabled by this prototype. Research contribution is interest only; ERP sharing retains its existing separate consent.
 
 Scientific limitation: no verified Muse-compatible individual EEG-to-extraversion prediction model is included. More recordings do not automatically validate such a model. Questionnaire scores are not EEG estimates or calibrated probabilities. Future cross-activity predictive training needs an explicit model, participant-separated validation, and an implemented protected sharing protocol before contribution can be enabled.
 

@@ -4,7 +4,7 @@ from pathlib import Path
 from collections import deque, Counter
 import numpy as np
 from tf_analysis import channel_windows,summarize_tf
-from analysis import FS, CHANNELS, DEFAULT_THRESHOLDS, ERP_THRESHOLDS, Filters, artifacts, compare, summarize, bandpower, time_frequency
+from analysis import FS, CHANNELS, DEFAULT_THRESHOLDS, ERP_THRESHOLDS, Filters, artifacts, compare, summarize, bandpower, time_frequency, behavior_summary
 from protocols import PROTOCOLS, SOURCES
 
 ROOT=Path(__file__).resolve().parent
@@ -17,6 +17,43 @@ def clean(v):
     return v
 
 def dumps(v): return json.dumps(clean(v),allow_nan=False)
+
+
+# Labelled simulation only. Each protocol gets its textbook direction at plausible Muse sites (TP9, AF7, AF8,
+# TP10), so demos teach the expected pattern. Nothing is injected for biofeedback or self-disclosure, so the
+# simulator never manufactures a training or disclosure effect.
+SIM_ERP={  # protocol: (latency s, width s, {condition index: µV per channel})
+ 'oddball':(.38,.075,{0:(1,.5,.5,1),1:(6,3,3,6)}),
+ 'auditory':(.33,.08,{0:(1,1.5,1.5,1),1:(4,5,5,4)}),
+ 'faces':(.17,.03,{0:(-6,-1,-1,-6),1:(-2,-.5,-.5,-2)}),
+ 'expertise':(.17,.03,{0:(-5,-1,-1,-5),1:(-3,-.5,-.5,-3)}),
+ 'flanker':(.28,.05,{0:(-.5,-2,-2,-.5),1:(-1,-5,-5,-1)}),
+ 'reward':(.3,.05,{0:(0,0,0,0),1:(0,5,5,0)}),
+}
+SIM_TF={'alpha':(10,(8,4,4,8)),'theta':(6,(1,4,4,1)),'custom':(10,(4,4,4,4))}  # added only in the second condition
+SIM_NOTES={
+ 'oddball':'a positive peak near 380 ms, larger for targets and largest at TP9/TP10.',
+ 'auditory':'a frontal negative peak near 100 ms for every tone and a positive peak near 330 ms that is larger for targets.',
+ 'faces':'a negative peak near 170 ms at TP9/TP10 that is larger for faces than cars.',
+ 'expertise':'a negative peak near 170 ms at TP9/TP10 that is larger for the more familiar category.',
+ 'flanker':'a frontal negative peak near 280 ms that is larger for incongruent arrows.',
+ 'reward':'a frontal positive peak near 300 ms after wins only (AF7/AF8, so it survives the TP9/TP10 re-reference).',
+ 'alpha':'extra 10 Hz alpha during eyes-closed blocks on every electrode, strongest at TP9/TP10.',
+ 'theta':'extra 6 Hz theta at AF7/AF8 during arithmetic blocks.',
+ 'custom':'extra 10 Hz alpha during the second condition.',
+ 'disclosure':'no effect; any difference is noise.',
+ 'biofeedback':'no effect; any pre/post difference is noise, not training.',
+}
+
+def image_sequence(pool,n,rng):
+    """n images for one condition: every image once per shuffled pass, never the same image twice in a row
+    (also across pass boundaries), so repetition does not differ between images or conditions."""
+    out=[]
+    while len(out)<n:
+        deck=list(pool);rng.shuffle(deck)
+        if out and len(deck)>1 and deck[0] is out[-1]:deck[0],deck[1]=deck[1],deck[0]
+        out.extend(deck)
+    return out[:n]
 
 class PacketAssembler:
     def __init__(self,callback):
@@ -118,15 +155,22 @@ class Engine:
                 if self.demo_time is None or now-self.demo_time>2: self.demo_time=now-12/FS
                 n=max(1,int((now-self.demo_time)*FS))
                 ts=self.demo_time+np.arange(1,n+1)/FS; self.demo_time=ts[-1]
-                x=self.rng.normal(0,4,(n,4))+8*np.sin(2*np.pi*10*ts[:,None]+np.arange(4))
+                # Background alpha drifts slowly in strength, so block-to-block variance resembles real recordings.
+                x=self.rng.normal(0,4,(n,4))+8*(1+.35*np.sin(2*np.pi*ts[:,None]/37+np.arange(4)))*np.sin(2*np.pi*10*ts[:,None]+np.arange(4))
                 # Synthetic effects are deliberately present only in labeled simulation.
+                protocol=self.session['protocol'] if self.session else None
                 for event in self.events[-8:]:
                     if event.get('kind')!='stimulus': continue
                     d=ts-event['onset']; c=event['condition_index']
-                    if self.session and self.session['mode']=='erp':
-                        x+=(3+5*c)*np.exp(-((d[:,None]-.38)/.075)**2)
-                    elif np.any((d>=0)&(d<8)):
-                        x+=c*8*np.sin(2*np.pi*10*ts[:,None])
+                    if protocol in SIM_ERP:
+                        latency,width,amplitude=SIM_ERP[protocol]
+                        x+=np.exp(-((d[:,None]-latency)/width)**2)*np.asarray(amplitude[c])
+                        if protocol=='auditory': x+=np.exp(-((d[:,None]-.1)/.025)**2)*np.asarray((-1,-3,-3,-1))
+                    elif protocol in SIM_TF and c==1:
+                        # In phase with the background rhythm, for the whole block, on every channel.
+                        frequency,amplitude=SIM_TF[protocol]; inside=(d>=0)&(d<self.session['stim_ms'][1]/1000)
+                        gain=.6+.8*((event["index"]*.618034)%1)  # each block its own effect size
+                        if np.any(inside): x[inside]+=gain*np.sin(2*np.pi*frequency*ts[inside,None]+np.arange(4))*np.asarray(amplitude)
                 self.ingest(ts,x)
     def switch_source(self,source):
         if source not in ['live','simulation']: raise ValueError('Unknown data source')
@@ -165,7 +209,7 @@ class Engine:
                 self.last_quality=time.time()
             if self.personal.current and self.times[-1]-self.personal.last_sample>=2:self.personal.ingest(list(self.times),list(self.raw),list(self.spectral))
             self.process_pending()
-            if self.typing.running and self.typing.pending:self.typing.process(list(self.times),list(self.raw),list(self.filtered))
+            if self.typing.running and self.typing.pending and self.times[-1]>=self.typing.next_due():self.typing.process(list(self.times),list(self.raw),list(self.filtered))
             if self.typing.running and time.time()-self.typing.last_live_prediction>=1:self.typing.live_predict(list(self.times),list(self.raw),list(self.filtered))
     def typing_request(self,path,body):
         with self.lock:
@@ -203,7 +247,7 @@ class Engine:
         for p in PROTOCOLS:
             p=dict(p); p['assets']=Counter(a['category'] for a in assets)
             result.append(p)
-        return {'protocols':result,'sources':SOURCES,'thresholds':DEFAULT_THRESHOLDS,'erp_thresholds':ERP_THRESHOLDS,'channels':CHANNELS,'assets':assets}
+        return {'protocols':result,'sources':SOURCES,'thresholds':DEFAULT_THRESHOLDS,'erp_thresholds':ERP_THRESHOLDS,'channels':CHANNELS,'assets':assets,'simulation_effects':SIM_NOTES}
     def begin(self,cfg):
         with self.lock:
             if self.typing.running: raise ValueError('Stop typing recording first.')
@@ -222,11 +266,18 @@ class Engine:
             if self.personal.current:raise ValueError('Finish the personal activity first')
             count=int(cfg.get('trials',p['trials'])); minimum=int(cfg.get('minimum',10))
             if p['id']=='disclosure':count=4
-            if not (count==4 if p['id']=='disclosure' else 20<=count<=1000) or not 10<=minimum<=500: raise ValueError('Trial count must be 20–1000; minimum usable trials 10–500')
+            # Biofeedback measures six 8 s rest blocks before and six after training; its comparison needs 5 per phase.
+            if p['id']=='biofeedback':count=12;minimum=min(minimum,5)
+            if p['id']=='biofeedback':valid=5<=minimum<=6
+            else:valid=(count==4 if p['id']=='disclosure' else 20<=count<=1000) and 10<=minimum<=500
+            if not valid: raise ValueError('Trial count must be 20–1000; minimum usable trials 10–500')
             window=list(map(float,cfg.get('window',p['window'])))
             if len(window)!=2 or not 0<=window[0]<window[1]<= (p['stim_ms'][1]/1000 if p['mode']!='erp' else .8): raise ValueError('Invalid analysis window')
             band=list(map(float,cfg.get('band',p.get('band',[8,13]))))
             if len(band)!=2 or not 2<=band[0]<band[1]<=40: raise ValueError('Band must be within 2–40 Hz')
+            gain=(cfg.get('calibration') or {}).get('audio_gain') if isinstance(cfg.get('calibration') or {},dict) else None
+            # The page always sends the gain it will play; refuse any unsafe value (absent: no audio settings recorded).
+            if p['id'] in ('auditory','alpha') and gain is not None and not (type(gain) in (int,float) and 0<gain<=.2): raise ValueError('Audio gain must be above 0 and at most 0.2.')
             conditions=p['conditions']; assets=self.manifest(); pools=None
             if p['id']=='custom':
                 conditions=[str(s).strip()[:80] for s in cfg.get('conditions',conditions)]
@@ -236,7 +287,8 @@ class Engine:
                 if len(categories)!=2 or categories[0]==categories[1]: raise ValueError('Choose two different expertise categories')
                 pools=[[a for a in assets if a['category']==cat] for cat in categories]
                 if any(len(pool)<20 for pool in pools): raise ValueError('Import at least 20 distinct documented images per category first')
-                conditions=categories
+                # Keep the protocol's roles in every label, export and report.
+                conditions=['Faces','Cars'] if p['id']=='faces' else [f'{p["conditions"][0]}: {categories[0]}',f'{p["conditions"][1]}: {categories[1]}']
             a=np.array(list(self.raw)[-FS*2:]); times=np.array(list(self.times)[-FS*2:])
             reasons=artifacts(a,times,thresholds,[CHANNELS.index(c) for c in selected])
             if reasons and cfg.get('allow_noisy_start') is not True: raise ValueError('Improve contact before recording: '+', '.join(reasons))
@@ -245,16 +297,19 @@ class Engine:
             labels=[1]*round(count*p['probability'])+[0]*(count-round(count*p['probability'])); rng.shuffle(labels)
             if p['id']=='disclosure':labels=[seed%2,1-seed%2,1-seed%2,seed%2]
             if p['id']=='alpha':labels= [(i+seed%2)%2 for i in range(count)]
-            plan=[]
+            if p['id']=='biofeedback':labels=[0]*6+[1]*6
+            plan=[];decks=[image_sequence(pool,labels.count(c),rng) for c,pool in enumerate(pools)] if pools else None
             for i,c in enumerate(labels):
                 item=dict(index=i,condition_index=c,condition=conditions[c],duration=rng.randint(*p['stim_ms']),isi=rng.randint(*p['isi_ms']),direction=rng.choice(['left','right']),number=rng.randint(600,999))
-                if pools: item['asset']=pools[c][(i//2)%len(pools[c])]['file']
+                if pools: item['asset']=decks[c].pop(0)['file']
+                # Reward outcomes follow the participant's choice; a pre-drawn label would contradict them.
+                if p['id']=='reward': item.update(condition_index=None,condition='set by choice outcome')
                 plan.append(item)
             session_id=time.strftime('%Y%m%d-%H%M%S')+'-'+uuid.uuid4().hex[:6]
             directory=DATA_ROOT/session_id; directory.mkdir()
             calibration=cfg.get('calibration',{})
             if hasattr(self,'review_band'):del self.review_band
-            self.session={**p,'id':session_id,'protocol':p['id'],'source':self.source,'channels':selected,'conditions':conditions,'trials_planned':count,'minimum':minimum,'window':window,'band':band,'thresholds':thresholds,'seed':seed,'plan':plan,'running':True,'started':time.time(),'phase':'recording','calibration':calibration,'metric':cfg.get('metric','amplitude'),'training_seconds':max(30,min(1800,int(cfg.get('training_seconds',120)))),'timing':'Browser frame / Web Audio software timestamps aligned by clock ping; BLE receive-anchored sample clock. Physical display/audio/BLE latencies uncalibrated.','analysis':'Causal .1Hz HP, 30Hz LP, 60Hz notch Q30. ERP pre-stimulus baseline -200..0ms. TF uses channel-local 2s Hann windows every 0.5s, DC removal and 60 Hz notch. At least 4 clean seconds per block/channel; comparisons use block log band power. Trial-level statistics, repeated looks; no population inference.'}
+            self.session={**p,'id':session_id,'protocol':p['id'],'source':self.source,'channels':selected,'conditions':conditions,'trials_planned':count,'minimum':minimum,'window':window,'band':band,'thresholds':thresholds,'seed':seed,'plan':plan,'running':True,'started':time.time(),'phase':'recording','calibration':calibration,'metric':cfg.get('metric','amplitude'),'training_seconds':max(30,min(1800,int(cfg.get('training_seconds',120)))),'timing':'Browser frame / Web Audio software timestamps aligned by clock ping; BLE receive-anchored sample clock. Physical display/audio/BLE latencies uncalibrated.','analysis':{'erp':'Causal .1 Hz high-pass, 30 Hz low-pass, 60 Hz notch Q30. ERP pre-stimulus baseline -200..0 ms. Trial-level statistics, repeated looks; no population inference.','tf':'60 Hz notch; channel-local 2 s Hann windows every 0.5 s with DC removal. At least 4 clean seconds per block/channel; comparisons use block log band power. Exploratory statistics within one participant; no population inference.','bio':'Rest blocks: whole-block band power after artifact screening (linear µV²). Feedback: overlapping 2 s windows, descriptive only. Pre/post changes are observational.'}[p['mode']]}
             if self.session['metric'] not in ['amplitude','latency']: raise ValueError('Unknown measurement')
             if p['id']=='disclosure':self.session['analysis']+=' Public self-disclosure exception: condition comparisons use non-overlapping 2-second clips as observations. Clips within blocks are correlated; p-values may overstate evidence. Answer text is not saved by this task.'
             self.session['preflight_quality']={'warnings':reasons,'continued_anyway':cfg.get('allow_noisy_start') is True}
@@ -288,9 +343,14 @@ class Engine:
             self.save_metadata(); return event
     def process_pending(self,force=False):
         if not self.session or not self.pending or not self.times: return
-        s=self.session; tt=np.asarray(self.times); raw=np.asarray(self.raw); filt=np.asarray(self.filtered); spectral=np.asarray(self.spectral)
+        s=self.session
+        # Blocks report their planned length as planned_duration_ms; the protocol default is only a fallback.
+        def epoch_end(event):return .8 if s['mode']=='erp' else (event.get('duration') or event.get('planned_duration_ms') or s.get('stim_ms',[8000,8000])[1])/1000
+        # Converting the whole 90 s buffer is costly; skip it on packets where no epoch is complete yet.
+        if not force and self.times[-1]<min(e['onset']+epoch_end(e)+.03 for e in self.pending): return
+        tt=np.asarray(self.times); raw=np.asarray(self.raw); filt=np.asarray(self.filtered); spectral=np.asarray(self.spectral)
         for event in self.pending[:]:
-            pre=.2 if s['mode']=='erp' else 2.; end=.8 if s['mode']=='erp' else max(8.,event.get('duration',s.get('stim_ms',[8000,8000])[1])/1000)
+            pre=.2 if s['mode']=='erp' else 2.; end=epoch_end(event)
             if not force and tt[-1]<event['onset']+end+.03: continue
             t=tt-event['onset']; use=(t>=-pre)&(t<=end); rt=t[use]; x=raw[use]; y=filt[use]; sx=spectral[use]
             if s['mode']=='tf':
@@ -344,7 +404,7 @@ class Engine:
         if self.session['mode']=='tf' and self.pending and hasattr(self,'times') and self.times:
             tick=int(self.times[-1]*2)
             if getattr(self,'tf_tick',None)!=tick:self.tf_tick=tick;self.cache_revision=None
-        if self.cache_revision==self.revision: return self.cache_analysis
+        if self.cache_revision==(self.revision,len(getattr(self,"events",[]))): return self.cache_analysis
         s=self.session
         if s['mode']=='tf':
             for trial in self.trials:
@@ -358,7 +418,7 @@ class Engine:
                 if end>=s['window'][0]+2:
                     latest=channel_windows(np.asarray(self.raw),np.asarray(self.spectral),relative,[end-2,end],s['thresholds'])
                     result['live_preview']={ch:r['preview_psd'] for ch,r in latest.items()};result['live_condition']=event['condition_index'];result['live_second']=end
-            self.cache_revision=self.revision;self.cache_analysis=result;return result
+            self.cache_revision=(self.revision,len(getattr(self,"events",[])));self.cache_analysis=result;return result
         groups=[]
         for c,label in enumerate(s['conditions']):
             all_trials=[t for t in self.trials if t['condition_index']==c]; good=[t for t in all_trials if t['accepted']]
@@ -381,7 +441,8 @@ class Engine:
                 result['channels'][channel]=dict(groups=cg,times=result['times'],unit=result['unit'],stats=compare(cg[0]['features'],cg[1]['features'],s['minimum']),rejections=rejected)
         if all(g.get('tf') for g in groups):
             n=min(len(g['tf']['times']) for g in groups); result['tf_difference']={**groups[0]['tf'],'times':groups[0]['tf']['times'][:n],'power_db':(np.array(groups[1]['tf']['power_db'])[:,:n]-np.array(groups[0]['tf']['power_db'])[:,:n]).tolist()}
-        self.cache_revision=self.revision; self.cache_analysis=result; return result
+        result['behavior']=behavior_summary(s.get('protocol'),getattr(self,'events',[]))
+        self.cache_revision=(self.revision,len(getattr(self,"events",[]))); self.cache_analysis=result; return result
     def stop(self,reason='completed'):
         with self.lock:
             if not self.session or not self.session['running']: return self.session
@@ -533,8 +594,10 @@ class Engine:
                     if (d/name).exists(): z.write(d/name,name)
                 if kind!='raw':
                     for file in d.glob('trial-*.npz'): z.write(file,file.name)
-                    out=io.StringIO(); writer=csv.writer(out); writer.writerow(['trial','condition','accepted','feature','unit','reasons'])
-                    for t in self.trials: writer.writerow([t['index'],t['condition'],t['accepted'],t['feature'],self.analysis()['unit'],'; '.join(t['reasons'])])
+                    out=io.StringIO(); writer=csv.writer(out); writer.writerow(['trial','condition','accepted','feature','unit','reasons','response','correct','rt_ms','choice'])
+                    responses={e['index']:e for e in self.events if e.get('kind')=='response' and 'index' in e}
+                    for t in self.trials:
+                        r=responses.get(t['index'],{});writer.writerow([t['index'],t['condition'],t['accepted'],t['feature'],self.analysis()['unit'],'; '.join(t['reasons']),r.get('key',''),r.get('correct',''),r.get('rt_ms',''),r.get('choice','')])
                     z.writestr('trial-summary.csv',out.getvalue())
                     if self.session['mode']=='tf':
                         out=io.StringIO();writer=csv.writer(out);writer.writerow(['trial','condition','channel','accepted','clean_seconds','power_dB','band_low_Hz','band_high_Hz'])

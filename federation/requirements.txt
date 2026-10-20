@@ -1,0 +1,4 @@
+# Test-harness environment for synthetic federation rehearsals. Not part of the desktop app bundle.
+flwr[simulation]==1.40.0
+dp-accounting==0.6.0
+numpy>=1.26,<3
