@@ -24,7 +24,7 @@ def validate(config):
  loopback=parts.scheme=='http' and parts.hostname in ('127.0.0.1','localhost') and port is not None and name=='development'
  if not (hosted or loopback) or parts.path not in ('','/') or parts.query or parts.fragment or parts.username or parts.password:
   raise ValueError('backend.json url must be a Supabase project address (https://<ref>.supabase.co) or, for development, a local stack.')
- base=f'{parts.scheme}://{parts.netloc}'
+ base=f'{parts.scheme}://{parts.hostname}'+(f':{port}' if port is not None else '')
  if base==PRODUCTION['url']:raise ValueError('A development or staging build must not target the production project.')
  if not re.fullmatch(r'sb_publishable_[A-Za-z0-9_-]{8,128}',key):
   raise ValueError('backend.json needs the publishable client key. Never place a secret or service-role key in the app.')

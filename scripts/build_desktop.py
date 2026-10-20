@@ -6,7 +6,7 @@ from packaging.utils import canonicalize_name
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 import backend_config
 VERSION=os.environ.get('BANDSTAND_VERSION','0.3.0')
-BUILD=os.environ.get('BANDSTAND_BUILD','5')
+BUILD=os.environ.get('BANDSTAND_BUILD','8')
 if not re.fullmatch(r'\d+\.\d+\.\d+',VERSION) or not re.fullmatch(r'\d+',BUILD):
  raise SystemExit('Use a numeric X.Y.Z version and integer build number.')
 # One fixed account backend per installation. Production is built in; a development or staging
@@ -31,6 +31,7 @@ source=ROOT/'.audit/source'
 for p in source.glob('*.py'):shutil.copy2(p,app/p.name)
 shutil.copytree(source/'web',app/'web')
 for name in ('LICENSE','README.md'):shutil.copy2(source/name,app/name)
+(app/'bundled-requirements.txt').write_text((ROOT/'requirements.txt').read_text())
 if BACKEND:(app/'backend.json').write_text(json.dumps(BACKEND))
 # CPython standalone runtime is relocatable. Exclude all preinstalled packages;
 # copy the declared libraries and their platform-specific dependency closure.
@@ -67,7 +68,7 @@ for name,digest in verified.items():
  if p.is_symlink() or hashlib.sha256(p.read_bytes()).hexdigest()!=digest:raise ValueError('Public model hash mismatch: '+name)
  target=app/'models/all-MiniLM-L6-v2'/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(p,target)
 info=plistlib.loads((ROOT/'Muse Lab.app/Contents/Info.plist').read_bytes())
-info.update(CFBundleName='Bandstand',CFBundleDisplayName='Bandstand',CFBundleShortVersionString=VERSION,CFBundleVersion=BUILD,BandstandDevelopmentSourceSupported=True,LSMinimumSystemVersion='14.0')
+info.update(CFBundleName='Bandstand',CFBundleDisplayName='Bandstand',CFBundleShortVersionString=VERSION,CFBundleVersion=BUILD,BandstandDevelopmentSourceSupported=('--development-source' in (ROOT/'native/Desktop.swift').read_text() and 'validator.terminationStatus' in (ROOT/'native/Desktop.swift').read_text()),LSMinimumSystemVersion='14.0')
 (out/'Contents/Info.plist').write_bytes(plistlib.dumps(info))
 icon=ROOT/'Muse Lab.app/Contents/Resources/MuseLab.icns'
 if not icon.exists():
@@ -87,6 +88,7 @@ subprocess.run([str(resources/'python/bin/python3.12'),'-c','import numpy,PIL,re
 # Runtime verification can create bytecode caches; seal the final tested bundle.
 sign(out)
 subprocess.run(['/usr/bin/codesign','--verify','--deep','--strict',str(out)],check=True)
+subprocess.run([sys.executable,str(ROOT/'scripts/smoke_development.py'),str(out)],check=True)
 manifest={str(p.relative_to(out)):hashlib.sha256(p.read_bytes()).hexdigest() for p in out.rglob('*') if p.is_file()}
 (ROOT/'release/bundle-manifest.json').write_text(json.dumps({'version':VERSION,'architecture':'arm64','backend':TARGET,'dependencies':versions,'files':manifest},indent=2))
 archive=ROOT/(f'release/Bandstand-{VERSION}-build{BUILD}-macos-arm64.zip' if TARGET=='production' else f'release/Bandstand-{VERSION}-build{BUILD}-{TARGET}-macos-arm64.zip')

@@ -1,7 +1,9 @@
 """Supabase identity only: explicit field allowlists; tokens stay in process memory."""
 import json, os, time, threading, urllib.request, urllib.error, urllib.parse
-URL='https://ovoxgrqhdvzcjqjzgnqk.supabase.co'
-PUBLISHABLE_KEY='sb_publishable_YxUASj1-IWhc9YAo_Qf-hw_NxlqkiJf'
+import backend_config
+BACKEND=backend_config.load()
+URL=BACKEND['url']
+PUBLISHABLE_KEY=BACKEND['publishable_key']
 _lock=threading.RLock()
 _session=None
 _restore_attempted=False

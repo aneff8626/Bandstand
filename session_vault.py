@@ -3,6 +3,13 @@ import ctypes as C
 import sys
 from private_storage import DATA_ROOT
 import hashlib
+import backend_config
+
+def session_namespace():
+ config=backend_config.load()
+ # Keep existing production sessions; isolate staging/development credentials.
+ return str(DATA_ROOT) if config["name"]=="production" else str(DATA_ROOT)+"|"+config["url"]
+
 
 def _operation(action, value=None):
  if sys.platform!='darwin':raise ValueError('Secure session storage requires macOS Keychain.')
@@ -21,7 +28,7 @@ def _operation(action, value=None):
  def symbol(lib,name):return P.in_dll(lib,name).value
  def dictionary(items):
   k=(P*len(items))(*[x[0] for x in items]);v=(P*len(items))(*[x[1] for x in items]);p=cf.CFDictionaryCreate(None,k,v,len(items),None,None);owned.append(p);return p
- base=[(symbol(sec,'kSecClass'),symbol(sec,'kSecClassGenericPassword')),(symbol(sec,'kSecAttrService'),string('org.bandstand.session')),(symbol(sec,'kSecAttrAccount'),string(hashlib.sha256(str(DATA_ROOT).encode()).hexdigest()))]
+ base=[(symbol(sec,'kSecClass'),symbol(sec,'kSecClassGenericPassword')),(symbol(sec,'kSecAttrService'),string('org.bandstand.session')),(symbol(sec,'kSecAttrAccount'),string(hashlib.sha256(session_namespace().encode()).hexdigest()))]
  try:
   query=dictionary(base)
   sec.SecItemDelete.argtypes=[P];sec.SecItemDelete.restype=C.c_int

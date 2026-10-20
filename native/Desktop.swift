@@ -53,10 +53,10 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
         config.userContentController.addUserScript(WKUserScript(source:script,injectionTime:.atDocumentStart,forMainFrameOnly:true))
         web=MuseWebView(frame:.zero,configuration:config);web.navigationDelegate=self;web.uiDelegate=self
         window=NSWindow(contentRect:NSRect(x:0,y:0,width:1450,height:960),styleMask:[.titled,.closable,.miniaturizable,.resizable],backing:.buffered,defer:false)
-        window.title="Bandstand";window.contentView=web;window.center();window.makeKeyAndOrderFront(nil)
+        window.title=CommandLine.arguments.contains("--development-source") ? "Bandstand · Development" : "Bandstand";window.contentView=web;window.center();window.makeKeyAndOrderFront(nil)
         let mainMenu=NSMenu();let appItem=NSMenuItem();mainMenu.addItem(appItem);let appMenu=NSMenu();appMenu.addItem(withTitle:"Quit Bandstand",action:#selector(NSApplication.terminate(_:)),keyEquivalent:"q");appItem.submenu=appMenu
         let editItem=NSMenuItem();mainMenu.addItem(editItem);let edit=NSMenu(title:"Edit");edit.addItem(withTitle:"Copy",action:#selector(NSText.copy(_:)),keyEquivalent:"c");edit.addItem(withTitle:"Paste",action:#selector(NSText.paste(_:)),keyEquivalent:"v");edit.addItem(withTitle:"Select All",action:#selector(NSText.selectAll(_:)),keyEquivalent:"a");editItem.submenu=edit;NSApp.mainMenu=mainMenu
-        process=Process();let bundledPython=root.deletingLastPathComponent().appendingPathComponent("python/bin/python3.12")
+        process=Process();let bundledPython=Bundle.main.bundleURL.appendingPathComponent("Contents/Resources/python/bin/python3.12")
         process.executableURL=FileManager.default.isExecutableFile(atPath:bundledPython.path) ? bundledPython : root.appendingPathComponent(".venv/bin/python");process.arguments=[root.appendingPathComponent("desktop_service.py").path];process.currentDirectoryURL=root
         var environment=ProcessInfo.processInfo.environment; environment["MUSE_NATIVE_BLUETOOTH"]="1"; environment["PYTHONDONTWRITEBYTECODE"]="1"; process.environment=environment
         input=Pipe();output=Pipe();process.standardInput=input;process.standardOutput=output
@@ -72,10 +72,19 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
         }
         do {try process.run()} catch {let alert=NSAlert();alert.messageText="Bandstand could not start";alert.informativeText="The local analysis service is missing or could not launch. Reinstall the app or rebuild from source.";alert.runModal();NSApp.terminate(nil);return}
         transportOutput={ [weak self] event in self?.sendService(["id":-1,"path":"bluetooth_native","body":event]) }
-        if CBManager.authorization == .allowedAlways { bluetooth=Bridge() }
+        if CommandLine.arguments.contains("--development-smoke-output") {}
+        else if CBManager.authorization == .allowedAlways { bluetooth=Bridge() }
         else { emit(["type":"status","state":"authorization_unavailable","message":"Click Connect Muse to set up Bluetooth access for Muse Lab.","authorization":CBManager.authorization.rawValue]) }
         typingMonitor=TypingMonitor(emit:{[weak self] event in self?.sendService(["id":-1,"path":"typing/native_event","body":event])},stopped:{[weak self] in self?.sendService(["id":-1,"path":"typing/stop","body":["reason":"Stopped from menu bar"]])})
         web.load(URLRequest(url:URL(string:"muselab://app/")!));NSApp.activate(ignoringOtherApps:true)
+    }
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        guard let index=CommandLine.arguments.firstIndex(of:"--development-smoke-output"),index+1<CommandLine.arguments.count else{return}
+        webView.evaluateJavaScript("document.documentElement.getAttribute('data-development-marker')") {value,error in
+            let result:[String:Any] = ["marker":value as? String ?? "", "root":self.root.path,"runtime":self.process.executableURL?.path ?? "","data":bandstandDataRoot(self.root).path,"title":self.window.title,"error":error?.localizedDescription ?? ""]
+            if let data=try? JSONSerialization.data(withJSONObject:result) {try? data.write(to:URL(fileURLWithPath:CommandLine.arguments[index+1]))}
+            NSApp.terminate(nil)
+        }
     }
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard message.frameInfo.isMainFrame, message.frameInfo.request.url?.scheme == "muselab", let body=message.body as? [String:Any] else{return}
@@ -125,8 +134,26 @@ struct MuseMain {
  static func main() {
 let executable=URL(fileURLWithPath:CommandLine.arguments[0]).resolvingSymlinksInPath()
 let bundledRoot=Bundle.main.bundleURL.appendingPathComponent("Contents/Resources/app")
-let sourceRoot=CommandLine.arguments.count>1 ? URL(fileURLWithPath:CommandLine.arguments[1]) : executable.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-let root=FileManager.default.fileExists(atPath:bundledRoot.appendingPathComponent("desktop_service.py").path) ? bundledRoot : sourceRoot
+let sourceRoot=executable.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+var root=FileManager.default.fileExists(atPath:bundledRoot.appendingPathComponent("desktop_service.py").path) ? bundledRoot : sourceRoot
+// Contributor mode is explicit; normal installed launches always use bundled code.
+if let index=CommandLine.arguments.firstIndex(of:"--development-source") {
+ guard index+1<CommandLine.arguments.count else {fputs("Missing development checkout path.\n",stderr);exit(2)}
+ let candidate=URL(fileURLWithPath:CommandLine.arguments[index+1]).standardizedFileURL.resolvingSymlinksInPath()
+ let required=["desktop_service.py","web/index.html","backend.json"]
+ guard required.allSatisfy({FileManager.default.fileExists(atPath:candidate.appendingPathComponent($0).path)}) else {
+  fputs("Development source needs desktop_service.py, web/index.html and a non-production backend.json.\n",stderr);exit(2)
+ }
+ // Validate with sealed code and bundled Python BEFORE executing any checkout code.
+ let validator=Process();validator.executableURL=Bundle.main.bundleURL.appendingPathComponent("Contents/Resources/python/bin/python3.12")
+ validator.arguments=["-I","-B","-c","import sys;sys.path.insert(0,sys.argv[1]);import backend_config;c=backend_config.load(sys.argv[2]);assert c['name'] in ('development','staging'), 'Production backend refused'",bundledRoot.path,candidate.path]
+ validator.standardOutput=FileHandle.nullDevice
+ do {try validator.run();validator.waitUntilExit()} catch {fputs("Contributor mode needs the bundled Python runtime.\n",stderr);exit(2)}
+ guard validator.terminationStatus==0 else {fputs("Development backend validation failed; no checkout code was run.\n",stderr);exit(2)}
+ root=candidate
+ setenv("BANDSTAND_DATA_DIR",NSHomeDirectory()+"/Library/Application Support/Bandstand Development/data",1)
+}
+if CommandLine.arguments.contains("--development-smoke-output") && !CommandLine.arguments.contains("--development-source") {exit(2)}
 let app=NSApplication.shared
 app.setActivationPolicy(.regular)
 let delegate=App(root:root);app.delegate=delegate;app.run()
