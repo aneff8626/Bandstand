@@ -24,10 +24,15 @@ async function journeyGo(step){
  else if(step==='setup'){if(document.body.dataset.area==='trainer'){show('developerPanel');}else if(document.body.dataset.area==='lab')showLabStep('settings');else if(!typingView){if(!activityResume[document.body.dataset.area]){toast('Choose an activity first.');return}activityResume[document.body.dataset.area]()}}
  journeySetStep(step);window.scrollTo({top:0,behavior:'smooth'});
 }
+// Step buttons keep their plain text ("4 Run"); the number gets its own badge for styling.
+function setJourneyStepLabel(button,text){
+ if(button.textContent===text&&button.querySelector('.step-number'))return;
+ const [number,...words]=text.split(' '),badge=document.createElement('span'),name=document.createElement('span');badge.className='step-number';badge.textContent=number;name.className='step-name';name.textContent=words.join(' ');button.replaceChildren(badge,' ',name);
+}
 function initJourney(){
  document.body.classList.add('journey-theme');
  const header=document.createElement('div');header.id='journeyHeader';header.innerHTML='<strong class="journey-brand"><img src="/bandstand-logo.png" alt=""> Bandstand</strong><nav aria-label="Recording workflow" id="journeySteps"></nav><div id="journeyAccount"></div>';
- for(const [id,label]of [['headset','1 Headset'],['choose','2 Activity'],['setup','3 Setup'],['run','4 Run'],['summary','5 Results']]){const b=personalButton(label,()=>journeyGo(id));b.dataset.step=id;header.querySelector('nav').append(b)}
+ for(const [id,label]of [['headset','1 Headset'],['choose','2 Activity'],['setup','3 Setup'],['run','4 Run'],['summary','5 Results']]){const b=personalButton(label,()=>journeyGo(id));setJourneyStepLabel(b,label);b.dataset.step=id;header.querySelector('nav').append(b)}
  const branch=document.createElement('div');branch.id='activityBranch';branch.innerHTML='<span id="activityBranchName">Selected activity</span><div></div>';header.querySelector('nav').append(branch);for(const id of ['setup','run'])branch.lastChild.append(header.querySelector('[data-step='+id+']'));
  const resultsArrow=document.createElement('span');resultsArrow.className='results-step-arrow';resultsArrow.textContent='›';resultsArrow.setAttribute('aria-hidden','true');header.querySelector('nav').append(resultsArrow,header.querySelector('[data-step=summary]'));
  const account=$('accountNav'),contribute=$('contributeNav');header.querySelector('#journeyAccount').append(account,contribute);document.body.prepend(header);new ResizeObserver(()=>document.documentElement.style.setProperty('--journey-header-height',header.getBoundingClientRect().height+'px')).observe(header);
@@ -59,7 +64,7 @@ function journeyTick(){
  for(const input of participant.querySelectorAll('input[type=checkbox]')){const automatic=({big5:'Big Five',enneagram:'Enneagram'})[input.value]===chosenActivityTitle;if(automatic){if(!input.dataset.automatic)input.dataset.previous=String(input.checked);input.checked=true;input.disabled=true;input.dataset.automatic='true';input.title='Included automatically during this activity';}else if(input.dataset.automatic){input.checked=input.dataset.previous==='true';delete input.dataset.automatic;input.title='';}}
  const contribute=$('contributeNav');contribute.hidden=!contribute.classList.contains('needs-choice');
  const name=!state?'Starting EEG service…':state?.source==='simulation'?'Demo EEG':state&&!state.stale?'Live EEG · 4 channels':'Waiting for EEG';if($('dockState').textContent!==name)$('dockState').textContent=name;
- const runButton=document.querySelector('[data-step="run"]');runButton.disabled=!chosenActivityTitle;runButton.textContent=running?'4 Recording ●':'4 Run';
+ const runButton=document.querySelector('[data-step="run"]');runButton.disabled=!chosenActivityTitle;setJourneyStepLabel(runButton,running?'4 Recording ●':'4 Run');runButton.classList.toggle('step-recording',running);
  drawHeadsetMaps();
  const connection=$('connectMuse');if(state&&!state.stale){connection.textContent=state.source==='simulation'?'◉ Demo':'● Streaming';connection.title='Device connected, streaming'}
  if(protocol){const key=protocol.id+'/'+$('trialCount').value;if(key!==journeyLastBrief){journeyLastBrief=key;$('briefTitle').textContent=protocol.title;$('briefTask').textContent=participantInstruction(protocol.id);const duration=(Number($('trialCount').value)||protocol.trials)*((protocol.stim_ms[0]+protocol.stim_ms[1]+protocol.isi_ms[0]+protocol.isi_ms[1])/2)/60000+(protocol.mode==='erp'?Math.floor(((Number($('trialCount').value)||protocol.trials)-1)/40)/6:0)+2/60;$('briefDuration').textContent='Time: about '+Math.max(1,Math.ceil(duration))+(Math.max(1,Math.ceil(duration))===1?' minute':' minutes')+(protocol.mode==='erp'?' · ERP':' · Spectral power')}}
