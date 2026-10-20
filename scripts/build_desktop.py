@@ -83,7 +83,7 @@ subprocess.run(['/usr/bin/swiftc','-module-cache-path',str(ROOT/'build/module-ca
 # Use the same certificate and bundle identifier for every update.
 from sign_app import sign
 sign(out)
-subprocess.run([str(resources/'python/bin/python3.12'),'-c','import numpy,PIL,reportlab,ssl; from semantic_decoder import encode; assert encode(["Synthetic packaging test"]).shape == (1,384); print("Bundled runtime and offline encoder passed")'],check=True,cwd=app)
+subprocess.run([str(resources/'python/bin/python3.12'),'-c','import numpy,PIL,reportlab,ssl; from semantic_decoder import encode; assert encode(["Synthetic packaging test"]).shape == (1,384); print("Bundled runtime and offline encoder passed")'],check=True,cwd=app,env={**os.environ,"PYTHONDONTWRITEBYTECODE":"1"})
 # Runtime verification can create bytecode caches; seal the final tested bundle.
 sign(out)
 subprocess.run(['/usr/bin/codesign','--verify','--deep','--strict',str(out)],check=True)

@@ -195,11 +195,11 @@ function finishStartup(){
  updateActivityBranch();journeySetStep('headset');document.body.classList.remove('app-loading');
 }
 function startupProblem(message){
- const status=$('startupMessage');if(!status)return;status.textContent='Startup could not finish: '+message;
+ const status=$('startupMessage');if(!status)return;status.dataset.startupError='true';status.textContent='Startup could not finish: '+message;
  for(const d of document.querySelectorAll('dialog[open]'))d.close();
  if(!$('startupRetry')){const retry=personalButton('Retry',()=>location.reload());retry.id='startupRetry';$('startupScreen').append(retry)}
 }
-setTimeout(()=>{if(document.body.classList.contains('app-loading')){$('startupMessage').textContent='Still starting the local service. Bluetooth will be available shortly.'}},8000);
+setTimeout(()=>{if(document.body.classList.contains('app-loading')&&!$('startupMessage')?.dataset.startupError){$('startupMessage').textContent='Still starting the local service. Bluetooth will be available shortly.'}},8000);
 
 function spectrumGroups(mode){return mode==='lr'?[{label:'Left',channels:['TP9','AF7']},{label:'Right',channels:['AF8','TP10']}]:mode==='ft'?[{label:'Frontal',channels:['AF7','AF8']},{label:'Temporal',channels:['TP9','TP10']}]:[{label:'',channels:boot.channels}] }
 function drawCombinedSpectrum(data,id='combinedSpectrum',include=boot.channels,title='',labelAxis=true,options={}){
@@ -513,7 +513,7 @@ function initLabSetupSequence(){
  advancedButton.setAttribute('aria-expanded','false');advancedButton.setAttribute('aria-controls','advancedSettings');
  advancedPanel.addEventListener('toggle',()=>advancedButton.setAttribute('aria-expanded',String(advancedPanel.open)));
  advanced.append(advancedPanel);
- sequence.append(participant,advanced,instructions,start);const protocolHelp=$('briefProtocol');protocolHelp.textContent='?';protocolHelp.className='protocol-info-button';protocolHelp.setAttribute('aria-label','Additional protocol details');$('advancedSettings').append(protocolHelp);brief.append(sequence,brief.querySelector('.brief-actions'));brief.classList.add('personal-setup-sequence');
+ sequence.append(participant,advanced,instructions,start);const protocolHelp=$('briefProtocol');protocolHelp.textContent='?';protocolHelp.className='protocol-info-button';protocolHelp.setAttribute('aria-label','Additional protocol details');advancedPanel.append(protocolHelp);brief.append(sequence,brief.querySelector('.brief-actions'));brief.classList.add('personal-setup-sequence');
 }
 
 async function leaveTypingRun(step,throughNavigation=false){

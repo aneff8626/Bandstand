@@ -58,7 +58,7 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
         let editItem=NSMenuItem();mainMenu.addItem(editItem);let edit=NSMenu(title:"Edit");edit.addItem(withTitle:"Copy",action:#selector(NSText.copy(_:)),keyEquivalent:"c");edit.addItem(withTitle:"Paste",action:#selector(NSText.paste(_:)),keyEquivalent:"v");edit.addItem(withTitle:"Select All",action:#selector(NSText.selectAll(_:)),keyEquivalent:"a");editItem.submenu=edit;NSApp.mainMenu=mainMenu
         process=Process();let bundledPython=root.deletingLastPathComponent().appendingPathComponent("python/bin/python3.12")
         process.executableURL=FileManager.default.isExecutableFile(atPath:bundledPython.path) ? bundledPython : root.appendingPathComponent(".venv/bin/python");process.arguments=[root.appendingPathComponent("desktop_service.py").path];process.currentDirectoryURL=root
-        var environment=ProcessInfo.processInfo.environment; environment["MUSE_NATIVE_BLUETOOTH"]="1"; process.environment=environment
+        var environment=ProcessInfo.processInfo.environment; environment["MUSE_NATIVE_BLUETOOTH"]="1"; environment["PYTHONDONTWRITEBYTECODE"]="1"; process.environment=environment
         input=Pipe();output=Pipe();process.standardInput=input;process.standardOutput=output
         let settingsURL=root.appendingPathComponent("local-settings.json")
         let settings=(try? Data(contentsOf:settingsURL)).flatMap { try? JSONSerialization.jsonObject(with:$0) as? [String:Any] }
