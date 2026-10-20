@@ -4,7 +4,9 @@ import Foundation
 import CoreBluetooth
 
 func bandstandDataRoot(_ root:URL)->URL {
- let settings=(try? Data(contentsOf:root.appendingPathComponent("local-settings.json"))).flatMap { try? JSONSerialization.jsonObject(with:$0) as? [String:Any] }
+ let userConfig=URL(fileURLWithPath:NSHomeDirectory()+"/Library/Application Support/Bandstand/local-settings.json")
+ let config=FileManager.default.fileExists(atPath:userConfig.path) ? userConfig : root.appendingPathComponent("local-settings.json")
+ let settings=(try? Data(contentsOf:config)).flatMap { try? JSONSerialization.jsonObject(with:$0) as? [String:Any] }
  return URL(fileURLWithPath:ProcessInfo.processInfo.environment["BANDSTAND_DATA_DIR"] ?? settings?["data_dir"] as? String ?? NSHomeDirectory()+"/Library/Application Support/Bandstand/data")
 }
 
@@ -60,10 +62,7 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
         process.executableURL=FileManager.default.isExecutableFile(atPath:bundledPython.path) ? bundledPython : root.appendingPathComponent(".venv/bin/python");process.arguments=[root.appendingPathComponent("desktop_service.py").path];process.currentDirectoryURL=root
         var environment=ProcessInfo.processInfo.environment; environment["MUSE_NATIVE_BLUETOOTH"]="1"; environment["PYTHONDONTWRITEBYTECODE"]="1"; process.environment=environment
         input=Pipe();output=Pipe();process.standardInput=input;process.standardOutput=output
-        let settingsURL=root.appendingPathComponent("local-settings.json")
-        let settings=(try? Data(contentsOf:settingsURL)).flatMap { try? JSONSerialization.jsonObject(with:$0) as? [String:Any] }
-        let privatePath=environment["BANDSTAND_DATA_DIR"] ?? settings?["data_dir"] as? String ?? NSHomeDirectory()+"/Library/Application Support/Bandstand/data"
-        let privateURL=URL(fileURLWithPath:privatePath)
+        let privateURL=bandstandDataRoot(root)
         try? FileManager.default.createDirectory(at:privateURL,withIntermediateDirectories:true,attributes:[.posixPermissions:0o700])
         let log=privateURL.appendingPathComponent("desktop.log");FileManager.default.createFile(atPath:log.path,contents:nil,attributes:[.posixPermissions:0o600]);process.standardError=try? FileHandle(forWritingTo:log)
         output.fileHandleForReading.readabilityHandler={ [weak self] handle in

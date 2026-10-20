@@ -4,7 +4,9 @@ from pathlib import Path
 CODE_ROOT = Path(__file__).resolve().parent
 
 def data_directory():
-    config = CODE_ROOT / 'local-settings.json'
+    config = Path.home() / 'Library/Application Support/Bandstand/local-settings.json'
+    if not config.exists():
+        config = CODE_ROOT / 'local-settings.json'
     settings = json.loads(config.read_text()) if config.exists() else {}
     path = Path(os.environ.get('BANDSTAND_DATA_DIR') or settings.get('data_dir') or
                 Path.home() / 'Library/Application Support/Bandstand/data').expanduser().resolve()

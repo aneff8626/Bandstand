@@ -1,13 +1,18 @@
 """JSON-lines service for the native app. No listening sockets."""
 import json, os, sys, time, traceback, zipfile
+from pathlib import Path
 os.umask(0o077)
 from private_storage import DATA_ROOT
 from server import engine, Handler, TOKEN
 from engine import ROOT, dumps
 engine.start()
+from development import DevelopmentRefresh
+development_refresh=DevelopmentRefresh(ROOT,DATA_ROOT)
 
 def dispatch(path,body):
     body=body or {}
+    if path=='development/status':return development_refresh.status(engine)
+    if path=='development/apply':return development_refresh.apply(engine,body.get('revision'))
     if path.startswith('personal/'):
         with engine.lock:return engine.personal.request(path.split('/')[-1],body,engine)
     if path.startswith('account/'):
@@ -95,6 +100,8 @@ try:
             request=json.loads(line)
             result=dispatch(request['path'],request.get('body'))
             if request['id'] >= 0: print(dumps({'id':request['id'],'result':result}),flush=True)
+            if development_refresh.restart:
+                os.execve(sys.executable,[sys.executable,str(Path(__file__).resolve())],os.environ.copy())
         except Exception as e:
             traceback.print_exc(file=sys.stderr)
             print(dumps({'id':request.get('id'),'error':str(e)}),flush=True)
