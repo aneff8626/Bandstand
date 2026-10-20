@@ -6,7 +6,7 @@ from packaging.utils import canonicalize_name
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 import backend_config
 VERSION=os.environ.get('BANDSTAND_VERSION','0.3.0')
-BUILD=os.environ.get('BANDSTAND_BUILD','10')
+BUILD=os.environ.get('BANDSTAND_BUILD','11')
 if not re.fullmatch(r'\d+\.\d+\.\d+',VERSION) or not re.fullmatch(r'\d+',BUILD):
  raise SystemExit('Use a numeric X.Y.Z version and integer build number.')
 # One fixed account backend per installation. Production is built in; a development or staging

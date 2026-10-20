@@ -8,8 +8,6 @@ def choices(body):
     scope = body.get('sharing_scope')
     if scope not in SCOPES or body.get('sharing_choices_reviewed') is not True:
         raise ValueError('Choose what to share, including the option to keep everything local.')
-    if scope == 'including_typing' and body.get('typing_risk_acknowledged') is not True:
-        raise ValueError('Review and acknowledge the additional writing-decoder privacy risk.')
     return {'policy_version': POLICY_VERSION, 'acknowledged': True,
             'sharing_scope': scope, 'sharing_choices_reviewed': True,
             'typing_risk_acknowledged': scope == 'including_typing',

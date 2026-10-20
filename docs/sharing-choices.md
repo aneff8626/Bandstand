@@ -5,7 +5,7 @@ The versioned choices are:
 - Everything but typing.
 - Everything, including typing decoder.
 
-Existing ERP permission is not upgraded to blanket sharing. The new choice must be selected explicitly. The inclusive choice also requires acknowledgement that model contributions carry privacy risk.
+Existing ERP permission is not upgraded to blanket sharing. The new choice must be selected explicitly. Selecting an option and pressing Save records consent to its displayed scope and risk notice; there is no second checkbox.
 
 ## Writing boundary
 
