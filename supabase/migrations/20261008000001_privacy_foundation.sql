@@ -1,6 +1,12 @@
 -- No recording payloads or embeddings. No client uploads until separately enabled.
 BEGIN;
-REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM PUBLIC, anon, authenticated;
+-- rls_auto_enable() exists only on some projects (the original one had it); a fresh project fails
+-- here without the guard. Where it exists, clients must not be able to execute it.
+DO $$ BEGIN
+ IF to_regprocedure('public.rls_auto_enable()') IS NOT NULL THEN
+  REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM PUBLIC, anon, authenticated;
+ END IF;
+END $$;
 CREATE TABLE IF NOT EXISTS public.bandstand_consent (
  user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
  policy_version text NOT NULL,

@@ -129,7 +129,11 @@ class Handler(BaseHTTPRequestHandler):
 if __name__=='__main__':
     os.umask(0o077)
     server=ThreadingHTTPServer(('127.0.0.1',8765),Handler)
-    engine.start(); print('Muse Lab ready at http://127.0.0.1:8765',flush=True)
+    engine.start()
+    try:
+        from accounts import start_outbox; start_outbox()
+    except ValueError as e: print('ERP sharing uploader not started:',e,flush=True)
+    print('Muse Lab ready at http://127.0.0.1:8765',flush=True)
     try: server.serve_forever()
     finally:
         engine.stop('server stopped')

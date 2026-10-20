@@ -131,3 +131,40 @@ def time_frequency(x,times):
         rows.append(10*np.log10(np.maximum(p[(f>=2)&(f<=40),0],1e-12)))
         centers.append(float(times[start+n//2]))
     return dict(frequencies=list(range(2,41)),times=centers,power_db=np.asarray(rows).T.tolist(),units='dB re 1 microvolt squared / Hz')
+
+def behavior_summary(protocol,events):
+    """Task behaviour from logged events (flanker responses, reward choices); None for tasks without responses."""
+    if protocol=='flanker':
+        presented={e['index']:e for e in events if e.get('kind')=='stimulus'}
+        responses={e['index']:e for e in events if e.get('kind')=='response'}
+        rows=[]
+        for c,label in ((0,'Congruent'),(1,'Incongruent')):
+            idx=[i for i,e in presented.items() if e.get('condition_index')==c]
+            resp=[responses[i] for i in idx if i in responses];right=[r for r in resp if r.get('correct') is True]
+            rts=[float(r['rt_ms']) for r in right if type(r.get('rt_ms')) in (int,float) and np.isfinite(r['rt_ms'])]
+            rows.append(dict(label=label,presented=len(idx),responded=len(resp),correct=len(right),errors=len(resp)-len(right),missed=len(idx)-len(resp),
+                             accuracy=len(right)/len(idx) if idx else None,median_rt_ms=float(np.median(rts)) if rts else None))
+        a,b=rows
+        return dict(kind='flanker',conditions=rows,congruency_rt_ms=b['median_rt_ms']-a['median_rt_ms'] if None not in (a['median_rt_ms'],b['median_rt_ms']) else None,
+                    note='Accuracy counts correct responses among presented trials; median RT uses correct responses only.')
+    if protocol=='reward':
+        choices=[e for e in events if e.get('kind')=='response' and e.get('choice') in ('blue','green')]
+        skipped=sum(1 for e in events if e.get('kind')=='note' and 'No choice' in str(e.get('note','')))
+        outcome={e['index']:e.get('condition_index') for e in events if e.get('kind')=='stimulus'}
+        rows=[]
+        for colour in ('blue','green'):
+            picked=[e for e in choices if e['choice']==colour];wins=sum(1 for e in picked if outcome.get(e['index'])==1)
+            rts=[float(e['rt_ms']) for e in picked if type(e.get('rt_ms')) in (int,float) and np.isfinite(e['rt_ms'])]
+            rows.append(dict(choice=colour,n=len(picked),wins=wins,win_rate=wins/len(picked) if picked else None,median_rt_ms=float(np.median(rts)) if rts else None))
+        n=len(choices)
+        return dict(kind='reward',choices=n,skipped=skipped,wins=sum(r['wins'] for r in rows),blue_proportion=rows[0]['n']/n if n else None,by_choice=rows,
+                    note='Blue wins with probability .60 and green with .10; choosing blue more often over time indicates learning.')
+    if protocol=='biofeedback':
+        rows=[]
+        for phase,label in (('pre','Math pretest'),('post','Math posttest')):
+            items=[e for e in events if e.get('kind')=='behavior' and e.get('phase')==phase]
+            rts=[float(e['rt_ms']) for e in items if type(e.get('rt_ms')) in (int,float) and np.isfinite(e['rt_ms'])]
+            right=sum(bool(e.get('correct')) for e in items)
+            rows.append(dict(label=label,problems=len(items),correct=right,accuracy=right/len(items) if items else None,median_rt_ms=float(np.median(rts)) if rts else None))
+        return dict(kind='math',phases=rows,note='Practice, fatigue and time are uncontrolled, so pre/post changes are descriptive, not evidence that training worked.')
+    return None

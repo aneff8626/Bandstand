@@ -32,7 +32,7 @@ git pull --ff-only
 python3 scripts/launch_development.py
 ```
 
-Quit and relaunch after changes. Web and compatible Python edits appear without a new download. Swift/native bridge changes, incompatible native-interface changes, or new/changed Python dependencies require a new signed contributor build. The launcher warns if requirements differ from the bundled manifest or installed package versions. Do not pip-install into the app bundle.
+With build 9 source, CSS refreshes in place and compatible Python/JavaScript changes restart the local service and refresh the same window automatically. Refresh waits until recording and model fitting finish, no form/dialog is open, and you are on Headset, Activity or Results. Setup and Run defer refresh to preserve work. Git changes are never pulled automatically: save your edits or pull reviewed changes first. Builds with older source require relaunch. Swift/native bridge changes, incompatible native-interface changes, or new/changed Python dependencies require a new signed contributor build. The launcher warns if requirements differ from the bundled manifest or installed package versions. Do not pip-install into the app bundle.
 
 Editable code runs with the app's permissions. Only launch trusted, reviewed checkouts. Notarization covers the installed shell, not arbitrary checkout code. Contributors do not need Andrew's signing certificate; never share it.
 
@@ -44,7 +44,7 @@ Before publication: run automated tests, sign with the persistent Developer ID, 
 
 - Install the download, open normally, and confirm bundled startup/account behavior.
 - Clone, configure development/staging, and launch with the script.
-- Edit `web/style.css`, quit and relaunch; see the change without downloading another app.
+- Edit `web/style.css` while idle on Activity; see the change without closing the app. Start a recording and verify refresh waits until it is finished.
 - Confirm Bluetooth and typing permissions work in contributor mode.
 - Confirm production configuration is refused and ordinary launch remains unchanged.
 

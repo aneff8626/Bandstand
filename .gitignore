@@ -20,6 +20,7 @@ stimuli/manifest.json
 models/
 
 local-settings.json
+backend.json
 .audit/
 release/
 
