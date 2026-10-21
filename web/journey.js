@@ -13,6 +13,8 @@ function journeySetStep(step){
  for(const b of document.querySelectorAll('#journeySteps button'))b.setAttribute('aria-current',b.dataset.step===step?'step':'false');
 }
 async function journeyGo(step){
+ if(typeof spellerRunning!=='undefined'&&spellerRunning&&step!=='run'){toast('End & save spelling before leaving Run.');return}
+ if(['setup','run'].includes(step)&&chosenActivityTitle==='P300 speller'&&!spellerRunning){prepareSpeller();if(step==='run')await startSpeller();return}
  if(typingStarting){toast('Starting recording — please wait.');return}
  if(step!=='run'&&state?.typing?.running){await leaveTypingRun(step,true);return}
  if(['setup','run'].includes(step)&&!chosenActivityTitle){toast('Select an activity first.');return}
