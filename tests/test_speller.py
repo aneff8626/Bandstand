@@ -45,3 +45,52 @@ class SpellerIntegrationTests(unittest.TestCase):
         e=Engine.__new__(Engine);e.lock=threading.RLock();e.source='simulation';e.session=dict(running=True,protocol='speller',trials_planned=960);e.events=[]
         with self.assertRaisesRegex(ValueError,'target label'):
             e.event(dict(kind='stimulus',onset=time.time(),index=0,condition_index=0,speller=dict(group=8,line=0,target=3,phase='spelling')))
+
+class AdaptiveSpellerTests(unittest.TestCase):
+    def test_electrodes_learn_distinct_training_windows(self):
+        from speller import model_windows
+        rows=SpellerTests().rows();rng=np.random.default_rng(54)
+        for r in rows:
+            target=r['line'] in (r['target']//6,6+r['target']%6)
+            r['features']={ch:rng.normal(0,.1,12)+target*np.array(signal) for ch,signal in [('TP9',[3]*4+[0]*8),('AF8',[0]*8+[-3]*4)]}
+        windows=model_windows(fit(rows))
+        self.assertEqual(windows,{'TP9':[100,300],'AF8':[500,700]})
+
+    def test_saved_text_accumulates_retry_and_delete_are_consistent(self):
+        from speller import request
+        from unittest.mock import patch
+        from types import SimpleNamespace
+        import threading,copy
+        e=SimpleNamespace(lock=threading.RLock(),session={'protocol':'speller'},trials=[],events=[],source='simulation',speller_model={'test':True},process_pending=lambda:None)
+        saved=[];e.save_metadata=lambda:saved.append(copy.deepcopy(e.session))
+        def event(value):e.events.append(value);e.save_metadata()
+        e.event=event
+        with patch('speller.examples',return_value=[]),patch('speller.decode',side_effect=lambda *a:dict(symbol='A',row_margin=.4,column_margin=.3)):
+            self.assertEqual(request(e,dict(action='predict',group=8))['text'],'A')
+            self.assertEqual(request(e,dict(action='predict',group=9))['text'],'AA')
+            self.assertEqual(request(e,dict(action='predict',group=9))['text'],'AA')
+            self.assertEqual(len(e.session['speller_history']),2)
+            self.assertEqual(saved[-1]['speller_text'],'AA')
+            self.assertEqual(request(e,dict(action='delete'))['text'],'A')
+            self.assertEqual(request(e,dict(action='predict',group=9))['text'],'A')
+            self.assertEqual(len(e.session['speller_history']),1)
+            self.assertEqual(request(e,dict(action='status'))['text'],'A')
+
+    def test_window_selection_is_refit_inside_each_validation_fold(self):
+        from speller import request,fit as real_fit
+        from unittest.mock import patch
+        from types import SimpleNamespace
+        from pathlib import Path
+        import tempfile,threading
+        rows=SpellerTests().rows();training_groups=[]
+        def tracked_fit(data):
+            training_groups.append(set(r['group'] for r in data));return real_fit(data)
+        e=SimpleNamespace(lock=threading.RLock(),session={'protocol':'speller','id':'synthetic'},trials=[],events=[],source='simulation',process_pending=lambda:None,save_metadata=lambda:None)
+        with tempfile.TemporaryDirectory() as root:
+            (Path(root)/'synthetic').mkdir()
+            with patch('speller.examples',return_value=rows),patch('speller.fit',side_effect=tracked_fit),patch('private_storage.DATA_ROOT',Path(root)):
+                result=request(e,{'action':'fit'})
+        self.assertEqual(len(training_groups),9)
+        for held_out,groups in enumerate(training_groups[1:]):self.assertEqual(groups,set(range(8))-{held_out})
+        self.assertEqual(len(result['validation']),8)
+        self.assertTrue(result['windows'])

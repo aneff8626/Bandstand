@@ -26,11 +26,21 @@ def fit(rows):
         usable=[r for r in rows if ch in r['features']]
         y=np.array([r['line'] in (r['target']//6,6+r['target']%6) for r in usable])
         if y.sum()<8 or (~y).sum()<24:continue
-        x=np.array([r['features'][ch] for r in usable]);mean=x.mean(0);scale=np.maximum(x.std(0),.1);z=(x-mean)/scale
+        x=np.array([r['features'][ch] for r in usable])
+        # Choose a 200 ms interval independently per electrode, using training rows only.
+        # Fixed width limits peak chasing; absolute effect allows either reference polarity.
+        effects=[]
+        for start in range(9):
+            values=x[:,start:start+4].mean(1)
+            pooled=((y.sum()-1)*values[y].var(ddof=1)+((~y).sum()-1)*values[~y].var(ddof=1))/(len(y)-2)
+            effects.append(abs(values[y].mean()-values[~y].mean())/max(np.sqrt(pooled),.1))
+        start=int(np.argmax(effects));keep=slice(start,start+4)
+        mean=x.mean(0);scale=np.maximum(x.std(0),.1);z=((x-mean)/scale)[:,keep]
         a=z[y].mean(0);b=z[~y].mean(0);res=z-np.where(y[:,None],a,b)
         cov=res.T@res/max(1,len(res)-2);cov=.7*cov+.3*np.eye(len(a))*max(np.trace(cov)/len(a),.01)
         w=np.linalg.solve(cov,a-b);norm=max(float(np.sqrt(w@cov@w)),.1)
-        models[ch]=(mean,scale,w/norm,(a+b)@w/(2*norm))
+        weights=np.zeros(12);weights[keep]=w/norm
+        models[ch]=(mean,scale,weights,(a+b)@w/(2*norm))
     return models
 
 def decode(rows,models):
@@ -42,7 +52,15 @@ def decode(rows,models):
     counts=list(map(len,values))
     if min(counts,default=0)<3:return dict(symbol=None,counts=counts,scores=[],reason='Need at least three clean flashes of every row and column.')
     scores=[float(np.mean(v)) for v in values];index=int(np.argmax(scores[:6]))*6+int(np.argmax(scores[6:]))
-    return dict(symbol=SYMBOLS[index],index=index,counts=counts,scores=scores)
+    # Evidence gaps are not calibrated probabilities of spelling correctly.
+    gaps=[float(np.sort(scores[lo:lo+6])[-1]-np.sort(scores[lo:lo+6])[-2]) for lo in (0,6)]
+    return dict(symbol=SYMBOLS[index],index=index,counts=counts,scores=scores,row_margin=gaps[0],column_margin=gaps[1])
+
+def model_windows(models):
+    return {ch:[int(100+50*np.flatnonzero(v[2])[0]),int(150+50*np.flatnonzero(v[2])[-1])] for ch,v in models.items() if np.any(v[2])}
+
+def saved_output(engine):
+    return dict(text=engine.session.get('speller_text',''),history=engine.session.get('speller_history',[]),windows=engine.session.get('speller_windows_ms',{}))
 
 def request(engine,body):
     with engine.lock:
@@ -70,20 +88,25 @@ def request(engine,body):
             engine.speller_model=models;result['validation']=predictions
             engine.session['speller_validation']=predictions
             engine.session['speller_model_channels']=list(models)
+            engine.session['speller_windows_ms']=model_windows(models)
+            engine.session['speller_model_version']=2
             # Store model alongside its calibration, only on this machine.
             from private_storage import DATA_ROOT
             np.savez_compressed(Path(DATA_ROOT)/engine.session['id']/'speller-model.npz',**{ch:np.concatenate([v[0],v[1],v[2],[v[3]]]) for ch,v in models.items()})
             engine.save_metadata()
         elif body.get('action')=='delete':
             engine.session['speller_text']=engine.session.get('speller_text','')[:-1]
+            engine.session['speller_history']=engine.session.get('speller_history',[])[:-1]
             engine.save_metadata()
         elif body.get('action')=='predict':
             models=getattr(engine,'speller_model',None)
             if not models:raise ValueError('Calibrate before spelling.')
             group=int(body['group']);result['prediction']=decode([r for r in rows if r['phase']=='spelling' and r['group']==group],models)
             prior=next((e for e in engine.events if 'speller_prediction' in e and e.get('group')==group),None)
-            if prior:return {**result,'prediction':prior['speller_prediction']}
+            if prior:return {**result,'prediction':prior['speller_prediction'],**saved_output(engine)}
             prediction=result['prediction']
-            if prediction.get('symbol') is not None:engine.session['speller_text']=engine.session.get('speller_text','')+prediction['symbol']
+            if prediction.get('symbol') is not None:
+                engine.session['speller_text']=engine.session.get('speller_text','')+prediction['symbol']
+                engine.session.setdefault('speller_history',[]).append(dict(group=group,**prediction))
             engine.event(dict(kind='note',speller_prediction=prediction,group=group))
-        return result
+        return {**result,**saved_output(engine)}
