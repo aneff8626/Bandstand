@@ -40,7 +40,7 @@ class Handler(BaseHTTPRequestHandler):
                 parts=path.split('/');return self.send(200,dumps(engine.result_band(parts[3],parts[4],parts[5])))
             if path.startswith('/api/results/'):
                 parts=path.split('/')
-                if len(parts)==6:return self.send(200,dumps(engine.result_window(parts[3],parts[4],parts[5])))
+                if len(parts) in (6,7):return self.send(200,dumps(engine.result_window(parts[3],parts[4],parts[5],parts[6] if len(parts)==7 else None)))
                 view=engine.saved_view(parts[3]); return self.send(200,dumps({'session':view.session,'analysis':view.analysis()}))
             if path.startswith('/api/export/'):
                 parts=path.split('/'); kind=parts[3]

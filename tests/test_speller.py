@@ -54,7 +54,9 @@ class AdaptiveSpellerTests(unittest.TestCase):
             target=r['line'] in (r['target']//6,6+r['target']%6)
             r['features']={ch:rng.normal(0,.1,12)+target*np.array(signal) for ch,signal in [('TP9',[3]*4+[0]*8),('AF8',[0]*8+[-3]*4)]}
         windows=model_windows(fit(rows))
-        self.assertEqual(windows,{'TP9':[100,300],'AF8':[500,700]})
+        self.assertLess(sum(windows['TP9']),sum(windows['AF8']))
+        for lo,hi in windows.values():self.assertTrue(100<=hi-lo<=400)
+        self.assertNotEqual(windows['TP9'],windows['AF8'])
 
     def test_saved_text_accumulates_retry_and_delete_are_consistent(self):
         from speller import request
@@ -94,3 +96,20 @@ class AdaptiveSpellerTests(unittest.TestCase):
         for held_out,groups in enumerate(training_groups[1:]):self.assertEqual(groups,set(range(8))-{held_out})
         self.assertEqual(len(result['validation']),8)
         self.assertTrue(result['windows'])
+
+class SpellerResultWindowTests(unittest.TestCase):
+    def test_each_channel_uses_its_own_window_and_manual_override(self):
+        from engine import Engine
+        import threading
+        e=Engine.__new__(Engine);e.lock=threading.RLock();e.events=[];e.pending=[];e.revision=0;e.cache_revision=None
+        e.session=dict(id='abc',protocol='speller',mode='erp',channels=['TP9','AF8'],conditions=['Other','Cued'],minimum=10,metric='mean',window=[.3,.5],speller_windows_ms={'TP9':[100,300],'AF8':[500,700]})
+        times=np.arange(-.2,.801,.01);wave=np.where((times>=.1)&(times<.3),2,np.where((times>=.5)&(times<.7),7,0))
+        e.trials=[dict(index=i,speller={'phase':'calibration'},times=times.tolist(),condition_index=i%2,condition='test',accepted=True,wave=wave.tolist(),feature=-999,tf=None,reasons=[],channel_trials={ch:dict(accepted=True,feature=-999,wave=wave.tolist(),reasons=[]) for ch in ['TP9','AF8']}) for i in range(24)]
+        a=e.analysis()['channels'];self.assertEqual(a['TP9']['window'],[.1,.3]);self.assertEqual(a['AF8']['window'],[.5,.7])
+        self.assertAlmostEqual(a['TP9']['groups'][0]['mean'],2);self.assertAlmostEqual(a['AF8']['groups'][0]['mean'],7)
+        self.assertFalse(a['TP9']['stats']['ready'])
+        e.saved_view=lambda _:e
+        r=e.result_window('abc',.5,.7,'TP9')
+        self.assertEqual(r['analysis']['channels']['TP9']['window'],[.5,.7]);self.assertEqual(r['analysis']['channels']['AF8']['window'],[.5,.7])
+        self.assertEqual(e.session['speller_windows_ms']['TP9'],[100,300])
+        self.assertNotIn('speller_review_windows_ms',e.session)

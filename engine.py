@@ -415,6 +415,7 @@ class Engine:
             if getattr(self,'tf_tick',None)!=tick:self.tf_tick=tick;self.cache_revision=None
         if self.cache_revision==(self.revision,len(getattr(self,"events",[]))): return self.cache_analysis
         s=self.session
+        if s.get('protocol')=='speller':s['conditions']=['Other flashes','Cued-letter flashes']
         if s['mode']=='tf':
             for trial in self.trials:
                 if 'spectral_channels' not in trial:
@@ -446,9 +447,16 @@ class Engine:
                 for c,label in enumerate(s['conditions']):
                     trials=[{**t.get('channel_trials',{}).get(channel,{}),'index':t['index']} for t in analysis_trials if t['condition_index']==c and channel in t.get('channel_trials',{})]
                     good=[t for t in trials if t['accepted']];features=[t['feature'] for t in good]
+                    window=s.get('speller_review_windows_ms',{}).get(channel,s.get('speller_windows_ms',{}).get(channel)) if s.get('protocol')=='speller' else None
+                    if window and good:
+                        mask=(np.asarray(result['times'])>=window[0]/1000)&(np.asarray(result['times'])<window[1]/1000)
+                        features=[float(np.asarray(t['wave'])[mask].mean()) for t in good]
                     cg.append(dict(label=label,accepted=len(good),rejected=len(trials)-len(good),features=features,mean=float(np.mean(features)) if features else None,se=float(np.std(features,ddof=1)/np.sqrt(len(features))) if len(features)>1 else None,erp=summarize([t['wave'] for t in good]) if good else None,recent=[{'wave':t['wave'],'index':t['index']} for t in good[-20:]]))
                     rejected.extend(dict(index=t['index'],condition=label,reasons=t['reasons']) for t in trials if not t['accepted'])
                 result['channels'][channel]=dict(groups=cg,times=result['times'],unit=result['unit'],stats=compare(cg[0]['features'],cg[1]['features'],s['minimum']),rejections=rejected)
+                if s.get('protocol')=='speller':
+                    result['channels'][channel]['window']=[v/1000 for v in window] if window else None
+                    result['channels'][channel]['stats']={'ready':False,'reason':'Means ± SE · descriptive calibration data'}
         if all(g.get('tf') for g in groups):
             n=min(len(g['tf']['times']) for g in groups); result['tf_difference']={**groups[0]['tf'],'times':groups[0]['tf']['times'][:n],'power_db':(np.array(groups[1]['tf']['power_db'])[:,:n]-np.array(groups[0]['tf']['power_db'])[:,:n]).tolist()}
         result['behavior']=behavior_summary(s.get('protocol'),getattr(self,'events',[]))
@@ -551,7 +559,7 @@ class Engine:
             view.review_band=band;view.cache_revision=None
             return dict(session=view.session,analysis=view.analysis())
 
-    def result_window(self,ident,start,end):
+    def result_window(self,ident,start,end,channel=None):
         import copy
         start,end=float(start),float(end)
         if not (math.isfinite(start) and math.isfinite(end) and 0<=start<end<=.8): raise ValueError('Choose 0 ≤ start < end ≤ 800 ms')
@@ -559,6 +567,11 @@ class Engine:
         with source.lock:
             view=object.__new__(Engine);view.lock=threading.RLock();view.session=copy.deepcopy(source.session);view.trials=copy.deepcopy(source.trials)
         if view.session['mode']!='erp': raise ValueError('Window review is available for ERP recordings')
+        if channel is not None:
+            if view.session.get('protocol')!='speller' or channel not in view.session['channels']:raise ValueError('Choose a speller electrode')
+            view.session.setdefault('speller_review_windows_ms',{})[channel]=[start*1000,end*1000]
+            view.pending=[];view.revision=0;view.cache_revision=None;view.cache_analysis={}
+            return dict(session=view.session,analysis=view.analysis())
         original=view.session['window'];view.session.update(window=[start,end],review_window=True,original_window=original,running=False)
         grid=np.asarray(view.trials[0]['times']) if view.trials else np.array([]);mask=(grid>=start)&(grid<=end)
         if len(grid) and mask.sum()<2: raise ValueError('Select a window containing at least two samples')
@@ -578,11 +591,18 @@ class Engine:
             if self.session and ident==self.session['id']: return self
             d=DATA_ROOT/ident
             if not (d/'session.json').is_file(): raise ValueError('Session not found')
+            stamp=(ident,(d/'session.json').stat().st_mtime_ns,(d/'trials.json').stat().st_mtime_ns if (d/'trials.json').exists() else 0)
+            cached=getattr(self,'_speller_saved_cache',None)
+            if cached and cached[0]==stamp:return cached[1]
             view=object.__new__(Engine); view.lock=threading.RLock()
             view.session=json.loads((d/'session.json').read_text()); view.session={**view.session,'running':False}
             view.trials=json.loads((d/'trials.json').read_text()) if (d/'trials.json').exists() else []
             view.events=json.loads((d/'events.json').read_text()) if (d/'events.json').exists() else []
             view.pending=[]; view.revision=0; view.cache_revision=None; view.cache_analysis={}; view.readonly_saved=True
+            if view.session.get('protocol')=='speller':
+                from speller import retrospective_calibration
+                retrospective_calibration(view)
+                self._speller_saved_cache=(stamp,view)
             return view
 
     def export(self,kind):

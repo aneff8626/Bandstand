@@ -16,32 +16,64 @@ def examples(engine):
         for ch,result in trial.get('channel_trials',{}).items():
             if not result['accepted'] or result['wave'] is None:continue
             wave=np.asarray(result['wave'])
-            features[ch]=np.array([wave[(times>=lo)&(times<lo+.05)].mean() for lo in np.arange(.1,.7,.05)])
+            features[ch]=np.array([wave[(times>=lo)&(times<lo+.05)].mean() for lo in (.1+np.arange(14)*.05)])
         rows.append(dict(features=features,group=meta['group'],line=meta['line'],target=meta.get('target'),phase=meta['phase']))
     return rows
+
+def channel_model(x,y,start,end):
+    mean=x.mean(0);scale=np.maximum(x.std(0),.1);z=((x-mean)/scale)[:,start:end]
+    a=z[y].mean(0);b=z[~y].mean(0);res=z-np.where(y[:,None],a,b)
+    cov=res.T@res/max(1,len(res)-2);cov=.7*cov+.3*np.eye(len(a))*max(np.trace(cov)/len(a),.01)
+    w=np.linalg.solve(cov,a-b);norm=max(float(np.sqrt(w@cov@w)),.1)
+    weights=np.zeros(x.shape[1]);weights[start:end]=w/norm
+    return mean,scale,weights,float((a+b)@w/(2*norm))
+
+def window_choice(x,y,groups):
+    # Inner whole-letter validation chooses both position and duration. The outer
+    # held-out letter never enters this function during performance evaluation.
+    folds=[]
+    for group in np.unique(groups):
+        train=groups!=group;test=~train
+        if y[train].sum()>=8 and (~y[train]).sum()>=24 and y[test].any() and (~y[test]).any():folds.append((train,test))
+    if len(folds)<3:return None
+    best=None
+    for width in range(2,min(8,x.shape[1])+1):
+        for start in range(x.shape[1]-width+1):
+            scores=[]
+            for train,test in folds:
+                m,scale,w,b=channel_model(x[train],y[train],start,start+width)
+                values=((x[test]-m)/scale)@w-b;target=values[y[test]];other=values[~y[test]]
+                diff=target[:,None]-other[None,:]
+                scores.append(float(np.mean((diff>0)+.5*(diff==0))))
+            # In exact ties prefer a wider interval rather than an isolated peak.
+            rank=(float(np.mean(scores)),width,-start)
+            if best is None or rank>best[0]:best=(rank,start,start+width)
+    return best[1:]
 
 def fit(rows):
     models={}
     for ch in CHANNELS:
         usable=[r for r in rows if ch in r['features']]
-        y=np.array([r['line'] in (r['target']//6,6+r['target']%6) for r in usable])
+        y=np.array([r['line'] in (r['target']//6,6+r['target']%6) for r in usable],dtype=bool)
         if y.sum()<8 or (~y).sum()<24:continue
-        x=np.array([r['features'][ch] for r in usable])
-        # Choose a 200 ms interval independently per electrode, using training rows only.
-        # Fixed width limits peak chasing; absolute effect allows either reference polarity.
-        effects=[]
-        for start in range(9):
-            values=x[:,start:start+4].mean(1)
-            pooled=((y.sum()-1)*values[y].var(ddof=1)+((~y).sum()-1)*values[~y].var(ddof=1))/(len(y)-2)
-            effects.append(abs(values[y].mean()-values[~y].mean())/max(np.sqrt(pooled),.1))
-        start=int(np.argmax(effects));keep=slice(start,start+4)
-        mean=x.mean(0);scale=np.maximum(x.std(0),.1);z=((x-mean)/scale)[:,keep]
-        a=z[y].mean(0);b=z[~y].mean(0);res=z-np.where(y[:,None],a,b)
-        cov=res.T@res/max(1,len(res)-2);cov=.7*cov+.3*np.eye(len(a))*max(np.trace(cov)/len(a),.01)
-        w=np.linalg.solve(cov,a-b);norm=max(float(np.sqrt(w@cov@w)),.1)
-        weights=np.zeros(12);weights[keep]=w/norm
-        models[ch]=(mean,scale,weights,(a+b)@w/(2*norm))
+        x=np.array([r['features'][ch] for r in usable]);groups=np.array([r['group'] for r in usable])
+        window=window_choice(x,y,groups)
+        if window is not None:models[ch]=channel_model(x,y,*window)
     return models
+
+def calibrate(cal):
+    groups=sorted({r['group'] for r in cal});models=fit(cal)
+    predictions=[];by_channel={ch:[] for ch in models}
+    for group in groups:
+        train=[r for r in cal if r['group']!=group];test=[r for r in cal if r['group']==group]
+        fold=fit(train);prediction=decode(test,fold)
+        record=dict(group=group,expected=test[0]['target'],predicted=prediction.get('index'))
+        predictions.append(record)
+        for ch in by_channel:
+            single=decode(test,{ch:fold[ch]} if ch in fold else {})
+            by_channel[ch].append({**record,'predicted':single.get('index')})
+    return models,predictions,by_channel
+
 
 def decode(rows,models):
     # Require repeated clean observations for every row and column; never guess from missing lines.
@@ -79,17 +111,15 @@ def request(engine,body):
             result['channels'][ch]=[{'n':len(w),'mean':np.mean(w,axis=0).tolist() if w else [],'ci':(1.96*np.std(w,axis=0,ddof=1)/np.sqrt(len(w))).tolist() if len(w)>1 else []} for w in waves]
         if body.get('action')=='fit':
             if len(groups)!=8 or any(sum(r['group']==g for r in cal)!=60 for g in groups):raise ValueError('Complete all eight calibration letters first.')
-            models=fit(cal)
-            if not models:raise ValueError('Not enough clean calibration EEG. Adjust contact and recalibrate.')
-            predictions=[]
-            for group in groups:
-                train=[r for r in cal if r['group']!=group];test=[r for r in cal if r['group']==group]
-                prediction=decode(test,fit(train));predictions.append(dict(group=group,expected=test[0]['target'],predicted=prediction.get('index')))
+            models,predictions,by_channel=calibrate(cal)
+            if not models:raise ValueError('Not enough clean calibration EEG across letters. Adjust contact and recalibrate.')
             engine.speller_model=models;result['validation']=predictions
             engine.session['speller_validation']=predictions
             engine.session['speller_model_channels']=list(models)
             engine.session['speller_windows_ms']=model_windows(models)
-            engine.session['speller_model_version']=2
+            engine.session['speller_model_version']=3
+            engine.session['speller_channel_validation']=by_channel
+            engine.cache_revision=None
             # Store model alongside its calibration, only on this machine.
             from private_storage import DATA_ROOT
             np.savez_compressed(Path(DATA_ROOT)/engine.session['id']/'speller-model.npz',**{ch:np.concatenate([v[0],v[1],v[2],[v[3]]]) for ch,v in models.items()})
@@ -110,3 +140,17 @@ def request(engine,body):
                 engine.session.setdefault('speller_history',[]).append(dict(group=group,**prediction))
             engine.event(dict(kind='note',speller_prediction=prediction,group=group))
         return {**result,**saved_output(engine)}
+
+
+def retrospective_calibration(view):
+    """Derived results only: never replace the model used in an older recording."""
+    s=view.session
+    if s.get('speller_model_version',0)>=3 or s.get('running'):return
+    cal=[r for r in examples(view) if r['phase']=='calibration']
+    groups={r['group'] for r in cal}
+    if len(groups)!=8 or any(sum(r['group']==g for r in cal)!=60 for g in groups):return
+    models,validation,channels=calibrate(cal)
+    s['speller_windows_ms']=model_windows(models)
+    s['speller_original_validation']=s.get('speller_validation',[])
+    s['speller_validation']=validation;s['speller_channel_validation']=channels
+    s['speller_retrospective']=True;s['speller_model_version']=3

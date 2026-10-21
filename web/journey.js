@@ -112,9 +112,9 @@ function drawHeadsetMaps(){
   const ch=node.dataset.electrode,index=boot?.channels.indexOf(ch);let sum=0,n=0;
   if(live&&index>=0)for(let i=trace.times.length-1;i>=0&&trace.times[i]>=end-.08;i--){const v=trace.values[i]?.[index];if(Number.isFinite(v)){sum+=v*v;n++}}
   const rms=n?Math.sqrt(sum/n):0,level=n?.03+.97*Math.max(0,Math.min(1,(rms-3)/4)):.08;
-  node.querySelector('.electrode-glow').style.opacity=level;node.querySelector('.electrode-glow').style.fill=typeof colors!=='undefined'?colors[index]:'#346a9d';
+  const glow=node.querySelector('.electrode-glow');glow.style.fill=typeof colors!=='undefined'?colors[index]:'#346a9d';glow.style.filter=`saturate(${live?level:0})`;
   const artifact=live&&(state.artifact_regions||[]).some(r=>r.channels?.includes(ch)&&r.onset<=end&&r.offset>=end-.2);
-  node.classList.toggle('has-artifact',!!artifact);node.querySelector('title').textContent=ch+(n?': '+rms.toFixed(1)+' µV RMS'+(artifact?' · recent artifact':''):': no current signal');
+  glow.style.opacity=!live?.08:artifact?.25:1;node.classList.toggle('has-artifact',!!artifact);node.querySelector('title').textContent=ch+(n?': '+rms.toFixed(1)+' µV RMS'+(artifact?' · recent artifact':''):': no current signal');
  }
 }
 function headsetHelp(label,nodes){
@@ -149,7 +149,7 @@ function initHeadsetDisplay(){
  trace.addEventListener('pointerdown',e=>{if(e.clientX-trace.getBoundingClientRect().left>40)return;drag={y:e.clientY,value:Number($('displayScale').value)||75};trace.setPointerCapture(e.pointerId);trace.style.cursor='grabbing';e.preventDefault()});
  trace.addEventListener('pointermove',e=>{if(!drag){trace.style.cursor=e.clientX-trace.getBoundingClientRect().left<=40?'grab':'default';return}const value=Math.max(5,Math.min(2000,drag.value*Math.exp((e.clientY-drag.y)/120)));const select=$('displayScale');let option=select.querySelector('[data-drag]');if(!option){option=document.createElement('option');option.dataset.drag='true';select.append(option)}option.value=value;select.value=String(value);$('traceScaleLabel').textContent='±'+value.toFixed(1)+' µV per channel';drawTrace()});
  const stop=()=>{drag=null;trace.style.cursor='grab'};trace.addEventListener('pointerup',stop);trace.addEventListener('pointercancel',stop);trace.style.touchAction='none';
- const mapExplanation=document.createElement('p');mapExplanation.textContent='Dots match the voltage-trace colors. Brightness follows 80 ms RMS amplitude over a narrow 3–7 µV display range. No animation is generated when samples stop. A faint red ring marks a recent artifact. Brightness is not contact quality or a brain-state score.';const scalpHelp=headsetHelp('2D scalp view',[mapExplanation]);map.append(scalpHelp);
+ const mapExplanation=document.createElement('p');mapExplanation.textContent='Dots match the voltage-trace colors. Color saturation follows 80 ms RMS amplitude over a narrow 3–7 µV display range. Recent artifacts fade the dot; clean samples restore full opacity. No animation is generated when samples stop. A faint red ring marks a recent artifact. Saturation is not contact quality or a brain-state score.';const scalpHelp=headsetHelp('2D scalp view',[mapExplanation]);map.append(scalpHelp);
  $('showHeadset').onchange=()=>map.hidden=!$('showHeadset').checked;$('showMotion').onchange=()=>{motionPlot.hidden=!$('showMotion').checked;drawMotionTraces()};
  initLiveSpectrum(traceColumn);row.replaceChildren(toolbar);
  $('start').onclick=()=>{preflightOverride=true;preflightContactRejected=false;void beginRun()};
