@@ -587,3 +587,8 @@ body.journey-theme #activityBranchName{left:14px;font-size:11px;letter-spacing:.
 #groupedSpectra:has(#pairedSpectrum:not([hidden])){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 #groupedSpectra canvas,.spectrum-grid canvas{min-width:0;width:100%}
 @media(max-width:650px){#channelERPs>.electrode-result{grid-column:auto!important}#groupedSpectra:has(#pairedSpectrum:not([hidden])){grid-template-columns:1fr}.spectrum-grid>*{grid-column:auto!important;grid-row:auto!important}}
+
+/* The workflow header already names Results. Keep session content unboxed. */
+body[data-journey-step=summary][data-results-section] :is(#experimentResults,#personalResults,#writingResults){border:0;box-shadow:none;background:transparent;padding-top:16px}
+body[data-journey-step=summary] :is(#experimentResults,#personalResults,#writingResults)>summary,body[data-journey-step=summary] #recordSection>.section-heading h2{display:none}
+.session-actions{justify-content:flex-end}

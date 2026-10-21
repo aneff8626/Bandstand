@@ -113,3 +113,36 @@ class SpellerResultWindowTests(unittest.TestCase):
         self.assertEqual(r['analysis']['channels']['TP9']['window'],[.5,.7]);self.assertEqual(r['analysis']['channels']['AF8']['window'],[.5,.7])
         self.assertEqual(e.session['speller_windows_ms']['TP9'],[100,300])
         self.assertNotIn('speller_review_windows_ms',e.session)
+
+
+class CalibrationQualityTests(unittest.TestCase):
+    def test_quality_uses_separation_and_letter_accuracy(self):
+        from speller import calibration_quality
+        good=[dict(expected=i,predicted=i,auc=.8) for i in range(8)]
+        self.assertTrue(calibration_quality(good)['ready'])
+        self.assertFalse(calibration_quality(good[:7])['ready'])
+        self.assertFalse(calibration_quality([dict(p,auc=.5) for p in good])['ready'])
+        self.assertFalse(calibration_quality([dict(p,predicted=None) for p in good])['ready'])
+        self.assertFalse(calibration_quality([])['ready'])
+    def test_outer_validation_reports_auc(self):
+        from speller import calibrate,calibration_quality
+        _,predictions,_=calibrate(SpellerTests().rows())
+        self.assertTrue(calibration_quality(predictions)['ready'])
+        self.assertTrue(all(0<=p['auc']<=1 for p in predictions))
+
+class ExtendedCalibrationTests(unittest.TestCase):
+    def test_additional_complete_letters_can_retrain(self):
+        from speller import request
+        from unittest.mock import patch
+        from types import SimpleNamespace
+        from pathlib import Path
+        import tempfile,threading
+        rows=SpellerTests().rows()
+        rows += [dict(r,group=r['group']+8) for r in rows[:240]]
+        e=SimpleNamespace(lock=threading.RLock(),session={'protocol':'speller','id':'synthetic'},trials=[],events=[],source='simulation',process_pending=lambda:None,save_metadata=lambda:None)
+        with tempfile.TemporaryDirectory() as root:
+            (Path(root)/'synthetic').mkdir()
+            with patch('speller.examples',return_value=rows),patch('private_storage.DATA_ROOT',Path(root)):
+                result=request(e,{'action':'fit'})
+        self.assertEqual(result['quality']['total'],12)
+        self.assertEqual(len(result['validation']),12)

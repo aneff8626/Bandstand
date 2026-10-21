@@ -68,11 +68,29 @@ def calibrate(cal):
         train=[r for r in cal if r['group']!=group];test=[r for r in cal if r['group']==group]
         fold=fit(train);prediction=decode(test,fold)
         record=dict(group=group,expected=test[0]['target'],predicted=prediction.get('index'))
+        attended=[];unattended=[]
+        for r in test:
+            scores=[float(((r['features'][ch]-m)/scale)@w-b) for ch,(m,scale,w,b) in fold.items() if ch in r['features']]
+            if scores:(attended if r['line'] in (r['target']//6,6+r['target']%6) else unattended).append(float(np.mean(scores)))
+        if attended and unattended:
+            diff=np.asarray(attended)[:,None]-np.asarray(unattended)[None,:]
+            record['auc']=float(np.mean((diff>0)+.5*(diff==0)))
         predictions.append(record)
         for ch in by_channel:
             single=decode(test,{ch:fold[ch]} if ch in fold else {})
             by_channel[ch].append({**record,'predicted':single.get('index')})
     return models,predictions,by_channel
+
+
+def calibration_quality(predictions):
+    """Experimental readiness rule using outer held-out letters, never training fit."""
+    aucs=[p['auc'] for p in predictions if p.get('auc') is not None]
+    n=len(predictions);correct=sum(p.get('predicted') is not None and p['predicted']==p['expected'] for p in predictions)
+    auc=float(np.mean(aucs)) if aucs else None
+    ready=n>=8 and len(aucs)==n and auc>=.65 and sum(a>.5 for a in aucs)/n>=.75 and correct/n>=.5
+    return dict(ready=bool(ready),auc=auc,correct=correct,total=n,
+                message='Ready to try spelling.' if ready else 'Separation is weak or inconsistent. Check contact and attention, then add calibration letters.',
+                rule='Experimental threshold: held-out AUC ≥ 0.65, above chance in ≥ 75% of letters, and ≥ 50% letters correct. Not a validated probability of future accuracy.')
 
 
 def decode(rows,models):
@@ -92,7 +110,7 @@ def model_windows(models):
     return {ch:[int(100+50*np.flatnonzero(v[2])[0]),int(150+50*np.flatnonzero(v[2])[-1])] for ch,v in models.items() if np.any(v[2])}
 
 def saved_output(engine):
-    return dict(text=engine.session.get('speller_text',''),history=engine.session.get('speller_history',[]),windows=engine.session.get('speller_windows_ms',{}))
+    return dict(text=engine.session.get('speller_text',''),history=engine.session.get('speller_history',[]),windows=engine.session.get('speller_windows_ms',{}),quality=engine.session.get('speller_quality'))
 
 def request(engine,body):
     with engine.lock:
@@ -110,11 +128,12 @@ def request(engine,body):
                 if v.get('accepted'):waves[t['condition_index']].append(v['wave'])
             result['channels'][ch]=[{'n':len(w),'mean':np.mean(w,axis=0).tolist() if w else [],'ci':(1.96*np.std(w,axis=0,ddof=1)/np.sqrt(len(w))).tolist() if len(w)>1 else []} for w in waves]
         if body.get('action')=='fit':
-            if len(groups)!=8 or any(sum(r['group']==g for r in cal)!=60 for g in groups):raise ValueError('Complete all eight calibration letters first.')
+            if not 8<=len(groups)<=24 or any(sum(r['group']==g for r in cal)!=60 for g in groups):raise ValueError('Complete at least eight calibration letters first.')
             models,predictions,by_channel=calibrate(cal)
             if not models:raise ValueError('Not enough clean calibration EEG across letters. Adjust contact and recalibrate.')
             engine.speller_model=models;result['validation']=predictions
             engine.session['speller_validation']=predictions
+            engine.session['speller_quality']=calibration_quality(predictions)
             engine.session['speller_model_channels']=list(models)
             engine.session['speller_windows_ms']=model_windows(models)
             engine.session['speller_model_version']=3
@@ -145,12 +164,13 @@ def request(engine,body):
 def retrospective_calibration(view):
     """Derived results only: never replace the model used in an older recording."""
     s=view.session
-    if s.get('speller_model_version',0)>=3 or s.get('running'):return
+    if s.get('speller_quality') or s.get('running'):return
     cal=[r for r in examples(view) if r['phase']=='calibration']
     groups={r['group'] for r in cal}
-    if len(groups)!=8 or any(sum(r['group']==g for r in cal)!=60 for g in groups):return
+    if not 8<=len(groups)<=24 or any(sum(r['group']==g for r in cal)!=60 for g in groups):return
     models,validation,channels=calibrate(cal)
     s['speller_windows_ms']=model_windows(models)
     s['speller_original_validation']=s.get('speller_validation',[])
     s['speller_validation']=validation;s['speller_channel_validation']=channels
+    s['speller_quality']=calibration_quality(validation)
     s['speller_retrospective']=True;s['speller_model_version']=3
