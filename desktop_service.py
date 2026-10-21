@@ -71,7 +71,7 @@ def dispatch(path,body):
         parts=path.split('/');return engine.result_band(parts[1],parts[2],parts[3])
     if path.startswith('results/'):
         parts=path.split('/')
-        if len(parts)==4:return engine.result_window(parts[1],parts[2],parts[3])
+        if len(parts) in (4,5):return engine.result_window(parts[1],parts[2],parts[3],parts[4] if len(parts)==5 else None)
         view=engine.saved_view(parts[1])
         return {'session':view.session,'analysis':view.analysis()}
     if path.startswith('export/'):

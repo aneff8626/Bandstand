@@ -406,7 +406,7 @@ body.journey-theme #eegDock{display:block!important}body.journey-theme #journeyH
 .map-bluetooth{display:none;fill:none;stroke:#426b9c;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.map-disconnected .map-bluetooth{display:block;stroke:#c83535;transform-box:fill-box;transform-origin:center;animation:bluetooth-disconnected-nudge 8s ease-in-out infinite}
 @keyframes bluetooth-disconnected-nudge{0%,14%,100%{transform:scale(1) rotate(0deg)}3%{transform:scale(1.25) rotate(-12deg)}6%{transform:scale(1.25) rotate(12deg)}9%{transform:scale(1.2) rotate(-8deg)}12%{transform:scale(1.08) rotate(5deg)}}
 @media(prefers-reduced-motion:reduce){.map-disconnected .map-bluetooth{animation:none}}
-.electrode-glow{transition:opacity 80ms linear}.map-disconnected .electrode-glow{opacity:.06!important}
+.electrode-glow{transition:filter 80ms linear,opacity 120ms linear}.map-disconnected .electrode-glow{opacity:.06!important}
 .insight-disclosure{border:0;border-bottom:1px solid var(--line);padding:14px 0;margin:0}
 .insight-disclosure>summary{font-size:17px;font-weight:600;cursor:pointer;padding:4px 0 12px}
 .personality-series{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:12px}.personality-series label{display:flex;align-items:center;gap:5px}.personality-series input{width:auto;margin:0}
