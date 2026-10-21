@@ -15,7 +15,7 @@ async function startSpeller(){
  let session,ended=false,index=0,group=0,busy=false;
  const alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789 ';
  const dialog=document.createElement('section');dialog.className='speller-run';dialog.id='spellerRun';
- dialog.innerHTML='<header><strong>P300 speller</strong><span class="speller-source"></span><button class="speller-end">End & save</button></header><div class="speller-layout"><section><h2 class="speller-cue">Preparing EEG…</h2><progress max="8" value="0"></progress><label class="speller-output-label">Spelled text</label><output class="speller-output" aria-label="Spelled text" aria-live="polite">—</output><p class="speller-evidence muted"></p><div class="speller-grid"></div><p class="speller-status" role="status"></p><div class="speller-actions"></div></section><div class="speller-analysis"><p class="speller-validation"></p><details open><summary>Calibration responses <span title="Other flashes: teal. Cued-letter flashes: gold; these labels indicate the instruction, not measured attention. Mean ± approximate pointwise 95% interval. Each electrode is screened independently. These are calibration responses, not proof of spelling accuracy.">?</span></summary><div class="speller-erps"></div></details><details><summary>How this works</summary><p>Attend to one letter and silently count its flashes. Eight calibration letters train a local classifier using an interval of 100–400 ms selected for each electrode within 100–800 ms. Inner held-out letters select its duration and position; separate outer held-out letters assess accuracy. Muse spelling accuracy is unvalidated. Flash timing uses software timestamps; physical screen and Bluetooth latency are uncalibrated. Output and EEG stay local. Stop if flashing is uncomfortable.</p><a href="https://pubmed.ncbi.nlm.nih.gov/16792299/" target="_blank" rel="noopener">P300 spelling method</a></details></div></div>';
+ dialog.innerHTML='<header><strong>P300 speller</strong><span class="speller-source"></span><button class="speller-end">End & save</button></header><div class="speller-layout"><section><h2 class="speller-cue">Preparing EEG…</h2><progress max="8" value="0"></progress><label class="speller-output-label">Spelled text</label><output class="speller-output" aria-label="Spelled text" aria-live="polite">—</output><p class="speller-evidence muted"></p><div class="speller-grid"></div><p class="speller-status" role="status"></p><div class="speller-actions"></div></section><div class="speller-analysis"><p class="speller-validation"></p><details open><summary>Calibration responses <span title="Unattended: teal. Attended: gold; these labels indicate the instruction, not measured attention. Mean ± approximate pointwise 95% interval. Each electrode is screened independently. These are calibration responses, not proof of spelling accuracy.">?</span></summary><div class="speller-erps"></div></details><details><summary>How this works</summary><p>Attend to one letter and silently count its flashes. Eight calibration letters train a local classifier using an interval of 100–400 ms selected for each electrode within 100–800 ms. Inner held-out letters select its duration and position; separate outer held-out letters assess accuracy. Muse spelling accuracy is unvalidated. Flash timing uses software timestamps; physical screen and Bluetooth latency are uncalibrated. Output and EEG stay local. Stop if flashing is uncomfortable.</p><a href="https://pubmed.ncbi.nlm.nih.gov/16792299/" target="_blank" rel="noopener">P300 spelling method</a></details></div></div>';
  const q=s=>dialog.querySelector(s),cells=[];
  for(const letter of alphabet){const cell=document.createElement('span');cell.textContent=letter===' '?'␣':letter;q('.speller-grid').append(cell);cells.push(cell)}
  const setStatus=text=>q('.speller-status').textContent=text;
@@ -35,7 +35,7 @@ async function startSpeller(){
  const escape=e=>{if(e.key==='Escape'){e.preventDefault();void stop()}};document.addEventListener('keydown',escape);q('.speller-end').onclick=()=>stop();
  document.querySelector('main').append(dialog);document.body.classList.add('speller-running');spellerRunning=true;personalBusy=true;journeyRun=true;journeySetStep('run');
  try{
-  await syncClock();session=await api('start',{protocol:'speller',trials:960,minimum:10,channels:['TP9','AF7','AF8','TP10'],allow_noisy_start:true,calibration:{matrix:'6x6',flash_ms:120,onset_interval_ms:300,repetitions:5,feature_window_ms:[100,800],feature_bin_ms:50,candidate_durations_ms:[100,150,200,250,300,350,400],window_selection:'nested held-out-letter AUC',covariance_shrinkage:.3}});
+  await syncClock();session=await api('start',{protocol:'speller',trials:2400,minimum:10,channels:['TP9','AF7','AF8','TP10'],allow_noisy_start:true,calibration:{matrix:'6x6',flash_ms:120,onset_interval_ms:300,repetitions:5,feature_window_ms:[100,800],feature_bin_ms:50,candidate_durations_ms:[100,150,200,250,300,350,400],window_selection:'nested held-out-letter AUC',covariance_shrinkage:.3}});
   if(ended){await api('stop',{reason:'cancelled during startup'});return}
   personalBusy=true;journeyRun=true;journeySetStep('run');q('.speller-source').textContent=session.source==='simulation'?'SIMULATION — not real EEG':'';document.addEventListener('visibilitychange',hidden);
   const showOutput=data=>{q('.speller-output').textContent=data.text||'—';q('.speller-evidence').textContent=data.history?.length?spellerEvidence(data.history.at(-1)):'';};
@@ -43,7 +43,7 @@ async function startSpeller(){
   const chart=data=>{
    q('.speller-erps').replaceChildren();
    for(const [ch,conditions]of electrodeEntries(data.channels)){
-    const box=document.createElement('div');const title=document.createElement('strong');title.textContent=electrodeLabel(ch)+' · ';for(const [k,c]of conditions.entries()){const label=document.createElement('span');label.style.color=k?'#b27b20':'#268f86';label.textContent=`${c.n} ${k?'cued':'other / '}`;title.append(label)}if(data.windows?.[ch]){const interval=document.createElement('small');interval.textContent=' · '+data.windows[ch].join('–')+' ms';title.append(interval)}box.append(title);
+    const box=document.createElement('div');const title=document.createElement('strong');title.textContent=electrodeLabel(ch)+' · ';for(const [k,c]of conditions.entries()){const label=document.createElement('span');label.style.color=k?'#b27b20':'#268f86';label.textContent=`${c.n} ${k?'attended':'unattended / '}`;title.append(label)}if(data.windows?.[ch]){const interval=document.createElement('small');interval.textContent=' · '+data.windows[ch].join('–')+' ms';title.append(interval)}box.append(title);
     const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 300 115');svg.setAttribute('aria-label',`${ch} calibration ERP, −200 to 800 milliseconds, ±15 microvolts`);
     if(data.windows?.[ch]){const band=document.createElementNS(ns,'rect');const [lo,hi]=data.windows[ch];band.setAttribute('x',20+270*(lo+200)/1000);band.setAttribute('y','8');band.setAttribute('width',270*(hi-lo)/1000);band.setAttribute('height','90');band.setAttribute('fill','#426c9818');svg.append(band)}
     const xy=(v,i,n)=>`${20+270*i/(n-1)},${Math.max(8,Math.min(98,53-v*3))}`;
@@ -56,7 +56,7 @@ async function startSpeller(){
    }
   };
   const sequence=async(target,phase)=>{
-   if(index+60>960)throw Error('Session limit reached. Begin a new calibration to continue.');
+   if(index+60>2400)throw Error('Session limit reached. Begin a new calibration to continue.');
    const thisGroup=group++;setStatus('Count the flashes.');
    for(let rep=0;rep<5;rep++){
     const lines=Array.from({length:12},(_,i)=>i);for(let i=11;i>0;i--){const j=Math.floor(Math.random()*(i+1));[lines[i],lines[j]]=[lines[j],lines[i]]}
@@ -73,23 +73,35 @@ async function startSpeller(){
    }
    await pause(1100);check();return thisGroup;
   };
-  const targets=[0,7,14,21,28,35,4,31];
-  for(let i=0;i<targets.length;i++){
-   cells.forEach(c=>c.classList.remove('cue-target'));q('.speller-cue').classList.remove('cue-nudge');void q('.speller-cue').offsetWidth;cells[targets[i]].classList.add('cue-target');q('.speller-cue').classList.add('cue-nudge');
-   q('.speller-cue').textContent=`Count flashes of ${alphabet[targets[i]]===' '?'SPACE':alphabet[targets[i]]}`;q('progress').value=i;
-   setStatus(`${i+1} / 8 · Blink now; flashes begin in three seconds.`);await pause(3000);
-   cells[targets[i]].classList.remove('cue-target');q('.speller-cue').classList.remove('cue-nudge');
-   await sequence(targets[i],'calibration');chart(await api('speller',{action:'status'}));
-  }
-  const trained=await api('speller',{action:'fit'});chart(trained);showOutput(trained);q('progress').value=8;
-  const correct=trained.validation.filter(v=>v.predicted===v.expected).length,valid=trained.validation.filter(v=>v.predicted!==undefined&&v.predicted!==null).length;
-  q('.speller-cue').textContent='Choose a letter with your eyes';q('.speller-validation').textContent=`Held-out letters: ${(100*correct/8).toFixed(1)}% · ${correct} / 8 correct (${8-valid} unavailable). Random guessing: 1 / 36. Exploratory; not a confidence score.`;setStatus('Attend to a letter, then press Select a letter.');
+  const targets=[0,7,14,21,28,35,4,31,10,25,16,3,30,19,8,23,34,5,12,27,2,17,32,9];
+  let calibrated=0,trained=null;
+  const collect=async(count)=>{
+   const limit=Math.min(24,calibrated+count);q('progress').max=limit;
+   for(;calibrated<limit;calibrated++){
+    const target=targets[calibrated];cells.forEach(c=>c.classList.remove('cue-target'));q('.speller-cue').classList.remove('cue-nudge');void q('.speller-cue').offsetWidth;cells[target].classList.add('cue-target');q('.speller-cue').classList.add('cue-nudge');
+    q('.speller-cue').textContent=`Count flashes of ${alphabet[target]===' '?'SPACE':alphabet[target]}`;q('progress').value=calibrated;
+    setStatus(`${calibrated+1} / ${limit} · Blink now; flashes begin in three seconds.`);await pause(3000);
+    cells[target].classList.remove('cue-target');await sequence(target,'calibration');chart(await api('speller',{action:'status'}));
+   }
+   q('progress').value=calibrated;setStatus('Checking held-out calibration letters…');
+   try{trained=await api('speller',{action:'fit'});chart(trained);showOutput(trained);
+    const quality=trained.quality;q('.speller-validation').textContent=`${quality.correct} / ${quality.total} held-out letters correct · attended/unattended AUC ${quality.auc===null?'unavailable':quality.auc.toFixed(2)} (chance 0.50). ${quality.message}`;q('.speller-validation').title=quality.rule;
+    q('.speller-cue').textContent=quality.ready?'Choose a letter with your eyes':'More calibration recommended';setStatus(quality.message);
+   }catch(e){trained=null;q('.speller-validation').textContent=e.message;setStatus('Check contact, then add calibration letters.');}
+  };
+  await collect(8);
   const action=(text,fn)=>{const b=personalButton(text,fn);q('.speller-actions').append(b);return b};
+  const more=action('Add 4 calibration letters',async()=>{
+   if(busy||ended||calibrated>=24)return;busy=true;q('.speller-actions').querySelectorAll('button').forEach(b=>b.disabled=true);
+   try{await collect(4)}catch(e){if(!ended){await stop(e.message);toast(e.message)}}finally{busy=false;updateActions()}
+  });
+  const updateActions=()=>{q('.speller-actions').querySelectorAll('button').forEach(b=>b.disabled=false);more.disabled=calibrated>=24||index+240>2400;selectButton.disabled=!trained;selectButton.textContent=trained?.quality?.ready?'Select a letter':'Try spelling anyway';};
   const selectButton=action('Select a letter',async()=>{
    if(busy||ended)return;busy=true;q('.speller-actions').querySelectorAll('button').forEach(b=>b.disabled=true);
    try{setStatus('Look at your chosen letter. Starting in three seconds.');await pause(3000);const g=await sequence(null,'spelling');const r=await api('speller',{action:'predict',group:g});check();const p=r.prediction;if(p.symbol===null)setStatus(p.reason);else{showOutput(r);selectButton.textContent='Add next letter';setStatus(`Selected ${p.symbol===' '?'SPACE':p.symbol} · experimental EEG prediction`)}}
-   catch(e){if(!ended){await stop(e.message);toast(e.message)}}finally{busy=false;q('.speller-actions').querySelectorAll('button').forEach(b=>b.disabled=false)}
+   catch(e){if(!ended){await stop(e.message);toast(e.message)}}finally{busy=false;updateActions()}
   });
+  updateActions();
   action('Delete last letter',async()=>{if(busy||ended)return;busy=true;try{showOutput(await api('speller',{action:'delete'}))}catch(e){toast(e.message)}finally{busy=false}});
  }catch(e){if(!ended){await stop(e.message);toast(e.message)}}
 }
@@ -99,12 +111,13 @@ function renderSpellerSummary(){
  const s=state?.session;panel.hidden=s?.protocol!=='speller';if(panel.hidden)return;
  const v=s.speller_validation||[],correct=v.filter(x=>x.expected===x.predicted).length;
  panel.querySelectorAll('.info-dot').forEach(b=>b._helpDialog?.remove());panel.replaceChildren(personalElement('h2','Spelled text'),personalElement('output',s.speller_text||'No letters selected.','speller-output'));
- const help=headsetHelp('Spelling evidence',[personalElement('p','Row and column gaps compare the winning flash score with the runner-up in standardized classifier units. They are not probabilities. Held-out calibration tests whole letters. Inner validation selects each electrode’s interval; outer validation tests it on a letter excluded from all fitting. Cued-letter labels record which row/column contains the instructed target, not whether attention occurred. Eight letters provide only a rough performance check; Muse spelling accuracy is unvalidated.')]);
+ const help=headsetHelp('Spelling evidence',[personalElement('p','Row and column gaps compare the winning flash score with the runner-up in standardized classifier units. They are not probabilities. Held-out calibration tests whole letters. Inner validation selects each electrode’s interval; outer validation tests it on a letter excluded from all fitting. Attended labels record which row/column contains the instructed target, not whether attention occurred. Eight letters provide only a rough performance check; Muse spelling accuracy is unvalidated.')]);
  const heading=personalElement('h3','Letter evidence');heading.append(help);panel.append(heading);
  const history=personalElement('div',undefined,'speller-history');
  for(const [i,p]of(s.speller_history||[]).entries()){const item=personalElement('div');item.append(personalElement('strong',`${i+1}. ${p.symbol===' '?'SPACE':p.symbol}`),personalElement('small',spellerEvidence(p)));history.append(item)}
  if(!(s.speller_history||[]).length)history.append(personalElement('p','Per-letter evidence was not saved in this recording.'));
  panel.append(history,personalElement('h3',v.length?`${(100*correct/v.length).toFixed(1)}% letters correctly classified`:'Calibration was not completed.'),personalElement('p',v.length?`${correct} / ${v.length} held-out letters · random guessing 2.8%`:'Complete calibration to measure accuracy.'));
+ if(s.speller_quality){const quality=s.speller_quality;const note=personalElement('p',`Attended/unattended AUC: ${quality.auc===null?'unavailable':quality.auc.toFixed(2)} · ${quality.message}`);note.title=quality.rule;panel.append(note);}
  if(s.speller_retrospective){const original=s.speller_original_validation||[];panel.append(personalElement('p',`Reanalysed calibration · original decoder: ${original.filter(x=>x.expected===x.predicted).length}/${original.length} correct`,'muted'));}
 
 

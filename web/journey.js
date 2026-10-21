@@ -109,9 +109,9 @@ let mapLastSample=null,mapLastChange=0;
 function drawHeadsetMaps(){
  const trace=state?.trace,end=trace?.times?.at(-1),fresh=Number.isFinite(end);if(fresh&&end!==mapLastSample){mapLastSample=end;mapLastChange=performance.now()}const live=state&&!state.stale&&fresh&&performance.now()-mapLastChange<2000;document.querySelectorAll('.headset-map').forEach(m=>{m.classList.toggle('map-disconnected',!live);if(m.closest('#eegDock')){m.title=live?'EEG streaming · open headset setup':'No current EEG · connect Bluetooth';m.setAttribute('aria-label',m.title)}});
  for(const node of document.querySelectorAll('[data-electrode]')){
-  const ch=node.dataset.electrode,index=boot?.channels.indexOf(ch);let sum=0,n=0;
-  if(live&&index>=0)for(let i=trace.times.length-1;i>=0&&trace.times[i]>=end-.08;i--){const v=trace.values[i]?.[index];if(Number.isFinite(v)){sum+=v*v;n++}}
-  const rms=n?Math.sqrt(sum/n):0,level=n?.03+.97*Math.max(0,Math.min(1,(rms-3)/4)):.08;
+  const ch=node.dataset.electrode,index=boot?.channels.indexOf(ch);let sum=0,total=0,n=0;
+  if(live&&index>=0)for(let i=trace.times.length-1;i>=0&&trace.times[i]>=end-.25;i--){const v=trace.values[i]?.[index];if(Number.isFinite(v)){sum+=v*v;total+=v;n++}}
+  const rms=n?Math.sqrt(Math.max(0,sum/n-(total/n)**2)):0,level=n?Math.min(3,Math.max(.03,rms/8)):.03;
   const glow=node.querySelector('.electrode-glow');glow.style.fill=typeof colors!=='undefined'?colors[index]:'#346a9d';glow.style.filter=`saturate(${live?level:0})`;
   const artifact=live&&(state.artifact_regions||[]).some(r=>r.channels?.includes(ch)&&r.onset<=end&&r.offset>=end-.2);
   glow.style.opacity=!live?.08:artifact?.25:1;node.classList.toggle('has-artifact',!!artifact);node.querySelector('title').textContent=ch+(n?': '+rms.toFixed(1)+' µV RMS'+(artifact?' · recent artifact':''):': no current signal');
@@ -149,7 +149,7 @@ function initHeadsetDisplay(){
  trace.addEventListener('pointerdown',e=>{if(e.clientX-trace.getBoundingClientRect().left>40)return;drag={y:e.clientY,value:Number($('displayScale').value)||75};trace.setPointerCapture(e.pointerId);trace.style.cursor='grabbing';e.preventDefault()});
  trace.addEventListener('pointermove',e=>{if(!drag){trace.style.cursor=e.clientX-trace.getBoundingClientRect().left<=40?'grab':'default';return}const value=Math.max(5,Math.min(2000,drag.value*Math.exp((e.clientY-drag.y)/120)));const select=$('displayScale');let option=select.querySelector('[data-drag]');if(!option){option=document.createElement('option');option.dataset.drag='true';select.append(option)}option.value=value;select.value=String(value);$('traceScaleLabel').textContent='±'+value.toFixed(1)+' µV per channel';drawTrace()});
  const stop=()=>{drag=null;trace.style.cursor='grab'};trace.addEventListener('pointerup',stop);trace.addEventListener('pointercancel',stop);trace.style.touchAction='none';
- const mapExplanation=document.createElement('p');mapExplanation.textContent='Dots match the voltage-trace colors. Color saturation follows 80 ms RMS amplitude over a narrow 3–7 µV display range. Recent artifacts fade the dot; clean samples restore full opacity. No animation is generated when samples stop. A faint red ring marks a recent artifact. Saturation is not contact quality or a brain-state score.';const scalpHelp=headsetHelp('2D scalp view',[mapExplanation]);map.append(scalpHelp);
+ const mapExplanation=document.createElement('p');mapExplanation.textContent='Dots match the voltage-trace colors. Color saturation follows the variation around the mean over the latest 250 ms; it reaches full display saturation at 24 µV. This removes a constant baseline from the display indicator only. Recent artifacts fade the dot; clean samples restore full opacity. No animation is generated when samples stop. A faint red ring marks a recent artifact. Saturation is not contact quality or a brain-state score.';const scalpHelp=headsetHelp('2D scalp view',[mapExplanation]);map.append(scalpHelp);
  $('showHeadset').onchange=()=>map.hidden=!$('showHeadset').checked;$('showMotion').onchange=()=>{motionPlot.hidden=!$('showMotion').checked;drawMotionTraces()};
  initLiveSpectrum(traceColumn);row.replaceChildren(toolbar);
  $('start').onclick=()=>{preflightOverride=true;preflightContactRejected=false;void beginRun()};
@@ -365,7 +365,7 @@ function sessionQuality(r){
 }
 
 function mountSessionActions(host,record,onDeleted){
- host.dataset.actionSession=record.id;host.querySelector('.session-actions')?.remove();const header=personalElement('div',undefined,'session-actions'),title=personalElement('strong','Results'),buttons=personalElement('div',undefined,'button-row');header.append(title,buttons);
+ host.dataset.actionSession=record.id;host.querySelector('.session-actions')?.remove();const header=personalElement('div',undefined,'session-actions'),buttons=personalElement('div',undefined,'button-row');header.append(buttons);
  const readStars=()=>{try{return new Set(JSON.parse(localStorage.getItem('bandstandStarredSessions')||'[]'))}catch{return new Set()}};
  const star=personalButton('',()=>{const stars=readStars();stars.has(record.id)?stars.delete(record.id):stars.add(record.id);localStorage.setItem('bandstandStarredSessions',JSON.stringify([...stars]));updateStar()});
  const updateStar=()=>{const selected=readStars().has(record.id);star.textContent=selected?'★ Starred':'☆ Star';star.setAttribute('aria-pressed',String(selected))};updateStar();buttons.append(star);

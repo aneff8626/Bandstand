@@ -269,7 +269,7 @@ class Engine:
             # Biofeedback measures six 8 s rest blocks before and six after training; its comparison needs 5 per phase.
             if p['id']=='biofeedback':count=12;minimum=min(minimum,5)
             if p['id']=='biofeedback':valid=5<=minimum<=6
-            else:valid=(count==4 if p['id']=='disclosure' else 20<=count<=1000) and 10<=minimum<=500
+            else:valid=(count==4 if p['id']=='disclosure' else 20<=count<=(2400 if p['id']=='speller' else 1000)) and 10<=minimum<=500
             if not valid: raise ValueError('Trial count must be 20–1000; minimum usable trials 10–500')
             window=list(map(float,cfg.get('window',p['window'])))
             if len(window)!=2 or not 0<=window[0]<window[1]<= (p['stim_ms'][1]/1000 if p['mode']!='erp' else .8): raise ValueError('Invalid analysis window')
@@ -415,7 +415,7 @@ class Engine:
             if getattr(self,'tf_tick',None)!=tick:self.tf_tick=tick;self.cache_revision=None
         if self.cache_revision==(self.revision,len(getattr(self,"events",[]))): return self.cache_analysis
         s=self.session
-        if s.get('protocol')=='speller':s['conditions']=['Other flashes','Cued-letter flashes']
+        if s.get('protocol')=='speller':s['conditions']=['Unattended','Attended']
         if s['mode']=='tf':
             for trial in self.trials:
                 if 'spectral_channels' not in trial:
