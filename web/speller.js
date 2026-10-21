@@ -42,8 +42,8 @@ async function startSpeller(){
   q('.speller-evidence').title='Classifier gaps: winning row/column score minus runner-up, in standardized classifier units. Larger means stronger separation, not probability of correctness. Calibration accuracy is shown separately.';
   const chart=data=>{
    q('.speller-erps').replaceChildren();
-   for(const [ch,conditions]of Object.entries(data.channels)){
-    const box=document.createElement('div');const title=document.createElement('strong');title.textContent=ch+' · ';for(const [k,c]of conditions.entries()){const label=document.createElement('span');label.style.color=k?'#b27b20':'#268f86';label.textContent=`${c.n} ${k?'cued':'other / '}`;title.append(label)}if(data.windows?.[ch]){const interval=document.createElement('small');interval.textContent=' · '+data.windows[ch].join('–')+' ms';title.append(interval)}box.append(title);
+   for(const [ch,conditions]of electrodeEntries(data.channels)){
+    const box=document.createElement('div');const title=document.createElement('strong');title.textContent=electrodeLabel(ch)+' · ';for(const [k,c]of conditions.entries()){const label=document.createElement('span');label.style.color=k?'#b27b20':'#268f86';label.textContent=`${c.n} ${k?'cued':'other / '}`;title.append(label)}if(data.windows?.[ch]){const interval=document.createElement('small');interval.textContent=' · '+data.windows[ch].join('–')+' ms';title.append(interval)}box.append(title);
     const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 300 115');svg.setAttribute('aria-label',`${ch} calibration ERP, −200 to 800 milliseconds, ±15 microvolts`);
     if(data.windows?.[ch]){const band=document.createElementNS(ns,'rect');const [lo,hi]=data.windows[ch];band.setAttribute('x',20+270*(lo+200)/1000);band.setAttribute('y','8');band.setAttribute('width',270*(hi-lo)/1000);band.setAttribute('height','90');band.setAttribute('fill','#426c9818');svg.append(band)}
     const xy=(v,i,n)=>`${20+270*i/(n-1)},${Math.max(8,Math.min(98,53-v*3))}`;

@@ -15,11 +15,11 @@ function tfBandControl(parent,session,analysis){
 }
 function drawTFChannels(parentId,a,session,compact=false){
  const parent=$(parentId);if(!parent)return;parent.hidden=false;parent._tfSession=session;
- const key=session.id+'/'+a.trial_count+'/'+a.pending ;if(parent.dataset.tfKey===key){drawTFSpectra(parentId,a);for(const [ch,v] of Object.entries(a.channels||{})){drawStats(parentId+'-power-'+ch,v,parentId+'-note-'+ch);$(parentId+'-title-'+ch).textContent=`${a.band.join('–')} Hz power · ${session.window.join('–')} s after cue`;}const menu=parent.querySelector('.tf-band-control select'),preset=a.band.join(',');menu.value=['4,7','8,13','13,20','20,30'].includes(preset)?preset:'custom';const inputs=parent.querySelectorAll('.tf-band-control input');inputs.forEach((el,i)=>{el.hidden=menu.value!=='custom';if(document.activeElement!==el)el.value=a.band[i]});return;}parent.dataset.tfKey=key;parent.replaceChildren();
+ const key=session.id+'/'+a.trial_count+'/'+a.pending ;if(parent.dataset.tfKey===key){drawTFSpectra(parentId,a);for(const [ch,v] of electrodeEntries(a.channels)){drawStats(parentId+'-power-'+ch,v,parentId+'-note-'+ch);$(parentId+'-title-'+ch).textContent=`${a.band.join('–')} Hz power · ${session.window.join('–')} s after cue`;}const menu=parent.querySelector('.tf-band-control select'),preset=a.band.join(',');menu.value=['4,7','8,13','13,20','20,30'].includes(preset)?preset:'custom';const inputs=parent.querySelectorAll('.tf-band-control input');inputs.forEach((el,i)=>{el.hidden=menu.value!=='custom';if(document.activeElement!==el)el.value=a.band[i]});return;}parent.dataset.tfKey=key;parent.replaceChildren();
  tfBandControl(parent,session,a);
  const explanation=document.createElement('p');explanation.className='muted';explanation.textContent='2 s windows · 0.5 s steps · at least 4 clean seconds per electrode per block. Dashed spectrum: latest clean 2 s. Small dots: clean, non-overlapping 2 s segments, including partially usable blocks. Means and tests use eligible blocks. Shading: pointwise 95% CI across eligible blocks (≥10). Band review is exploratory.';if(a.clip_inference)explanation.textContent='Exploratory clip-level comparison · Non-overlapping 2 s clips. Clips from the same block are correlated; these p-values may overstate the evidence. Spectral confidence intervals still use eligible blocks (≥10).';parent.append(explanation);
- for(const [ch,v]of Object.entries(a.channels||{})){
-  const card=document.createElement('section');card.className='panel';const title=document.createElement('h3');title.textContent=ch;card.append(title);
+ for(const [ch,v]of electrodeEntries(a.channels)){
+  const card=document.createElement('section');card.className='panel electrode-result';electrodeGridPosition(card,ch);const title=document.createElement('h3');title.textContent=electrodeLabel(ch);card.append(title);
   const spectrum=document.createElement('canvas');spectrum.id=parentId+'-spectrum-'+ch;spectrum.height=compact?160:220;card.append(spectrum);
   const counts=document.createElement('p');counts.className='muted';counts.textContent=v.groups.map(g=>`${g.label}: ${g.segment_features?.length||0} segments · ${g.accepted} ${a.clip_inference?'usable clips':'eligible blocks'} · ${g.clean_seconds.toFixed(1)} clean seconds · ${g.rejected} rejected`).join(' | ');card.append(counts);
   const h=document.createElement('h4');h.id=parentId+'-title-'+ch;h.textContent=`${a.band.join('–')} Hz power · ${session.window.join('–')} s after cue`;card.append(h);
@@ -33,7 +33,7 @@ function drawTFChannels(parentId,a,session,compact=false){
 }
 
 function drawTFSpectra(parentId,a){
- for(const [ch,v]of Object.entries(a.channels||{})){
+ for(const [ch,v]of electrodeEntries(a.channels)){
   const id=parentId+'-spectrum-'+ch;if(!$(id))continue;$(id)._redraw=()=>drawTFSpectra(parentId,a);
   const live=a.live_preview?.[ch]?.map(p=>10*Math.log10(Math.max(p,1e-12)));
   const values=[...v.groups.flatMap(g=>g.psd?g.psd.mean.flatMap((m,k)=>[m-(g.psd.ci95?.[k]||0),m+(g.psd.ci95?.[k]||0)]):[]),...(live||[])],lo=Math.min(-10,...values)-3,hi=Math.max(10,...values)+3;

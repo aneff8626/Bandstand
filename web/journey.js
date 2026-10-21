@@ -102,7 +102,7 @@ function journeyForms(forms){
 
 function createHeadsetMap(label,action){
  const el=document.createElement(action?'button':'div');el.className='headset-map';el.setAttribute('aria-label',label);if(action){el.type='button';el.onclick=action}
- el.innerHTML='<svg viewBox="0 0 240 155" role="img" aria-label="Four-electrode headset, viewed from above"><path class="head-outline" d="M108 22l12-12 12 12c39 5 61 33 61 65s-24 57-73 57-73-25-73-57 22-60 61-65z"/><path class="head-band" d="M48 93C45 10 195 10 192 93"/><path class="head-outline" d="M47 78c-15-10-15 29 2 28M193 78c15-10 15 29-2 28"/>'+[['TP9',50,99,22,126],['AF7',82,42,58,24],['AF8',158,42,158,24],['TP10',190,99,195,126]].map(([ch,x,y,tx,ty])=>`<g data-electrode="${ch}"><circle class="artifact-ring" cx="${x}" cy="${y}" r="14"/><circle class="electrode-glow" cx="${x}" cy="${y}" r="10"/><text x="${tx}" y="${ty}">${ch}</text><title>${ch}: waiting for EEG</title></g>`).join('')+'<path class="map-bluetooth" d="M115 67l17 16-12 11V61l12 11-17 16"/></svg>';
+ el.innerHTML='<svg viewBox="0 0 240 155" role="img" aria-label="Four-electrode headset, viewed from above"><path class="head-outline" d="M108 22l12-12 12 12c39 5 61 33 61 65s-24 57-73 57-73-25-73-57 22-60 61-65z"/><path class="head-band" d="M48 93C45 10 195 10 192 93"/><path class="head-outline" d="M47 78c-15-10-15 29 2 28M193 78c15-10 15 29-2 28"/>'+[['TP9',50,99,22,126],['AF7',82,42,58,24],['AF8',158,42,158,24],['TP10',190,99,195,126]].map(([ch,x,y,tx,ty])=>`<g data-electrode="${ch}"><circle class="artifact-ring" cx="${x}" cy="${y}" r="14"/><circle class="electrode-glow" cx="${x}" cy="${y}" r="10"/><text x="${tx}" y="${ty}">${ch}</text><title>${electrodeLabel(ch)}: waiting for EEG</title></g>`).join('')+'<path class="map-bluetooth" d="M115 67l17 16-12 11V61l12 11-17 16"/></svg>';
  return el;
 }
 let mapLastSample=null,mapLastChange=0;
@@ -177,7 +177,7 @@ function initLiveSpectrum(column){
  const layout=document.createElement('label');layout.id='spectrumLayout';layout.innerHTML='Group <select id="spectrumGrouping"><option value="all">All electrodes</option><option value="lr">Left / Right</option><option value="ft">Frontal / Temporal</option><option value="separate">Separate electrodes</option></select>';layout.querySelector('select').onchange=drawLiveSpectrum;area.querySelector('.spectrum-controls').append(layout,headsetHelp('Live spectral estimates',[help]));
  const bandGroup=personalButton('Group by frequency bands',()=>{const grouped=bandGroup.getAttribute('aria-pressed')!=='true';bandGroup.setAttribute('aria-pressed',String(grouped));bandGroup.textContent=grouped?'Display all frequency values':'Group by frequency bands';drawLiveSpectrum()});bandGroup.id='bandGrouping';bandGroup.setAttribute('aria-pressed','false');area.querySelector('.spectrum-controls').append(bandGroup);
  const bandControls=document.createElement('div');bandControls.id='spectrumBandControls';area.querySelector('.spectrum-controls').after(bandControls);renderBandControls();
- for(const ch of boot.channels){const card=document.createElement('div'),plot=document.createElement('canvas');plot.id='liveSpectrum'+ch;plot.height=190;card.append(plot);area.querySelector('.spectrum-grid').append(card)}
+ for(const ch of electrodeNames(boot.channels)){const card=document.createElement('div');electrodeGridPosition(card,ch);const plot=document.createElement('canvas');plot.id='liveSpectrum'+ch;plot.height=190;card.append(plot);area.querySelector('.spectrum-grid').append(card)}
  const change=kind=>{const spectral=kind==='spectral';area.hidden=!spectral;const legend=$('signalPanel').querySelector('.artifact-key');if(legend)legend.hidden=spectral;$('trace').hidden=spectral;$('traceScaleLabel').hidden=spectral;$('traceEmpty').classList.toggle('spectral-hidden',spectral);for(const b of nav.children)b.setAttribute('aria-pressed',String(b.dataset.view===kind));drawLiveSpectrum();if(!spectral)drawTrace()};
  for(const [kind,label] of [['voltage','Voltage'],['spectral','Power spectrum']]){const b=personalButton(label,()=>change(kind));b.dataset.view=kind;b.setAttribute('aria-pressed',String(kind==='voltage'));nav.append(b)}column.prepend(nav);$('traceScaleLabel').after(area);renderBandControls();$('spectrumWindow').onchange=drawLiveSpectrum;
 }
@@ -189,7 +189,7 @@ function drawLiveSpectrum(){
  if(combined){const groups=spectrumGroups(grouping);$('pairedSpectrum').hidden=groups.length<2;groups.forEach((g,i)=>(bands?drawCombinedBands:drawCombinedSpectrum)(data,i?'pairedSpectrum':'combinedSpectrum',g.channels,g.label,i===0));return}
  const labels=['δ 1–4','θ 4–8','α 8–13','β 13–20','β 20–30','γ 30–40'];
  boot.channels.forEach((ch,i)=>{const el=$('liveSpectrum'+ch);el.parentElement.hidden=hiddenTraceChannels.has(ch);if(el.parentElement.hidden)return;const {ctx,w,h}=canvas(el.id),entry=data?.channels[i],l=46,r=w-12,t=30,b=h-35;
- text(ctx,ch,3,13,colors[i],12);if(bands||i===boot.channels.findIndex(ch=>!hiddenTraceChannels.has(ch)))text(ctx,bands?'µV²':'µV²/Hz',45,13);if(!entry||state?.stale){text(ctx,'Waiting for usable samples',l,65);return}
+ text(ctx,electrodeLabel(ch),48,13,colors[i],11);if(bands||i===boot.channels.findIndex(ch=>!hiddenTraceChannels.has(ch)))text(ctx,bands?'µV²':'µV²/Hz',2,13);if(!entry||state?.stale){text(ctx,'Waiting for usable samples',l,65);return}
  const values=bands?entry.bands:entry.psd,max=bands?smoothSpectrumAxis('channel'+i,Math.max(.01,...values.filter((v,j)=>!hiddenSpectrumBands.has(j)))*1.1):psdMaximum(data);if(!bands)drawFrequencyGuides(ctx,l,r,t,b);for(let k=0;k<=3;k++){const y=b-k*(b-t)/3;line(ctx,[[l,y],[r,y]],'#e1e7ee');if(bands||i===boot.channels.findIndex(ch=>!hiddenTraceChannels.has(ch)))text(ctx,(max*k/3).toPrecision(2),1,y+3)}
  if(bands){const visible=visibleBandIndices(),step=(r-l)/Math.max(1,visible.length);visible.forEach((j,position)=>{const v=values[j];ctx.fillStyle=colors[i];ctx.globalAlpha=.75;ctx.fillRect(l+position*step+step*.15,b-Math.min(v/max,1)*(b-t),step*.7,Math.min(v/max,1)*(b-t));ctx.globalAlpha=1;text(ctx,labels[j],l+position*step,b+16,undefined,8)})}
  else{line(ctx,values.map((v,j)=>[frequencyX(data.frequencies[j],l,r),frequencyVisible(data.frequencies[j])?b-Math.min(v/max,1)*(b-t):NaN]),colors[i],1.6);drawFrequencyTicks(ctx,l,r,b)}
@@ -208,11 +208,11 @@ function startupProblem(message){
 }
 setTimeout(()=>{if(document.body.classList.contains('app-loading')&&!$('startupMessage')?.dataset.startupError){$('startupMessage').textContent='Still starting the local service. Bluetooth will be available shortly.'}},8000);
 
-function spectrumGroups(mode){return mode==='lr'?[{label:'Left',channels:['TP9','AF7']},{label:'Right',channels:['AF8','TP10']}]:mode==='ft'?[{label:'Frontal',channels:['AF7','AF8']},{label:'Temporal',channels:['TP9','TP10']}]:[{label:'',channels:boot.channels}] }
+function spectrumGroups(mode){return mode==='lr'?[{label:'Left',channels:['AF7','TP9']},{label:'Right',channels:['AF8','TP10']}]:mode==='ft'?[{label:'Frontal',channels:['AF7','AF8']},{label:'Temporal',channels:['TP9','TP10']}]:[{label:'',channels:['AF7','TP9','AF8','TP10'].filter(ch=>boot.channels.includes(ch))}] }
 function drawCombinedSpectrum(data,id='combinedSpectrum',include=boot.channels,title='',labelAxis=true,options={}){
- const {ctx,w,h}=canvas(id),l=48,r=w-15,t=38,b=h-36;
- const channels=boot.channels.map((ch,i)=>({ch,i,entry:data?.channels[i]})).filter(c=>include.includes(c.ch)&&(options.training||options.recorded||!hiddenTraceChannels.has(c.ch)));
- if(labelAxis)text(ctx,'µV²/Hz',2,13);if(title)text(ctx,title,l,12);let legendX=l;channels.forEach(c=>{const label=c.ch+(c.entry?'':' · waiting');text(ctx,label,legendX,24,colors[c.i],11);legendX+=ctx.measureText(label).width+18});
+ const {ctx,w,h}=canvas(id),l=48,r=w-15,b=h-36;let t=38;
+ const channels=boot.channels.map((ch,i)=>({ch,i,entry:data?.channels[i]})).sort((a,b)=>include.indexOf(a.ch)-include.indexOf(b.ch)).filter(c=>include.includes(c.ch)&&(options.training||options.recorded||!hiddenTraceChannels.has(c.ch)));
+ if(labelAxis)text(ctx,'µV²/Hz',2,13);if(title)text(ctx,title,l,12);let legendX=l,legendY=24;channels.forEach(c=>{const label=electrodeLabel(c.ch)+(c.entry?'':' · waiting');ctx.font='10px -apple-system,sans-serif';const width=ctx.measureText(label).width;if(legendX+width>r){legendX=l;legendY+=13}text(ctx,label,legendX,legendY,colors[c.i],10);legendX+=width+18});t=Math.max(t,legendY+15);
  const hidden=options.hiddenBands||hiddenSpectrumBands,visible=f=>{const i=spectrumBandDefinitions.findIndex(([,lo,hi],i)=>f>=lo&&(f<hi||i===5&&f<=hi));return i>=0&&!hidden.has(i)},bands=spectrumBandDefinitions.filter((_,i)=>!hidden.has(i)),total=bands.reduce((sum,[,lo,hi])=>sum+hi-lo,0),rx=f=>l+bands.reduce((sum,[,lo,hi])=>sum+Math.max(0,Math.min(f,hi)-lo),0)/Math.max(1,total)*(r-l);const max=options.recorded?(options.axes[options.key]??=Math.max(.01,...channels.flatMap(c=>(c.entry?.psd||[]).filter((v,j)=>visible(data.frequencies[j]))))*1.15):options.training?smoothSpectrumAxis('feedback-preview',Math.max(.01,...channels.flatMap(c=>c.entry?.psd||[]))*1.1,!!data):psdMaximum(data);const x=f=>options.training?l+f/40*(r-l):options.recorded?rx(f):frequencyX(f,l,r);if(options.recorded){bands.forEach(([name,lo,hi],i)=>{ctx.fillStyle=i%2?'#34567804':'#34567809';ctx.fillRect(x(lo),t,x(hi)-x(lo),b-t);text(ctx,name,(x(lo)+x(hi))/2-10,t+12,'#8796a6',9)})}else if(!options.training)drawFrequencyGuides(ctx,l,r,t,b);
  for(let k=0;k<=4;k++){const y=b-k*(b-t)/4;line(ctx,[[l,y],[r,y]],'#e1e7ee');if(labelAxis)text(ctx,(max*k/4).toPrecision(2),2,y+3)}
  if(options.training||options.recorded){for(const f of (options.recorded?[1,4,8,12,20,30,40].filter(visible):[0,4,8,13,20,30,40]))text(ctx,String(f),x(f)-5,b+16);text(ctx,'Hz',r-12,b+31)}else drawFrequencyTicks(ctx,l,r,b);
@@ -258,12 +258,12 @@ function drawFrequencyTicks(ctx,l,r,b){
 }
 
 function drawCombinedBands(data,id,include,title,labelAxis,options={}){
- const {ctx,w,h}=canvas(id),l=48,r=w-15,t=55,b=h-35;
- const channels=boot.channels.map((ch,i)=>({ch,i,entry:data?.channels[i]})).filter(c=>include.includes(c.ch)&&(options.recorded||!hiddenTraceChannels.has(c.ch)));
+ const {ctx,w,h}=canvas(id),l=48,r=w-15,b=h-35;let t=55;
+ const channels=boot.channels.map((ch,i)=>({ch,i,entry:data?.channels[i]})).sort((a,b)=>include.indexOf(a.ch)-include.indexOf(b.ch)).filter(c=>include.includes(c.ch)&&(options.recorded||!hiddenTraceChannels.has(c.ch)));
  const byBand=true,names=['Delta','Theta','Alpha','Low β','High β','Gamma'],palette=['#839bb2','#8171a8','#3a9a8b','#ba984c','#be805c','#aa708d'];
  if(labelAxis)text(ctx,'µV²',2,13);if(title)text(ctx,title,l,13);
- const legend=byBand?channels.map(c=>[c.ch,colors[c.i]]):names.map((n,i)=>[n,palette[i]]);
- let legendX=l,legendY=29;legend.forEach(([n,color])=>{ctx.font='10px -apple-system,sans-serif';const width=ctx.measureText(n).width;if(legendX+width>r){legendX=l;legendY+=13}text(ctx,n,legendX,legendY,color,10);legendX+=width+18});
+ const legend=byBand?channels.map(c=>[electrodeLabel(c.ch),colors[c.i]]):names.map((n,i)=>[n,palette[i]]);
+ let legendX=l,legendY=29;legend.forEach(([n,color])=>{ctx.font='10px -apple-system,sans-serif';const width=ctx.measureText(n).width;if(legendX+width>r){legendX=l;legendY+=13}text(ctx,n,legendX,legendY,color,10);legendX+=width+18});t=Math.max(t,legendY+15);
  const hidden=options.hiddenBands||hiddenSpectrumBands;const max=options.recorded?(options.axes[options.key]??=Math.max(.01,...channels.flatMap(c=>(c.entry?.bands||[]).filter((v,j)=>!hidden.has(j))))*1.15):smoothSpectrumAxis('groupBands',Math.max(1,...(data?.channels||[]).flatMap((c,i)=>hiddenTraceChannels.has(boot.channels[i])?[]:(c?.bands||[]).filter((v,j)=>!hiddenSpectrumBands.has(j))))*1.15,Boolean(data?.channels?.some(Boolean)));
  for(let k=0;k<=4;k++){const y=b-k*(b-t)/4;line(ctx,[[l,y],[r,y]],'#e1e7ee');if(labelAxis)text(ctx,(max*k/4).toPrecision(2),2,y+3)}
  if((!options.recorded&&state?.stale)||!channels.some(c=>c.entry)){text(ctx,channels.length?'Waiting for usable samples':'Select an electrode above',l,80);return}
@@ -449,7 +449,7 @@ function renderSessionOverlay(host,prepared){
  const channels=document.createElement('select'),condition=document.createElement('select'),layout=document.createElement('select'),controls=personalElement('div',undefined,'spectrum-controls'),legend=personalElement('div',undefined,'combined-session-legend'),plots=personalElement('div');
  channels.setAttribute('aria-label','Overlay electrode');condition.setAttribute('aria-label','Overlay phase or condition');layout.setAttribute('aria-label','Session plot layout');
  const add=(el,value,label)=>{const o=personalElement('option',label);o.value=value;el.append(o)};
- ['TP9','AF7','AF8','TP10'].forEach(ch=>add(channels,ch,ch));add(layout,'overlay','Overlay sessions');add(layout,'separate','Separate sessions');
+ ['TP9','AF7','AF8','TP10'].forEach(ch=>add(channels,ch,electrodeLabel(ch)));add(layout,'overlay','Overlay sessions');add(layout,'separate','Separate sessions');
  const lab=prepared[0].row.recordType==='lab',spectral=!lab||prepared[0].full.session.mode==='tf';
  const conditions=lab?prepared[0].full.session.conditions||[]:Object.keys(prepared[0].spectra||{});
  conditions.forEach(name=>add(condition,name,name));controls.append(channels,condition,layout);host.append(controls,legend,plots);

@@ -581,3 +581,9 @@ body.journey-theme #activityBranchName{left:14px;font-size:11px;letter-spacing:.
 .speller-grid span.cue-target{outline:3px solid #e4c766;background:#314f64;color:#fff;animation:speller-cue-nudge .65s ease-in-out 2}.speller-cue.cue-nudge{animation:speller-cue-nudge .65s ease-in-out 2;transform-origin:left center;color:#9a6815}
 @keyframes speller-cue-nudge{0%,100%{transform:none}25%{transform:scale(1.06) rotate(-1deg)}65%{transform:scale(1.06) rotate(1deg)}}
 @media(prefers-reduced-motion:reduce){.speller-grid span.cue-target,.speller-cue.cue-nudge{animation:none}}
+
+/* Preserve anatomical left/right columns when an electrode is hidden. */
+#channelERPs>.electrode-result{grid-row:auto!important}
+#groupedSpectra:has(#pairedSpectrum:not([hidden])){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+#groupedSpectra canvas,.spectrum-grid canvas{min-width:0;width:100%}
+@media(max-width:650px){#channelERPs>.electrode-result{grid-column:auto!important}#groupedSpectra:has(#pairedSpectrum:not([hidden])){grid-template-columns:1fr}.spectrum-grid>*{grid-column:auto!important;grid-row:auto!important}}
