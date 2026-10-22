@@ -160,6 +160,15 @@ class PersonalActivities:
    if body.get('version')!='personal-v1':raise ValueError('Review the current connected-data explanation')
    prefs=dict(version='personal-v1',personalize=body.get('personalize') is True,research_interest=body.get('research_interest') is True,updated_at=time.time())
    self.write(self.root/'preferences.json',prefs);return prefs
+  if action in ('matrix-open','matrix-answer'):
+   from matrix_reasoning import open_item,answer
+   r=self.current
+   if not r or r['kind']!='matrix':raise ValueError('Start the matrix reasoning recording first')
+   result=open_item(r) if action=='matrix-open' else answer(r,body.get('token'),body.get('choice'))
+   self.write(self.root/'active.json',r)
+   if result.get('complete'):
+    self.finish('Completed');result={**result,'record':r}
+   return result
   if action=='questionnaire-event':
    r=self.current
    if not r or r['kind'] not in ('extraversion','big5','enneagram'):raise ValueError('Start questionnaire EEG recording first')
@@ -180,7 +189,7 @@ class PersonalActivities:
    if not engine.times or time.time()-engine.times[-1]>1:raise ValueError('Connect the headset and wait for live EEG')
    kind=body.get('kind')
    plans={'social_probe':[('Browse messages',60),('Send a message',60)],'reset':[('Baseline',30),('Breathing',45),('Baseline',30),('Quiet attention',45),('Baseline',30),('Gratitude',45)],'meditation':[('Baseline',30),('Meditation',120)],'biofeedback':[('Baseline',30),('Training',120)],'eeg_profile':[('Eyes-open rest',60)]}
-   for name in ('extraversion','big5','enneagram'):plans[name]=[('Questionnaire',1800)]
+   for name in ('extraversion','big5','enneagram','matrix'):plans[name]=[('Questionnaire',1800)]
    if kind not in plans:raise ValueError('Unknown activity')
    feedback=body.get('feedback') or {'band':1,'channels':list(CHANNELS),'direction':1}
    if kind in ('meditation','biofeedback'):
@@ -193,7 +202,11 @@ class PersonalActivities:
     feedback={**{k:feedback[k] for k in ('band','channels','direction')},**({'band':4,'range':list(custom)} if custom is not None else {})}
    if kind=='reset':
     activities=['Breathing','Quiet attention','Gratitude'];random.SystemRandom().shuffle(activities);plans[kind]=[phase for activity in activities for phase in [('Baseline',30),(activity,45)]]
-   self.current=dict(id=uuid.uuid4().hex,kind=kind,created=time.time(),source=engine.source,plan=plans[kind],clips=[],ratings={},running=True,feedback=feedback if kind in ('meditation','biofeedback') else None);self.current['questionnaire_version']='enneagram-exploratory-v2' if kind=='enneagram' else 'ipip-v1';self.current['questionnaire_items']=questionnaire(kind) if kind in ('big5','enneagram','extraversion') else [];self.current['raw_eeg_file']=self.current['id']+'-eeg.jsonl.gz';self.current['schema_version']=2;self.current['montage']={'channels':list(CHANNELS),'reference':'Fpz','sample_rate':FS};self.current['related_activity']=body.get('related_activity') if isinstance(body.get('related_activity'),str) else None;self.current['answers']=[None]*len(questionnaire(kind)) if kind in ('extraversion','big5','enneagram') else [];self.last_sample=time.time();self.write(self.root/'active.json',self.current);return self.status()
+   self.current=dict(id=uuid.uuid4().hex,kind=kind,created=time.time(),source=engine.source,plan=plans[kind],clips=[],ratings={},running=True,feedback=feedback if kind in ('meditation','biofeedback') else None);self.current['questionnaire_version']='enneagram-exploratory-v2' if kind=='enneagram' else 'ipip-v1';self.current['questionnaire_items']=questionnaire(kind) if kind in ('big5','enneagram','extraversion') else [];self.current['raw_eeg_file']=self.current['id']+'-eeg.jsonl.gz';self.current['schema_version']=2;self.current['montage']={'channels':list(CHANNELS),'reference':'Fpz','sample_rate':FS};self.current['related_activity']=body.get('related_activity') if isinstance(body.get('related_activity'),str) else None;self.current['answers']=[None]*len(questionnaire(kind)) if kind in ('extraversion','big5','enneagram') else [];self.last_sample=time.time();
+   if kind=='matrix':
+    from matrix_reasoning import initialize
+    initialize(self.current)
+   self.write(self.root/'active.json',self.current);return self.status()
   if action=='status':return self.status()
   if action=='stop':
    if self.current:self.finish('Stopped early')
@@ -300,6 +313,14 @@ class PersonalActivities:
   if self.current and time.time()-self.last_sample>5:self.finish('Signal lost; partial recording saved')
   if not self.current:return {'running':False,'history':self.history()}
   elapsed=max(0,time.time()-self.current['created']);phase,start=self.phase(elapsed)
-  return dict(server_time=time.time(),feedback=self.current.get('feedback'),recent_clips=self.current['clips'][-30:],running=True,id=self.current['id'],kind=self.current['kind'],source=self.current['source'],elapsed=elapsed,remaining=max(0,sum(v for _,v in self.current['plan'])-elapsed),phase=phase,answers=self.current.get('answers',[]),questionnaire_items=self.current.get('questionnaire_items'),phase_elapsed=elapsed-start,phase_remaining=max(0,next((duration for name,duration in self.current['plan'] if name==phase),0)-(elapsed-start)),summary=self.summarize(self.current))
+  summary=self.summarize(self.current);demo=None
+  if self.current['kind']=='matrix':
+   from matrix_reasoning import eeg_demo
+   demo=eeg_demo(summary)
+  return dict(matrix_eeg_demo=demo,matrix_result=self.current.get('matrix_result'),matrix_state=self.current.get('matrix_state'),server_time=time.time(),feedback=self.current.get('feedback'),recent_clips=self.current['clips'][-30:],running=True,id=self.current['id'],kind=self.current['kind'],source=self.current['source'],elapsed=elapsed,remaining=max(0,sum(v for _,v in self.current['plan'])-elapsed),phase=phase,answers=self.current.get('answers',[]),questionnaire_items=self.current.get('questionnaire_items'),phase_elapsed=elapsed-start,phase_remaining=max(0,next((duration for name,duration in self.current['plan'] if name==phase),0)-(elapsed-start)),summary=summary)
  def finish(self,reason):
-  r=self.current;r.update(running=False,ended=time.time(),reason=reason,summary=self.summarize(r));self.write(self.root/('record-'+str(time.time_ns())+'.json'),r);self.write(self.root/'active.json',{'running':False});self.current=None
+  r=self.current
+  if r['kind']=='matrix':
+   from matrix_reasoning import eeg_demo
+   r['matrix_eeg_demo']=eeg_demo(self.summarize(r))
+  r.update(running=False,ended=time.time(),reason=reason,summary=self.summarize(r));self.write(self.root/('record-'+str(time.time_ns())+'.json'),r);self.write(self.root/'active.json',{'running':False});self.current=None

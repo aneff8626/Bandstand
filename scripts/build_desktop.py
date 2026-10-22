@@ -31,6 +31,8 @@ source=ROOT/'.audit/source'
 for p in source.glob('*.py'):shutil.copy2(p,app/p.name)
 shutil.copytree(source/'web',app/'web')
 for name in ('LICENSE','README.md'):shutil.copy2(source/name,app/name)
+(app/'docs').mkdir(exist_ok=True)
+for p in (source/'docs').glob('matrix-*.md'):shutil.copy2(p,app/'docs'/p.name)
 (app/'bundled-requirements.txt').write_text((ROOT/'requirements.txt').read_text())
 if BACKEND:(app/'backend.json').write_text(json.dumps(BACKEND))
 # CPython standalone runtime is relocatable. Exclude all preinstalled packages;

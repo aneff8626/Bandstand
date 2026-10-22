@@ -259,3 +259,7 @@ Growth activities use a separate full-window recording screen, with Stop & save 
 Personal activity screens and questionnaires include live per-electrode band-power trends (last 30 two-second clips), frequency selection, gaps for rejected channels, and a baseline reference when available. Meditation defaults to alpha; messaging and questionnaires to theta. These are measured EEG features, not validated psychology scores. Headset setup collapses when experiments, personal activities or writing recordings end. Collapsed navigation retains the menu and Account icons.
 
 Writing decoder Activity setup offers **Write in Bandstand app** (local editor, no system typing permissions) and **Write across all apps** (desktop capture with macOS permissions). Choose before recording; stop to switch modes. Both use local EEG-linked word events and autosaving. Contributor acceptance work is listed in [the handoff](docs/contributor-handoff.html).
+
+### Matrix reasoning test
+
+The optional MaRs-IB short test provides a live **reference-sample reasoning estimate**, not a validated full-scale IQ score. Its EEG comparison is a clearly labeled synthetic demonstration. [Methods and limitations](docs/matrix-reasoning.md). **License exception:** the original matrix stimulus images are [CC BY-NC 3.0](docs/matrix-stimulus-license.md), not MIT; commercial use requires permission or replacement images.
