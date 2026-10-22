@@ -263,3 +263,5 @@ Writing decoder Activity setup offers **Write in Bandstand app** (local editor, 
 ### Matrix reasoning test
 
 The optional MaRs-IB short test provides a live **reference-sample reasoning estimate**, not a validated full-scale IQ score. Its EEG comparison is a clearly labeled synthetic demonstration. [Methods and limitations](docs/matrix-reasoning.md). **License exception:** the original matrix stimulus images are [CC BY-NC 3.0](docs/matrix-stimulus-license.md), not MIT; commercial use requires permission or replacement images.
+
+Original Bandstand pilot puzzles are now randomly interspersed, with responses saved separately for future calibration. They do not affect the reference percentile. [Original-bank design, local inventory and validation plan](docs/matrix-original-bank.md). The mixed app still contains noncommercial MaRs-IB assets.

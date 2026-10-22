@@ -1,0 +1,10 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const context={};vm.createContext(context);vm.runInContext(fs.readFileSync('web/matrix.js','utf8'),context);
+assert.strictEqual(context.matrixPercentile(100),50);
+assert(Math.abs(context.matrixPercentile(115)-84.1344746)<.0001);
+assert(Math.abs(context.matrixPercentile(85)-15.8655254)<.0001);
+assert.strictEqual(context.matrixPercentile(null),null);
+assert.strictEqual(context.matrixPercentileText(72),'72nd percentile');
+assert.strictEqual(context.matrixPercentileText(11),'11th percentile');
+assert.strictEqual(context.matrixPercentileText(99.5),'Above 99th percentile');
+console.log('Percentile conversion and labels passed.');

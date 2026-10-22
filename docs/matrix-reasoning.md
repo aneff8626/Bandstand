@@ -19,3 +19,7 @@ Responses, timing, item version, continuous EEG, per-channel usable clips, spect
 ## Licensing
 
 Bandstand code remains MIT. The MaRs-IB stimulus images embedded in `web/matrix-assets.js` are **CC BY-NC 3.0**, attributed to the MaRs-IB creators (Chierchia et al., 2019); commercial reuse requires separate permission or replacement stimuli. See `matrix-stimulus-license.md`. Published parameter/implementation material is MIT, copyright Daw Lab; see `matrix-parameter-license.md`. These notices are included in desktop builds. This module is not an official Raven’s test and contains no proprietary Raven’s items.
+
+## Mixed pilot protocol update
+
+New sessions now include three original pilot items (15 test puzzles total), randomly interspersed without changing reference-item order. They do not contribute to scoring. Results display reference percentiles and their transformed credible intervals rather than 100/15 scores. See [the pilot-bank methods and calibration plan](matrix-original-bank.md). The mixed administration and live feedback need validation; no model is automatically trained or activated.
