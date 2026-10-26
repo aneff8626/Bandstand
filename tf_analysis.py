@@ -51,5 +51,5 @@ def summarize_tf(trials,session,band):
   if session.get('protocol')=='disclosure':
    for g in groups:
     g['features']=g['segment_features'];g['accepted']=len(g['features']);g['mean']=float(np.mean(g['features'])) if g['features'] else None;g['se']=float(np.std(g['features'],ddof=1)/np.sqrt(len(g['features']))) if len(g['features'])>1 else None
-  channels[name]=dict(groups=groups,stats=compare(groups[0]['features'],groups[1]['features'],session['minimum']),unit='dB re 1 µV²',rejections=rejected)
+  channels[name]=dict(groups=groups,stats=compare(groups[0]['features'],groups[1]['features'],session['minimum']) if len(groups)==2 else dict(ready=False,reason='Multiple conditions: descriptive estimates; no omnibus test'),unit='dB re 1 µV²',rejections=rejected)
  return dict(clip_inference=session.get('protocol')=='disclosure',channels=channels,groups=[],frequencies=frequencies.tolist(),band=band,trial_count=len(trials),pending=0,times=[],stats=dict(ready=False,reason='See individual electrode comparisons'),rejections=rejections,unit='dB re 1 µV²',spectral=True)

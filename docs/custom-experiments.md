@@ -1,0 +1,11 @@
+# Custom experiments
+
+Learn about your brain groups activities into Steady state and Event-related. Both include Custom experiment. Basic setup contains 2–4 unique condition names, optional per-condition instructions and optional key/meaning pairs. Timing, repetitions, condition order and breaks are collapsed under Advanced controls. Existing ERP settings remain collapsed.
+
+Steady-state defaults: 12-second blocks, two-second intervals, 10 repetitions per condition, alternating order. Analysis excludes the first two seconds and uses the existing channel-local spectral rejection and block estimates. Custom order lists every condition once and repeats that order; randomized order shuffles the balanced list.
+
+Event-related custom experiments are labeled Ultra-tentative. Import PNG/JPEG/WebP images or uncompressed PCM WAV audio (mono/stereo, up to 30 seconds, 12 MB/file). Files are decoded/validated and stored privately under stimuli; images are resized without changing aspect ratio. Each condition needs at least one file. Media preload before trials. Each condition cycles through its supplied files. Defaults: 800 ms presentation, 1200 ms interval, 20 presentations per condition, randomized balanced condition order. Audio uses the configured gain, capped at 0.2 and stops at the configured presentation duration. Video is deferred. Software frame/audio onset timestamps are estimates; no physical latency calibration is implied.
+
+Named keypresses are recorded while each stimulus/block is active, including repeated presses separated by release, key, meaning, trial/condition and milliseconds since onset. Held-key repeats and Escape are excluded. Escape still stops recording. Full response events are in the raw/event export; the legacy single-trial CSV retains its last-response summary. This is response logging, not automatic accuracy scoring.
+
+All conditions appear separately per electrode. For two conditions the existing exploratory Welch comparison applies. Three/four conditions show descriptive results without an omnibus or pairwise significance claim. Imported media, custom names/instructions and response events remain local; the shared ERP allowlist excludes both custom protocols. A clean appearance is not validation of a custom experimental design.

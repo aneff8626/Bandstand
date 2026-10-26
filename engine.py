@@ -259,6 +259,13 @@ class Engine:
             p=dict(protocol)
             if cfg.get('custom_title'):
                 p['title']=str(cfg['custom_title']).strip()[:100] or p['title']
+            custom=None
+            if p['id'] in ('custom','custom_erp'):
+                from custom_experiments import validate_design
+                custom=validate_design(cfg,p['mode'])
+                p.update(conditions=custom['conditions'],stim_ms=[custom['duration_ms']]*2,isi_ms=[custom['interval_ms']]*2)
+                cfg={**cfg,'trials':len(custom['conditions'])*custom['repetitions']}
+                if p['mode']=='tf':cfg.setdefault('window',[2.,custom['duration_ms']/1000])
             selected=cfg.get('channels',p['channels'])
             if not selected or not set(selected)<=set(CHANNELS): raise ValueError('Select at least one valid electrode')
             thresholds={**(ERP_THRESHOLDS if p['mode']=='erp' else DEFAULT_THRESHOLDS),**cfg.get('thresholds',{})}
@@ -268,7 +275,8 @@ class Engine:
             if p['id']=='disclosure':count=4
             # Biofeedback measures six 8 s rest blocks before and six after training; its comparison needs 5 per phase.
             if p['id']=='biofeedback':count=12;minimum=min(minimum,5)
-            if p['id']=='biofeedback':valid=5<=minimum<=6
+            if custom:valid=2<=count<=1000 and 10<=minimum<=500
+            elif p['id']=='biofeedback':valid=5<=minimum<=6
             else:valid=(count==4 if p['id']=='disclosure' else 20<=count<=(2400 if p['id']=='speller' else 1000)) and 10<=minimum<=500
             if not valid: raise ValueError('Trial count must be 20–1000; minimum usable trials 10–500')
             window=list(map(float,cfg.get('window',p['window'])))
@@ -277,11 +285,8 @@ class Engine:
             if len(band)!=2 or not 2<=band[0]<band[1]<=40: raise ValueError('Band must be within 2–40 Hz')
             gain=(cfg.get('calibration') or {}).get('audio_gain') if isinstance(cfg.get('calibration') or {},dict) else None
             # The page always sends the gain it will play; refuse any unsafe value (absent: no audio settings recorded).
-            if p['id'] in ('auditory','alpha') and gain is not None and not (type(gain) in (int,float) and 0<gain<=.2): raise ValueError('Audio gain must be above 0 and at most 0.2.')
+            if p['id'] in ('auditory','alpha','custom_erp') and gain is not None and not (type(gain) in (int,float) and 0<gain<=.2): raise ValueError('Audio gain must be above 0 and at most 0.2.')
             conditions=p['conditions']; assets=self.manifest(); pools=None
-            if p['id']=='custom':
-                conditions=[str(s).strip()[:80] for s in cfg.get('conditions',conditions)]
-                if len(conditions)!=2 or not all(conditions) or conditions[0]==conditions[1]: raise ValueError('Provide two different condition labels')
             if p['id'] in ['faces','expertise']:
                 categories=['faces','cars'] if p['id']=='faces' else cfg.get('expertise',[])
                 if len(categories)!=2 or categories[0]==categories[1]: raise ValueError('Choose two different expertise categories')
@@ -298,9 +303,15 @@ class Engine:
             if p['id']=='disclosure':labels=[seed%2,1-seed%2,1-seed%2,seed%2]
             if p['id']=='alpha':labels= [(i+seed%2)%2 for i in range(count)]
             if p['id']=='biofeedback':labels=[0]*6+[1]*6
+            if custom:
+                from custom_experiments import condition_order
+                labels=condition_order(custom,rng)
             plan=[];decks=[image_sequence(pool,labels.count(c),rng) for c,pool in enumerate(pools)] if pools else None
             for i,c in enumerate(labels):
                 item=dict(index=i,condition_index=c,condition=conditions[c],duration=rng.randint(*p['stim_ms']),isi=rng.randint(*p['isi_ms']),direction=rng.choice(['left','right']),number=rng.randint(600,999))
+                if custom:
+                    item['instruction']=custom['instructions'][c]
+                    if p['mode']=='erp':item['asset']=custom['media'][c][sum(x['condition_index']==c for x in plan)%len(custom['media'][c])]
                 if pools: item['asset']=decks[c].pop(0)['file']
                 # Reward outcomes follow the participant's choice; a pre-drawn label would contradict them.
                 if p['id']=='reward': item.update(condition_index=None,condition='set by choice outcome')
@@ -310,6 +321,7 @@ class Engine:
             calibration=cfg.get('calibration',{})
             if hasattr(self,'review_band'):del self.review_band
             self.session={**p,'id':session_id,'protocol':p['id'],'source':self.source,'channels':selected,'conditions':conditions,'trials_planned':count,'minimum':minimum,'window':window,'band':band,'thresholds':thresholds,'seed':seed,'plan':plan,'running':True,'started':time.time(),'phase':'recording','calibration':calibration,'metric':cfg.get('metric','amplitude'),'training_seconds':max(30,min(1800,int(cfg.get('training_seconds',120)))),'timing':'Browser frame / Web Audio software timestamps aligned by clock ping; BLE receive-anchored sample clock. Physical display/audio/BLE latencies uncalibrated.','analysis':{'erp':'Causal .1 Hz high-pass, 30 Hz low-pass, 60 Hz notch Q30. ERP pre-stimulus baseline -200..0 ms. Trial-level statistics, repeated looks; no population inference.','tf':'60 Hz notch; channel-local 2 s Hann windows every 0.5 s with DC removal. At least 4 clean seconds per block/channel; comparisons use block log band power. Exploratory statistics within one participant; no population inference.','bio':'Rest blocks: whole-block band power after artifact screening (linear µV²). Feedback: overlapping 2 s windows, descriptive only. Pre/post changes are observational.'}[p['mode']]}
+            if custom:self.session['custom_design']=custom
             if self.session['metric'] not in ['amplitude','latency']: raise ValueError('Unknown measurement')
             if p['id']=='disclosure':self.session['analysis']+=' Public self-disclosure exception: condition comparisons use non-overlapping 2-second clips as observations. Clips within blocks are correlated; p-values may overstate evidence. Answer text is not saved by this task.'
             self.session['preflight_quality']={'warnings':reasons,'continued_anyway':cfg.get('allow_noisy_start') is True}
@@ -335,7 +347,7 @@ class Engine:
             event={**e,'onset':onset,'received':time.time(),'source':self.source}
             if kind=='stimulus':
                 i=int(e['index']); c=int(e['condition_index'])
-                if i<0 or i>=self.session['trials_planned'] or c not in [0,1]: raise ValueError('Invalid trial index/condition')
+                if i<0 or i>=self.session['trials_planned'] or c not in range(len(self.session.get('conditions',[0,1]))): raise ValueError('Invalid trial index/condition')
                 if any(p.get('kind')=='stimulus' and p.get('index')==i for p in self.events): raise ValueError('Duplicate trial marker')
                 if self.session['protocol']=='speller':
                     meta=e.get('speller',{})
@@ -439,7 +451,7 @@ class Engine:
             if tfs:
                 n=min(len(v['times']) for v in tfs); group['tf']={**tfs[0],'times':tfs[0]['times'][:n],'power_db':np.mean([np.array(v['power_db'])[:,:n] for v in tfs],axis=0).tolist()}
             groups.append(group)
-        result=dict(groups=groups,stats=compare(groups[0]['features'],groups[1]['features'],s['minimum']),times=self.trials[0]['times'] if self.trials else [],trial_count=len(self.trials),rejections=[{k:t[k] for k in ['index','condition','reasons']} for t in self.trials if not t['accepted']],pending=len(self.pending),unit='ms' if s['mode']=='erp' and s['metric']=='latency' else 'µV' if s['mode']=='erp' else 'µV²')
+        result=dict(groups=groups,stats=compare(groups[0]['features'],groups[1]['features'],s['minimum']) if len(groups)==2 else dict(ready=False,reason='Multiple conditions: descriptive estimates; no omnibus test'),times=self.trials[0]['times'] if self.trials else [],trial_count=len(self.trials),rejections=[{k:t[k] for k in ['index','condition','reasons']} for t in self.trials if not t['accepted']],pending=len(self.pending),unit='ms' if s['mode']=='erp' and s['metric']=='latency' else 'µV' if s['mode']=='erp' else 'µV²')
         if s['mode']=='erp':
             result['channels']={}
             for channel in s['channels']:
@@ -453,7 +465,7 @@ class Engine:
                         features=[float(np.asarray(t['wave'])[mask].mean()) for t in good]
                     cg.append(dict(label=label,accepted=len(good),rejected=len(trials)-len(good),features=features,mean=float(np.mean(features)) if features else None,se=float(np.std(features,ddof=1)/np.sqrt(len(features))) if len(features)>1 else None,erp=summarize([t['wave'] for t in good]) if good else None,recent=[{'wave':t['wave'],'index':t['index']} for t in good[-20:]]))
                     rejected.extend(dict(index=t['index'],condition=label,reasons=t['reasons']) for t in trials if not t['accepted'])
-                result['channels'][channel]=dict(groups=cg,times=result['times'],unit=result['unit'],stats=compare(cg[0]['features'],cg[1]['features'],s['minimum']),rejections=rejected)
+                result['channels'][channel]=dict(groups=cg,times=result['times'],unit=result['unit'],stats=compare(cg[0]['features'],cg[1]['features'],s['minimum']) if len(cg)==2 else dict(ready=False,reason='Multiple conditions: descriptive estimates; no omnibus test'),rejections=rejected)
                 if s.get('protocol')=='speller':
                     result['channels'][channel]['window']=[v/1000 for v in window] if window else None
                     result['channels'][channel]['stats']={'ready':False,'reason':'Means ± SE · descriptive calibration data'}

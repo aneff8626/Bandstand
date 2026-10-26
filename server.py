@@ -64,8 +64,8 @@ class Handler(BaseHTTPRequestHandler):
             if path.startswith('/stimuli/'):
                 file=DATA_ROOT/'stimuli'/Path(path).name
                 if not file.exists():file=ROOT/'stimuli'/Path(path).name
-                if file.suffix!='.png' or not file.exists(): return self.send(404,'Not found','text/plain')
-                return self.send(200,file.read_bytes(),'image/png')
+                if file.suffix not in ('.png','.wav') or not file.exists(): return self.send(404,'Not found','text/plain')
+                return self.send(200,file.read_bytes(),'audio/wav' if file.suffix=='.wav' else 'image/png')
             mapping={'/':'index.html','/style.css':'style.css','/bandstand-logo.png':'bandstand-logo.png','/favicon.png':'favicon.png',**{'/'+p.name:p.name for p in (ROOT/'web').glob('*.js')}}
             if path not in mapping: return self.send(404,'Not found','text/plain')
             file=ROOT/'web'/mapping[path]; mime={'html':'text/html; charset=utf-8','js':'text/javascript','css':'text/css','png':'image/png'}[file.suffix[1:]]
@@ -103,6 +103,10 @@ class Handler(BaseHTTPRequestHandler):
             elif path=='/api/start': result=engine.begin(body)
             elif path=='/api/event': result=engine.event(body)
             elif path=='/api/stop': result=engine.stop(str(body.get('reason','stopped'))[:100])
+            elif path=='/api/custom/import':
+                from custom_experiments import import_media
+                if engine.session and engine.session.get('running'):raise ValueError('Stop recording before importing media')
+                result=import_media(body)
             elif path=='/api/import': result=self.import_image(body)
             else: return self.send(404,'{}')
             self.send(200,dumps(result))

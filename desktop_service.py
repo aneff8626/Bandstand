@@ -60,6 +60,10 @@ def dispatch(path,body):
     if path=='start': return engine.begin(body)
     if path=='event': return engine.event(body)
     if path=='stop': return engine.stop(body.get('reason','stopped'))
+    if path=='custom/import':
+        from custom_experiments import import_media
+        if engine.session and engine.session.get('running'):raise ValueError('Stop recording before importing media')
+        return import_media(body)
     if path=='import': return Handler.import_image(None,body)
     if path=='sessions':
         from session_store import saved_sessions
