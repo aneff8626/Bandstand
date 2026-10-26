@@ -311,7 +311,7 @@ class Engine:
                 item=dict(index=i,condition_index=c,condition=conditions[c],duration=rng.randint(*p['stim_ms']),isi=rng.randint(*p['isi_ms']),direction=rng.choice(['left','right']),number=rng.randint(600,999))
                 if custom:
                     item['instruction']=custom['instructions'][c]
-                    if p['mode']=='erp':item['asset']=custom['media'][c][sum(x['condition_index']==c for x in plan)%len(custom['media'][c])]
+                    if p['mode']=='erp' and custom['media'][c]:item['asset']=custom['media'][c][sum(x['condition_index']==c for x in plan)%len(custom['media'][c])]
                 if pools: item['asset']=decks[c].pop(0)['file']
                 # Reward outcomes follow the participant's choice; a pre-drawn label would contradict them.
                 if p['id']=='reward': item.update(condition_index=None,condition='set by choice outcome')

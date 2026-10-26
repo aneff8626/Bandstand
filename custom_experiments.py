@@ -52,7 +52,7 @@ def validate_design(cfg,mode):
  if mode=='erp':
   if not isinstance(media,list) or len(media)!=len(names):raise ValueError('Add media for each condition')
   for pool in media:
-   if not isinstance(pool,list) or not 1<=len(pool)<=100:raise ValueError('Add 1–100 files for every condition')
+   if not isinstance(pool,list) or not 0<=len(pool)<=100:raise ValueError('Use at most 100 files per condition')
    for name in pool:
     if not isinstance(name,str) or not re.fullmatch(r'custom-[a-f0-9]{64}\.(png|wav)',name) or not (DATA_ROOT/'stimuli'/name).is_file():raise ValueError('A stimulus file is missing; import it again')
  return dict(conditions=names,instructions=instructions,duration_ms=round(duration),interval_ms=round(interval),repetitions=int(repeats),order=order,sequence=sequence,responses=responses,media=media,break_every=int(number('break_every',0,0,1000)),break_ms=number('break_ms',10000,0,120000))

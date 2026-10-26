@@ -12,6 +12,16 @@ class CustomExperiments(unittest.TestCase):
   d['order']='custom';d['sequence']=[2,0,1];self.assertEqual(condition_order(d,random.Random(1)),[2,0,1]*3)
   for change in ({'conditions':['x','x']},{'duration_ms':100},{'repetitions':1.5},{'order':'custom','sequence':[0,0]},{'responses':[{'key':'Escape','meaning':'exit'}]},{'responses':[{'key':'f','meaning':'yes'},{'key':'F','meaning':'no'}]}):
    with self.assertRaises(ValueError):validate_design({'custom_design':{'conditions':['One','Two'],**change}},'tf')
+ def test_default_label_only_erp(self):
+  from engine import Engine
+  from analysis import FS
+  with tempfile.TemporaryDirectory() as tmp,patch('engine.DATA_ROOT',Path(tmp)):
+   e=Engine();now=time.time();e.ingest(now-4+(np.arange(FS*4)+1)/FS,np.zeros((FS*4,4)))
+   session=e.begin({'protocol':'custom_erp','allow_noisy_start':True,'custom_design':{'conditions':['Condition 1','Condition 2'],'media':[[],[]],'responses':[]}})
+   self.assertEqual(set(t['condition'] for t in session['plan']),{'Condition 1','Condition 2'})
+   self.assertTrue(all('asset' not in t for t in session['plan']))
+   self.assertEqual(session['custom_design']['responses'],[])
+   e.stop()
  def test_media_and_missing_assets(self):
   from PIL import Image
   with tempfile.TemporaryDirectory() as tmp,patch('custom_experiments.DATA_ROOT',Path(tmp)):
