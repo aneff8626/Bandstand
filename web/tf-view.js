@@ -6,25 +6,23 @@ async function setTFBand(session,band){
 }
 function tfBandControl(parent,session,analysis){
  const bar=document.createElement('div');bar.className='tf-band-control';
- const label=document.createElement('label');label.textContent='Frequency band ';const menu=document.createElement('select');
- for(const [name,value]of [['Theta · 4–7 Hz','4,7'],['Alpha · 8–13 Hz','8,13'],['Low beta · 13–20 Hz','13,20'],['High beta · 20–30 Hz','20,30'],['Custom','custom']]){const o=document.createElement('option');o.textContent=name;o.value=value;menu.append(o)}
- const band=analysis.band||session.band;menu.value=['4,7','8,13','13,20','20,30'].includes(band.join(','))?band.join(','):'custom';label.append(menu);bar.append(label);
- const low=document.createElement('input'),high=document.createElement('input');for(const [input,value,name]of [[low,band[0],'Low frequency (Hz)'],[high,band[1],'High frequency (Hz)']]){input.type='number';input.min=2;input.max=40;input.step=.05;input.value=value;input.setAttribute('aria-label',name);input.hidden=menu.value!=='custom';bar.append(input)}
+ const band=analysis.band||session.band;bar.append(personalElement('span','Analyze frequencies (Hz)'));
+ const low=document.createElement('input'),high=document.createElement('input');for(const [input,value,name]of [[low,band[0],'Low frequency (Hz)'],[high,band[1],'High frequency (Hz)']]){input.type='number';input.min=2;input.max=40;input.step=.05;input.value=value;input.setAttribute('aria-label',name);bar.append(input)}
  let timer;const change=()=>{clearTimeout(timer);timer=setTimeout(async()=>{const lo=Number(low.value),hi=Number(high.value);if(!(lo>=2&&lo<hi&&hi<=40))return;setTFBand(session,[lo,hi])},300)};
- menu.onchange=()=>{low.hidden=high.hidden=menu.value!=='custom';if(menu.value!=='custom'){[low.value,high.value]=menu.value.split(',');change()}};low.oninput=high.oninput=change;parent.append(bar);
+ low.oninput=high.oninput=change;bar.append(headsetHelp('Frequency comparison',[personalElement('p','Enter any range from 2–40 Hz, or drag across a spectrum. All electrode comparisons update automatically. Tests require the minimum usable blocks in each condition on that electrode; short segments within a block are not independent trials. Each electrode uses clean 2-second windows. Means and tests use eligible blocks; PSD shading is a pointwise 95% interval at 10 blocks per condition. Changing bands after seeing results is exploratory.')]));parent.append(bar);
 }
 function drawTFChannels(parentId,a,session,compact=false){
  const parent=$(parentId);if(!parent)return;parent.hidden=false;parent._tfSession=session;
- const key=session.id+'/'+a.trial_count+'/'+a.pending ;if(parent.dataset.tfKey===key){drawTFSpectra(parentId,a);for(const [ch,v] of electrodeEntries(a.channels)){drawStats(parentId+'-power-'+ch,v,parentId+'-note-'+ch);$(parentId+'-title-'+ch).textContent=`${a.band.join('–')} Hz power · ${session.window.join('–')} s after cue`;}const menu=parent.querySelector('.tf-band-control select'),preset=a.band.join(',');menu.value=['4,7','8,13','13,20','20,30'].includes(preset)?preset:'custom';const inputs=parent.querySelectorAll('.tf-band-control input');inputs.forEach((el,i)=>{el.hidden=menu.value!=='custom';if(document.activeElement!==el)el.value=a.band[i]});return;}parent.dataset.tfKey=key;parent.replaceChildren();
+ const key=session.id+'/'+a.trial_count+'/'+a.pending ;if(parent.dataset.tfKey===key&&parent.querySelector('canvas')){drawTFSpectra(parentId,a);for(const [ch,v] of electrodeEntries(a.channels)){drawTFStats(parentId+'-power-'+ch,v,parentId+'-note-'+ch,session);$(parentId+'-title-'+ch).textContent=`${a.band.join('–')} Hz power · ${session.window.join('–')} s after cue`;}const inputs=parent.querySelectorAll('.tf-band-control input');inputs.forEach((el,i)=>{if(document.activeElement!==el)el.value=a.band[i]});return;}parent.dataset.tfKey=key;parent.replaceChildren();
  tfBandControl(parent,session,a);
- const explanation=document.createElement('p');explanation.className='muted';explanation.textContent='2 s windows · 0.5 s steps · at least 4 clean seconds per electrode per block. Dashed spectrum: latest clean 2 s. Small dots: clean, non-overlapping 2 s segments, including partially usable blocks. Means and tests use eligible blocks. Shading: pointwise 95% CI across eligible blocks (≥10). Band review is exploratory.';if(a.clip_inference)explanation.textContent='Exploratory clip-level comparison · Non-overlapping 2 s clips. Clips from the same block are correlated; these p-values may overstate the evidence. Spectral confidence intervals still use eligible blocks (≥10).';parent.append(explanation);
+ const explanation=document.createElement('p');explanation.className='muted';explanation.textContent='2 s windows · 0.5 s steps · at least 4 clean seconds per electrode per block. Dashed spectrum: latest clean 2 s. Small dots: clean, non-overlapping 2 s segments, including partially usable blocks. Means and tests use eligible blocks. Shading: pointwise 95% CI across eligible blocks (≥10). Band review is exploratory.';if(a.clip_inference)explanation.textContent='Exploratory clip-level comparison · Non-overlapping 2 s clips. Clips from the same block are correlated; these p-values may overstate the evidence. Spectral confidence intervals still use eligible blocks (≥10).';const help=parent.querySelector('.info-dot');if(help?._helpDialog)help._helpDialog.append(explanation);
  for(const [ch,v]of electrodeEntries(a.channels)){
   const card=document.createElement('section');card.className='panel electrode-result';electrodeGridPosition(card,ch);const title=document.createElement('h3');title.textContent=electrodeLabel(ch);card.append(title);
   const spectrum=document.createElement('canvas');spectrum.id=parentId+'-spectrum-'+ch;spectrum.height=compact?160:220;card.append(spectrum);
   const counts=document.createElement('p');counts.className='muted';counts.textContent=v.groups.map(g=>`${g.label}: ${g.segment_features?.length||0} segments · ${g.accepted} ${a.clip_inference?'usable clips':'eligible blocks'} · ${g.clean_seconds.toFixed(1)} clean seconds · ${g.rejected} rejected`).join(' | ');card.append(counts);
   const h=document.createElement('h4');h.id=parentId+'-title-'+ch;h.textContent=`${a.band.join('–')} Hz power · ${session.window.join('–')} s after cue`;card.append(h);
   const comparison=document.createElement('canvas');comparison.id=parentId+'-power-'+ch;comparison.height=compact?160:220;const note=document.createElement('p');note.id=parentId+'-note-'+ch;note.className='muted';card.append(comparison,note);parent.append(card);
-  drawStats(comparison.id,v,note.id);
+  drawTFStats(comparison.id,v,note.id,session);
   const detail=document.createElement('details');const summary=document.createElement('summary');summary.textContent='Time–frequency power';detail.append(summary);card.append(detail);
   const maps=[];v.groups.forEach((g,i)=>{const label=document.createElement('p');label.textContent=g.label;const map=document.createElement('canvas');map.id=parentId+'-tf-'+ch+'-'+i;map.height=180;detail.append(label,map);maps.push([map.id,g.tf])});detail.ontoggle=()=>{if(detail.open)for(const [id,tf]of maps)heatmap(id,tf)};
 
@@ -58,4 +56,11 @@ function setupFrequencyDrag(el,box,session){
  const finish=()=>{document.documentElement.classList.remove('tf-selecting');window.removeEventListener('blur',finish);window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',finish);window.removeEventListener('pointercancel',finish);tfPreviewBand=null;if(band)setTFBand(session,band)};
  window.addEventListener('blur',finish);window.addEventListener('pointermove',move);window.addEventListener('pointerup',finish);window.addEventListener('pointercancel',finish);
  };
+}
+
+function drawTFStats(id,data,noteId,session){
+ drawStats(id,data,noteId);
+ const note=$(noteId),counts=data.groups.map(g=>`${g.label}: ${g.accepted}/${session.minimum||10} usable blocks`).join(' · ');
+ if(!data.stats.ready)note.textContent=counts+' — '+(data.stats.reason||'Collecting data');
+ if(data.pairwise?.length){note.textContent='Exploratory pairwise Welch tests (Holm corrected): '+data.pairwise.map(p=>p.ready?`${p.labels.join(' vs ')}: p = ${p.adjusted_p.toPrecision(3)}`:`${p.labels.join(' vs ')}: ${p.reason}`).join(' · ');}
 }

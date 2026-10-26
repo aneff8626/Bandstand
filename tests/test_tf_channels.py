@@ -26,3 +26,16 @@ class TFChannelTests(unittest.TestCase):
   a=summarize_tf([dict(index=0,condition_index=0,spectral_channels=r)],dict(conditions=['Open','Closed'],minimum=10),[8,13])
   g=a['channels']['TP10']['groups'][0]
   self.assertEqual(g['accepted'],0);self.assertEqual(len(g['segment_features']),1)
+
+ def test_ten_blocks_each_and_multiple_conditions(self):
+  trials=[]
+  for condition in range(3):
+   for n in range(10):
+    row=dict(accepted=True,clean_seconds=4,psd=[1+condition+n*.1]*77,windows=[])
+    trials.append(dict(index=len(trials),condition_index=condition,spectral_channels={ch:row for ch in ['TP9','AF7','AF8','TP10']}))
+  result=summarize_tf(trials,dict(conditions=['A','B','C'],minimum=10),[8.15,12.75])
+  for channel in result['channels'].values():
+   self.assertEqual(len(channel['pairwise']),3)
+   self.assertTrue(all(p['ready'] and p['adjusted_p']>=p['p'] for p in channel['pairwise']))
+  result=summarize_tf(trials[:20],dict(conditions=['A','B'],minimum=10),[8.15,12.75])
+  self.assertTrue(all(c['stats']['ready'] for c in result['channels'].values()))

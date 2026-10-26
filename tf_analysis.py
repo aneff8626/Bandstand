@@ -51,5 +51,13 @@ def summarize_tf(trials,session,band):
   if session.get('protocol')=='disclosure':
    for g in groups:
     g['features']=g['segment_features'];g['accepted']=len(g['features']);g['mean']=float(np.mean(g['features'])) if g['features'] else None;g['se']=float(np.std(g['features'],ddof=1)/np.sqrt(len(g['features']))) if len(g['features'])>1 else None
-  channels[name]=dict(groups=groups,stats=compare(groups[0]['features'],groups[1]['features'],session['minimum']) if len(groups)==2 else dict(ready=False,reason='Multiple conditions: descriptive estimates; no omnibus test'),unit='dB re 1 µV²',rejections=rejected)
+  pairwise=[]
+  if len(groups)>2:
+   for i in range(len(groups)):
+    for j in range(i+1,len(groups)):
+     pairwise.append(dict(labels=[groups[i]['label'],groups[j]['label']],**compare(groups[i]['features'],groups[j]['features'],session['minimum'])))
+   ranked=sorted([p for p in pairwise if p['ready']],key=lambda p:p['p']);previous=0
+   for rank,p in enumerate(ranked):
+    previous=max(previous,min(1.,p['p']*(len(pairwise)-rank)));p['adjusted_p']=previous
+  channels[name]=dict(groups=groups,stats=compare(groups[0]['features'],groups[1]['features'],session['minimum']) if len(groups)==2 else dict(ready=False,reason='Multiple conditions: descriptive estimates; no omnibus test'),unit='dB re 1 µV²',rejections=rejected,pairwise=pairwise)
  return dict(clip_inference=session.get('protocol')=='disclosure',channels=channels,groups=[],frequencies=frequencies.tolist(),band=band,trial_count=len(trials),pending=0,times=[],stats=dict(ready=False,reason='See individual electrode comparisons'),rejections=rejections,unit='dB re 1 µV²',spectral=True)

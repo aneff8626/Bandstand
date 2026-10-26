@@ -5,7 +5,7 @@ function personalElement(tag,text,cls){const e=document.createElement(tag);if(te
 function personalButton(text,fn){const b=personalElement('button',text);b.type='button';b.onclick=async()=>{try{await fn()}catch(e){toast(e.message)}};return b}
 
 function createActivityRow({id,title,meta,description,advanced,onProceed,disabled=false}){
- const row=personalElement('article',undefined,'activity-row');
+ const row=personalElement('article',undefined,'activity-row');if(['custom','custom_erp','biofeedback'].includes(id))row.classList.add('custom-activity');
  const header=personalElement('div',undefined,'activity-row-header'),heading=personalElement('div',undefined,'activity-row-heading');
  heading.append(personalElement('h3',title),personalElement('p',meta,'activity-row-meta'));
  const actions=personalElement('div',undefined,'activity-row-actions'),panel=personalElement('div',undefined,'activity-row-info');panel.id='activity-info-'+id;panel.hidden=true;

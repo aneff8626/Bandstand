@@ -610,3 +610,11 @@ body[data-journey-step=summary] :is(#experimentResults,#personalResults,#writing
 .setup-sequence .settings-disclosure[open]>summary{margin-bottom:16px}
 .setup-sequence .settings-disclosure>summary>button:focus-visible{outline:2px solid #315d7f;outline-offset:3px}
 #journeyBrief .setup-sequence .start-row{margin:0!important;padding:0!important;border:0!important}
+
+.custom-activity{border-left:4px solid #9a6a42!important;background:#faf3ea!important}
+.custom-activity .activity-row-heading h3{color:#85572f}
+.custom-condition-labels{color:#85572f;text-align:center;font-weight:550;margin:8px 0 14px}
+#customConditionFields>label{display:flex;flex-direction:column;gap:6px;max-width:220px;margin-top:12px}
+#customConditionFields select{min-height:42px;font-size:15px}
+.advanced-provisional{color:#98602d;font-size:12px;margin:12px 0}
+.tf-band-control>span{align-self:center}.tf-band-control>input{min-height:38px}
