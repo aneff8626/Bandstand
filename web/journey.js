@@ -153,7 +153,7 @@ function initHeadsetDisplay(){
  $('showHeadset').onchange=()=>map.hidden=!$('showHeadset').checked;$('showMotion').onchange=()=>{motionPlot.hidden=!$('showMotion').checked;drawMotionTraces()};
  initLiveSpectrum(traceColumn);row.replaceChildren(toolbar);
  $('start').onclick=()=>{preflightOverride=true;preflightContactRejected=false;void beginRun()};
- $('briefTask').hidden=true;$('briefTask').before(personalButton('Click for instructions',()=>{$('briefTask').hidden=!$('briefTask').hidden}));
+ $('briefTask').hidden=true;const instructionToggle=personalButton('Click for instructions',()=>{$('briefTask').hidden=!$('briefTask').hidden;instructionToggle.setAttribute('aria-expanded',String(!$('briefTask').hidden))});instructionToggle.setAttribute('aria-expanded','false');instructionToggle.setAttribute('aria-controls','briefTask');$('briefTask').before(instructionToggle);
  const next=personalButton('Choose an activity →',()=>journeyGo('choose'));next.className='primary';next.id='headsetNext';$('headsetSetup').append(next);
  $('disconnectMuse').textContent='Disconnect';$('disconnectMuse').title='Disconnect headset';
 }
