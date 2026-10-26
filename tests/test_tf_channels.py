@@ -31,7 +31,7 @@ class TFChannelTests(unittest.TestCase):
   trials=[]
   for condition in range(3):
    for n in range(10):
-    row=dict(accepted=True,clean_seconds=4,psd=[1+condition+n*.1]*77,windows=[])
+    rng=np.random.default_rng(condition*100+n);windows=[dict(start=2+2*k,end=4+2*k,power=[float(np.exp(rng.normal(condition,.2)))]*77,reasons=[]) for k in range(5)];row=dict(accepted=True,clean_seconds=10,psd=np.mean([w['power'] for w in windows],axis=0).tolist(),windows=windows)
     trials.append(dict(index=len(trials),condition_index=condition,spectral_channels={ch:row for ch in ['TP9','AF7','AF8','TP10']}))
   result=summarize_tf(trials,dict(conditions=['A','B','C'],minimum=10),[8.15,12.75])
   for channel in result['channels'].values():

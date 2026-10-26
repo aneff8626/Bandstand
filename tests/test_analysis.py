@@ -98,7 +98,7 @@ class PipelineTests(unittest.TestCase):
             labels=[p['condition_index'] for p in s['plan']]
             self.assertIn(labels,[[0,1,1,0],[1,0,0,1]])
             self.assertTrue(all(p['duration']==30000 for p in s['plan']))
-            self.assertTrue(e.analysis()['clip_inference']);e.stop()
+            self.assertFalse(e.analysis()['clip_inference']);self.assertEqual(e.analysis()['channels']['AF7']['stats']['method'],'moving-block bootstrap');e.stop()
 
     def test_time_frequency_block_pipeline(self):
         with tempfile.TemporaryDirectory() as tmp, patch('engine.ROOT',Path(tmp)),patch('engine.DATA_ROOT',Path(tmp)/'data'):

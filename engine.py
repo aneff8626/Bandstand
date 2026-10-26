@@ -434,7 +434,17 @@ class Engine:
                     path=DATA_ROOT/s['id']/f"trial-{trial['index']:04d}.npz"
                     if path.exists():
                         with np.load(path,allow_pickle=False) as z:trial['spectral_channels']=channel_windows(z['raw'],z['notched'],z['times'],s['window'],s['thresholds'])
-            result=summarize_tf(self.trials,s,getattr(self,'review_band',s['band']));result['pending']=len(self.pending)
+            analysis_trials=list(self.trials)
+            if self.pending and hasattr(self,'times') and self.times:
+                event=self.pending[-1];relative=np.asarray(self.times)-event['onset'];end=min(float(relative[-1]),s['window'][1])
+                # Preview grows only when another complete, non-overlapping 2 s segment is available.
+                end=s['window'][0]+2*int(max(0,end-s['window'][0])/2)
+                if end>=s['window'][0]+2:
+                    partial=channel_windows(np.asarray(self.raw),np.asarray(self.spectral),relative,[s['window'][0],end],s['thresholds'])
+                    analysis_trials.append(dict(index=event['index'],condition_index=event['condition_index'],partial=True,spectral_channels=partial))
+            result=summarize_tf(analysis_trials,s,getattr(self,'review_band',s['band']));result['pending']=len(self.pending)
+            result['trial_count']=len(self.trials)
+            result['statistics_revision']=sum(len(g['segment_features']) for c in result['channels'].values() for g in c['groups'])
             if self.pending and hasattr(self,'times') and self.times:
                 event=self.pending[-1];relative=np.asarray(self.times)-event['onset'];end=min(float(relative[-1]),s['window'][1])
                 if end>=s['window'][0]+2:

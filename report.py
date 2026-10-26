@@ -22,16 +22,16 @@ def make_report(session,analysis,events,directory):
     table=Table([[p(c,'SmallPrint') for c in row] for row in rows],colWidths=[164,65,65,115,115]); table.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#edf3f1')),('VALIGN',(0,0),(-1,-1),'TOP'),('BOTTOMPADDING',(0,0),(-1,-1),8)])); story.append(table)
     if analysis.get('spectral'):
         story.append(p('Channel-local spectral results','Heading2'))
-        story.append(p(f"Reviewed band: {analysis['band'][0]:g}–{analysis['band'][1]:g} Hz. 2-second Hann windows; 0.5-second steps; at least 4 unique clean seconds per block. "+("Observations are non-overlapping 2-second clips, which are correlated within blocks." if session['protocol']=='disclosure' else "One observation per block/electrode.")+" Power in dB re 1 µV².",'SmallPrint'))
+        story.append(p(f"Reviewed band: {analysis['band'][0]:g}–{analysis['band'][1]:g} Hz. Descriptive mean and SD use non-overlapping clean 2-second segments; inference resamples contiguous chunks within recorded periods. Power in dB re 1 µV².",'SmallPrint'))
         for channel,value in analysis['channels'].items():
             story.append(p(channel,'Heading3'))
             for g in value['groups']:
-                score=f"{g['mean']:.3f} dB" if g['mean'] is not None else 'Pending'
+                score=f"{g.get('descriptive_mean',g['mean']):.3f} dB" if g.get('descriptive_mean',g['mean']) is not None else 'Pending'
                 story.append(p(f"{g['label']}: {g['accepted']} usable / {g['rejected']} rejected blocks; {g['clean_seconds']:.1f} clean seconds; mean {score}."))
-            stat=value['stats'];story.append(p(f"Exploratory t = {stat['t']:.2f}, {fp(stat['p'])} ({stat['label']})" if stat.get('ready') else stat['reason']))
+            stat=value['stats'];story.append(p((f"Exploratory moving-block bootstrap: difference {stat['difference']:.2f} dB, 95% interval {stat['ci95'][0]:.2f} to {stat['ci95'][1]:.2f}, {fp(stat['p'])}" if stat.get('method')=='moving-block bootstrap' else f"Exploratory t = {stat['t']:.2f}, {fp(stat['p'])} ({stat['label']})") if stat.get('ready') else stat['reason']))
     stat=analysis.get('stats',{})
     story.append(p(f"Exploratory Welch t({stat['df']:.1f}) = {stat['t']:.2f}, {fp(stat['p'])} ({stat['label']})" if stat.get('ready') else stat.get('reason','No trials yet.')))
-    story.append(p('Trial-level comparisons within one participant. Repeated testing is uncorrected; trials are not independent participants. Pointwise 95% intervals and SE describe accepted trials, not population uncertainty. Ten usable trials is a display threshold, not a power guarantee.','SmallPrint'))
+    story.append(p(('Spectral comparisons use clean non-overlapping segments and a moving-block bootstrap within recorded periods. Approximate intervals and p-values assume local stability; they do not separate condition effects from order, drift or contact changes. Repeated looks and band selection are exploratory.' if analysis.get('spectral') else 'Trial-level comparisons within one participant. Repeated testing is uncorrected; trials are not independent participants. Pointwise 95% intervals and SE describe accepted trials, not population uncertainty. Ten usable trials is a display threshold, not a power guarantee.'),'SmallPrint'))
     if session['mode']=='erp' and analysis.get('times'):
         drawing=Drawing(524,190); drawing.add(Line(40,30,510,30)); drawing.add(Line(40,30,40,175))
         waves=[g['erp']['mean'] for g in analysis['groups'] if g['erp']]; limit=max([10]+[abs(v) for w in waves for v in w]); times=analysis['times']; palette=['#127b6c','#c67a2e']

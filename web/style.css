@@ -618,3 +618,5 @@ body[data-journey-step=summary] :is(#experimentResults,#personalResults,#writing
 #customConditionFields select{min-height:42px;font-size:15px}
 .advanced-provisional{color:#98602d;font-size:12px;margin:12px 0}
 .tf-band-control>span{align-self:center}.tf-band-control>input{min-height:38px}
+
+.tf-plot-mode{grid-column:1/-1;justify-self:start}
