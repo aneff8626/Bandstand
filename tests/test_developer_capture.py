@@ -18,7 +18,7 @@ class DeveloperTests(unittest.TestCase):
    self.assertTrue(report['action']['usable']);self.assertTrue(report['rest']['usable'])
    self.assertAlmostEqual(report['std_ratio_action_to_rest'][0],3,delta=.03)
    self.assertTrue(Path(report['file']).exists())
-   data=np.load(report['file'].replace('.json','.npz'));self.assertEqual(data['raw'].shape,(28*FS,4))
+   with np.load(report['file'].replace('.json','.npz')) as data:self.assertEqual(data['raw'].shape,(28*FS,4))
  def test_partial_and_gaps_are_not_valid_examples(self):
   with tempfile.TemporaryDirectory() as d:
    c=DeveloperCapture(d);c.start('jaw_clench','live');result=c.finish(cancel=True)
