@@ -11,8 +11,9 @@ jobs:
     timeout-minutes: 40
     env:
       PYTHONDONTWRITEBYTECODE: '1'
-      BANDSTAND_DATA_DIR: '${{ runner.temp }}\bandstand-test-data'
     steps:
+      - name: Isolate test data
+        run: '"BANDSTAND_DATA_DIR=$env:RUNNER_TEMP\bandstand-test-data" | Out-File -FilePath $env:GITHUB_ENV -Append'
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
