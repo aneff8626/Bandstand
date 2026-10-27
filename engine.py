@@ -106,6 +106,7 @@ class Engine:
             threading.Thread(target=self.bridge_loop,daemon=True).start()
         threading.Thread(target=self.simulation_loop,daemon=True).start()
     def bluetooth_connection(self,connected):
+        if os.environ.get('BANDSTAND_WINDOWS_PREVIEW')=='1':raise ValueError('Bluetooth is not available in the Windows preview. Use synthetic EEG.')
         with self.lock:
             if not connected and ((self.session and self.session.get('running')) or self.typing.running or self.developer.status().get('recording') or getattr(getattr(self,'personal',None),'current',None)):
                 raise ValueError('Stop and save the recording before disconnecting.')
@@ -173,6 +174,7 @@ class Engine:
                         if np.any(inside): x[inside]+=gain*np.sin(2*np.pi*frequency*ts[inside,None]+np.arange(4))*np.asarray(amplitude)
                 self.ingest(ts,x)
     def switch_source(self,source):
+        if os.environ.get('BANDSTAND_WINDOWS_PREVIEW')=='1' and source!='simulation':raise ValueError('This Windows preview supports synthetic EEG only.')
         if source not in ['live','simulation']: raise ValueError('Unknown data source')
         with self.lock:
             if self.personal.current:raise ValueError('Stop the personal activity before changing source.')
@@ -221,9 +223,11 @@ class Engine:
                 files=sorted(self.typing.root.glob('*/document.txt'))
                 return {'text':files[-1].read_text() if files else ''}
             if path=='typing/start':
-                if self.source!='live' or not self.times or time.time()-self.times[-1]>1:raise ValueError('Connect the live headset first.')
+                preview=os.environ.get('BANDSTAND_WINDOWS_PREVIEW')=='1' and self.source=='simulation'
+                if preview and body.get('capture','editor')!='editor':raise ValueError('Cross-app typing is not available in the Windows preview.')
+                if (self.source!='live' and not preview) or not self.times or time.time()-self.times[-1]>1:raise ValueError('Connect the live headset first.')
                 if self.developer.current or (self.session and self.session['running']):raise ValueError('Finish the current recording first.')
-                result=self.typing.start(body.get('window','context'),int(body.get('history',30)),int(body.get('delay',0)),body.get('capture','editor'))
+                result=self.typing.start(body.get('window','context'),int(body.get('history',30)),int(body.get('delay',0)),body.get('capture','editor'),source=self.source)
                 self.typing.ingest(list(self.times)[-FS*60:],list(self.raw)[-FS*60:],list(self.filtered)[-FS*60:])
                 return result
             if path=='typing/export':
@@ -247,7 +251,7 @@ class Engine:
         for p in PROTOCOLS:
             p=dict(p); p['assets']=Counter(a['category'] for a in assets)
             result.append(p)
-        return {'protocols':result,'sources':SOURCES,'thresholds':DEFAULT_THRESHOLDS,'erp_thresholds':ERP_THRESHOLDS,'channels':CHANNELS,'assets':assets,'simulation_effects':SIM_NOTES}
+        return {'capabilities':{'windows_preview':os.environ.get('BANDSTAND_WINDOWS_PREVIEW')=='1'},'protocols':result,'sources':SOURCES,'thresholds':DEFAULT_THRESHOLDS,'erp_thresholds':ERP_THRESHOLDS,'channels':CHANNELS,'assets':assets,'simulation_effects':SIM_NOTES}
     def begin(self,cfg):
         with self.lock:
             if self.typing.running: raise ValueError('Stop typing recording first.')

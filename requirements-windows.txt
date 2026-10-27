@@ -1,0 +1,4 @@
+-r requirements.txt
+pywebview>=5,<7
+psutil>=6,<8
+keyring>=25,<26

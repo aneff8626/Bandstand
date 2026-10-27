@@ -1,0 +1,38 @@
+# Windows preview — implementation and acceptance checklist
+
+## Student setup
+
+This preview targets Windows 10/11, x64. Download and **extract the entire ZIP** to a writable folder, then double-click **Launch Bandstand.cmd**. Keep `app` and `runtime` together. Python and the public text encoder are bundled; no Python installation, terminal commands, headset, or account are required. The command launcher briefly opens a console before opening the desktop window.
+
+Microsoft Edge WebView2 Runtime is required. If the startup dialog reports it missing, install the Evergreen runtime from https://developer.microsoft.com/microsoft-edge/webview2/. This preview has no Windows code-signing certificate; Windows security software may warn or block it. Do not disable system security to run it.
+
+Continue without an account. Synthetic EEG starts explicitly in a window labeled **Windows Preview · Synthetic EEG**. Follow Activity → Setup → Run → Results. Include **Test sessions** in Results filters. Some experiments require imported images. The writing editor works inside Bandstand; synthetic EEG cannot establish real decoder performance. Personality EEG outputs remain synthetic demonstrations.
+
+Data are stored under `%LOCALAPPDATA%\Bandstand Windows Preview\data`, separately from future real recordings. Writing and embeddings stay local. Remembered sign-ins use Windows Credential Manager. Bluetooth and typing across other applications are deliberately unavailable. This preview does not activate shared decoder training.
+
+## Build
+
+Run the **Windows Preview** GitHub Actions workflow, or on Windows with Python 3.12 x64 run `python scripts/build_windows.py` after installing `requirements-windows.txt`. The workflow tests the source, audits publication contents, builds from the explicit audited source bundle, bundles official embedded CPython, verifies the pinned public encoder, and tests the packaged runtime. Download the workflow artifact and extract its inner application ZIP. CI artifacts expire after 14 days; publish only a tested artifact as a GitHub release.
+
+Python uses its isolated `_pth` file; account keys, recordings, private models, developer environments, and local configuration are not copied. The app uses an ephemeral loopback port with a launch cookie, Host/Origin checks, and the existing per-launch POST token. It has no remotely listening service. No native JavaScript bridge is exposed.
+
+## Checklist
+
+- [x] Windows launcher and dedicated desktop window using WebView2.
+- [x] Explicit synthetic acquisition and disabled unsupported transport controls.
+- [x] Isolated preview data folder and synthetic labels for writing sessions.
+- [x] Windows Credential Manager integration; no plaintext password fallback.
+- [x] Portable memory check for local semantic training.
+- [x] Audited packaging, bundled Python/dependencies/public encoder, checksum.
+- [x] Windows CI build with packaged backend and offline-encoder smoke checks.
+- [ ] Windows CI passes on the exact published commit.
+- [ ] Fresh Windows computer: extract, launch, enrollment/local continuation, restart.
+- [ ] WebView2 visual interaction: experiment start/stop, audio, imports, plots, exports.
+- [ ] Save and reopen ERP, spectral, questionnaire and writing records.
+- [ ] Verify real Windows sign-in persistence/logout with an ordinary test account.
+- [ ] Publish a downloadable Windows preview after checking the artifact.
+- [ ] Native installer/shortcut and Windows code signing.
+- [ ] Real Muse Bluetooth implementation and hardware validation.
+- [ ] Cross-app Windows writing capture and privacy/permission review.
+
+The checked entries indicate implemented code, not second-computer acceptance. Windows hardware, graphical interaction, and account delivery must be verified separately. Update this checklist as evidence arrives.

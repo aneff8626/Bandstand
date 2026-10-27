@@ -12,6 +12,15 @@ def session_namespace():
 
 
 def _operation(action, value=None):
+ if sys.platform=='win32':
+  from keyring.backends.Windows import WinVaultKeyring
+  vault=WinVaultKeyring();service='org.bandstand.session';name=hashlib.sha256(session_namespace().encode()).hexdigest()
+  try:
+   if action=='load':return vault.get_password(service,name)
+   if action=='save':vault.set_password(service,name,value)
+   elif vault.get_password(service,name) is not None:vault.delete_password(service,name)
+   return None
+  except Exception:raise ValueError('Windows Credential Manager is unavailable. Sign in without remembering this session.') from None
  if sys.platform!='darwin':raise ValueError('Secure session storage requires macOS Keychain.')
  cf=C.CDLL('/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation')
  sec=C.CDLL('/System/Library/Frameworks/Security.framework/Security')

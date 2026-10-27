@@ -122,13 +122,13 @@ class TypingLab:
    if end-start>7*86400:end=last
    total+=max(0,end-start) if math.isfinite(end) and end-start<=7*86400 else 0
   return total/60
- def start(self,window='context',history=30,delay=0,capture='editor'):
+ def start(self,window='context',history=30,delay=0,capture='editor',source='live'):
   if self.running:raise ValueError('Typing is already recording')
   if window not in [*WINDOWS,'context']:raise ValueError('Unknown EEG window')
   if history not in [10,30,60] or delay not in [0,1] or capture not in ['editor','system']:raise ValueError('Invalid context/capture settings')
   self.native_word=None;self.native_boundary=False;self.native_app=None;self.capture_preview={};self.capture_status={}
   now=time.time();ident=time.strftime('%Y%m%d-%H%M%S')+'-'+uuid.uuid4().hex[:6];self.directory=self.root/ident;self.directory.mkdir()
-  self.session=dict(id=ident,started=now,window=window,history_seconds=history,prediction_delay=delay,capture=capture,source='live',sample_rate=FS,channels=CHANNELS,epoch=[-1.5,1.],baseline=[-1.5,-1.25],timing='Browser beforeinput timestamp; BLE and physical key onset uncalibrated',model_features='EEG only; text and edit timings are labels/quality checks, never predictors')
+  self.session=dict(id=ident,started=now,window=window,history_seconds=history,prediction_delay=delay,capture=capture,source=source,sample_rate=FS,channels=CHANNELS,epoch=[-1.5,1.],baseline=[-1.5,-1.25],timing='Browser beforeinput timestamp; BLE and physical key onset uncalibrated',model_features='EEG only; text and edit timings are labels/quality checks, never predictors')
   self.recording_sessions[ident]=self.session
   self.running=True;self.pending={};self.history=[];self.word_onsets=[];self.prediction=None
   self.rawfile=gzip.open(self.directory/'continuous.csv.gz','wt',newline='',compresslevel=1);self.writer=csv.writer(self.rawfile);self.writer.writerow(['time',*CHANNELS,*[c+'_filtered' for c in CHANNELS]])
