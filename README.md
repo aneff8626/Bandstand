@@ -10,7 +10,7 @@ Download the app ZIP under Assets (not Source code), unzip, and drag **Bandstand
 
 ## Windows preview
 
-A headset-free Windows x64 port is being validated. See the [Windows setup and acceptance checklist](docs/windows-preview.md). Bluetooth and across-app typing are not implemented on Windows; this preview uses clearly labeled synthetic EEG.
+**[Download Windows x64 preview 1](https://github.com/aneff8626/Bandstand/releases/tag/v0.3.0-windows-preview.1)** — extract the entire ZIP and double-click **Launch Bandstand.cmd**. Python is bundled; WebView2 is required. This portable preview is not Windows-code-signed. See the [Windows setup and acceptance checklist](docs/windows-preview.md). Bluetooth and across-app typing are not implemented on Windows; this preview uses clearly labeled synthetic EEG.
 
 ## Contributors: edit without rebuilding the app
 

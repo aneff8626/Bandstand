@@ -25,14 +25,19 @@ Python uses its isolated `_pth` file; account keys, recordings, private models, 
 - [x] Portable memory check for local semantic training.
 - [x] Audited packaging, bundled Python/dependencies/public encoder, checksum.
 - [x] Windows CI build with packaged backend and offline-encoder smoke checks.
-- [ ] Windows CI passes on the exact published commit.
+- [x] Windows CI passes on packaged code commit `88e1b61` (run 40540970510): 231 Python tests, 30 JavaScript tests, bundled backend, offline encoder, and real WebView2 startup.
+- [x] Windows runner renders the app and supports continuing without an account; synthetic label and unavailable Bluetooth verified.
 - [ ] Fresh Windows computer: extract, launch, enrollment/local continuation, restart.
 - [ ] WebView2 visual interaction: experiment start/stop, audio, imports, plots, exports.
 - [ ] Save and reopen ERP, spectral, questionnaire and writing records.
 - [ ] Verify real Windows sign-in persistence/logout with an ordinary test account.
-- [ ] Publish a downloadable Windows preview after checking the artifact.
+- [x] Windows preview 1 published from the tested package (see release link below).
 - [ ] Native installer/shortcut and Windows code signing.
 - [ ] Real Muse Bluetooth implementation and hardware validation.
 - [ ] Cross-app Windows writing capture and privacy/permission review.
 
 The checked entries indicate implemented code, not second-computer acceptance. Windows hardware, graphical interaction, and account delivery must be verified separately. Update this checklist as evidence arrives.
+
+## Windows preview 1
+
+[Download](https://github.com/aneff8626/Bandstand/releases/tag/v0.3.0-windows-preview.1) · [Windows CI evidence](https://github.com/aneff8626/Bandstand/actions/runs/40540970510). The first-PC acceptance items above remain open.
