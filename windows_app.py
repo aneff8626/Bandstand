@@ -126,16 +126,41 @@ def smoke(service, engine, url):
     print('PASS: bundled app, authenticated loopback, synthetic stream, local typing, capability guards, memory check')
 
 
+def ui_smoke(url):
+    import webview
+    errors = []
+    window = webview.create_window('Bandstand UI smoke', url, width=1000, height=750)
+    def check():
+        try:
+            deadline = time.monotonic() + 35
+            while time.monotonic() < deadline:
+                ready = window.evaluate_js("Boolean(document.querySelector('#journeyHeader')) && !document.body.classList.contains('app-loading')")
+                if ready: break
+                time.sleep(.25)
+            else: raise AssertionError('Desktop UI did not finish startup')
+            window.evaluate_js("document.querySelector('#useLocal').click()")
+            assert window.evaluate_js("document.querySelector('#connectMuse').disabled"), 'Unsupported Bluetooth control enabled'
+            assert 'SIMULATION' in window.evaluate_js("document.querySelector('#simulationBanner').textContent")
+        except Exception as error: errors.append(str(error))
+        finally: window.destroy()
+    webview.start(check, gui='edgechromium', private_mode=True)
+    if errors: raise AssertionError('; '.join(errors))
+    print('PASS: Windows WebView2 rendered the app, local continuation, synthetic label and disabled Bluetooth')
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--smoke', action='store_true')
+    parser.add_argument('--ui-smoke', action='store_true')
     args = parser.parse_args()
-    if args.smoke:
+    if args.smoke or args.ui_smoke:
         import tempfile
         with tempfile.TemporaryDirectory(prefix='bandstand-windows-smoke-') as directory:
             configure(directory)
             service, engine, url = start_service()
-            try: smoke(service, engine, url)
+            try:
+                if args.ui_smoke: ui_smoke(url)
+                else: smoke(service, engine, url)
             finally: stop_service(service, engine)
         return
     if sys.platform != 'win32': raise SystemExit('This launcher is for Windows.')
@@ -143,6 +168,7 @@ def main():
     service = None
     try:
         import webview
+        webview.settings['ALLOW_DOWNLOADS'] = True
         service, engine, url = start_service()
         webview.create_window('Bandstand · Windows Preview · Synthetic EEG', url, width=1280, height=850, min_size=(900,650))
         webview.start(gui='edgechromium', private_mode=True)

@@ -49,6 +49,7 @@ def main():
     shutil.copy2(ROOT/'docs/windows-preview.md',out/'START-HERE.md')
     runtime_python=runtime/'python.exe'
     subprocess.run([str(runtime_python), '-X', 'utf8', str(app/'windows_app.py'),'--smoke'],check=True,timeout=90)
+    subprocess.run([str(runtime_python), '-X', 'utf8', str(app/'windows_app.py'),'--ui-smoke'],check=True,timeout=90)
     # Actually load the bundled encoder offline; imports alone do not prove dependency completeness.
     subprocess.run([str(runtime_python),'-X','utf8','-c','from semantic_decoder import encode; assert encode(["Synthetic smoke sentence"]).shape == (1,384); print("PASS: offline encoder")'],check=True,timeout=120)
     files={str(p.relative_to(out)).replace('\\','/'):hashlib.sha256(p.read_bytes()).hexdigest() for p in out.rglob('*') if p.is_file()}
