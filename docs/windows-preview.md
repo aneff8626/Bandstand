@@ -8,7 +8,7 @@ Microsoft Edge WebView2 Runtime is required. If the startup dialog reports it mi
 
 Continue without an account. Synthetic EEG starts explicitly in a window labeled **Windows Preview · Synthetic EEG**. Follow Activity → Setup → Run → Results. Include **Test sessions** in Results filters. Some experiments require imported images. The writing editor works inside Bandstand; synthetic EEG cannot establish real decoder performance. Personality EEG outputs remain synthetic demonstrations.
 
-Data are stored under `%LOCALAPPDATA%\Bandstand Windows Preview\data`, separately from future real recordings. Writing and embeddings stay local. Remembered sign-ins use Windows Credential Manager. Bluetooth and typing across other applications are deliberately unavailable. This preview does not activate shared decoder training.
+Data are stored under `%LOCALAPPDATA%\Bandstand Windows Preview\data`, separately from future real recordings. Writing and embeddings stay local. Remembered sign-ins use Windows Credential Manager. Muse Bluetooth is experimental; typing across other applications remains unavailable. This preview does not activate shared decoder training.
 
 ## Build
 
@@ -19,7 +19,7 @@ Python uses its isolated `_pth` file; account keys, recordings, private models, 
 ## Checklist
 
 - [x] Windows launcher and dedicated desktop window using WebView2.
-- [x] Explicit synthetic acquisition and disabled unsupported transport controls.
+- [x] Explicit synthetic acquisition; experimental Muse Bluetooth; unsupported cross-app typing disabled.
 - [x] Isolated preview data folder and synthetic labels for writing sessions.
 - [x] Windows Credential Manager integration; no plaintext password fallback.
 - [x] Portable memory check for local semantic training.
@@ -33,7 +33,7 @@ Python uses its isolated `_pth` file; account keys, recordings, private models, 
 - [ ] Verify real Windows sign-in persistence/logout with an ordinary test account.
 - [x] Windows preview 1 published from the tested package (see release link below).
 - [ ] Native installer/shortcut and Windows code signing.
-- [ ] Real Muse Bluetooth implementation and hardware validation.
+- [ ] Real Muse Bluetooth hardware validation (transport implemented; not yet headset-tested).
 - [ ] Cross-app Windows writing capture and privacy/permission review.
 
 The checked entries indicate implemented code, not second-computer acceptance. Windows hardware, graphical interaction, and account delivery must be verified separately. Update this checklist as evidence arrives.
@@ -41,3 +41,9 @@ The checked entries indicate implemented code, not second-computer acceptance. W
 ## Windows preview 1
 
 [Download](https://github.com/aneff8626/Bandstand/releases/tag/v0.3.0-windows-preview.1) · [Windows CI evidence](https://github.com/aneff8626/Bandstand/actions/runs/40540970510). The first-PC acceptance items above remain open.
+
+## Experimental Bluetooth (next preview)
+
+Choose **Connect Muse · experimental** in Headset. Turn Windows Bluetooth on, keep one Muse nearby, and close other apps connected to it. No pairing-code workflow is required by Bandstand. Scanning takes about eight seconds; connection may take another fifteen. The app displays scan, connection, missing-device and stream-timeout status. Disconnect stops acquisition; reconnect begins a fresh stream. Stop recordings before changing sources. Use the synthetic EEG toggle to return to demos.
+
+This uses the same four-channel Muse packet format and p21 preset as the Mac transport, through Bleak's Windows backend on a background thread. Hardware compatibility, adapter reliability and Windows Bluetooth permissions still need testing on a real PC. Motion and pulse are not yet supported by this Windows transport. The preview continues to store records in its separate local folder; real sessions are labeled live, synthetic sessions simulation.

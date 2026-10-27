@@ -82,6 +82,7 @@ def start_service():
 
 
 def stop_service(service, engine):
+    if hasattr(engine,'windows_bluetooth'): engine.windows_bluetooth.disconnect()
     # Stop all acquisition modes before shutting down the local service.
     with engine.lock:
         if engine.typing.running: engine.typing.stop('Application closed')
@@ -115,7 +116,7 @@ def smoke(service, engine, url):
     post('typing/start', {'capture':'editor'})
     assert get('state')['typing']['session']['source'] == 'simulation'
     post('typing/stop', {})
-    for path, body in [('bluetooth_connect', {}), ('source', {'source':'live'}), ('typing/start', {'capture':'system'})]:
+    for path, body in [('typing/start', {'capture':'system'})]:
         try: post(path, body)
         except urllib.error.HTTPError as error: assert error.code == 400
         else: raise AssertionError('Unsupported operation was accepted: ' + path)
@@ -139,13 +140,13 @@ def ui_smoke(url):
                 time.sleep(.25)
             else: raise AssertionError('Desktop UI did not finish startup')
             window.evaluate_js("document.querySelector('#useLocal').click()")
-            assert window.evaluate_js("document.querySelector('#connectMuse').disabled"), 'Unsupported Bluetooth control enabled'
+            assert not window.evaluate_js("document.querySelector('#connectMuse').disabled"), 'Bluetooth connect unavailable'
             assert 'SIMULATION' in window.evaluate_js("document.querySelector('#simulationBanner').textContent")
         except Exception as error: errors.append(str(error))
         finally: window.destroy()
     webview.start(check, gui='edgechromium', private_mode=True)
     if errors: raise AssertionError('; '.join(errors))
-    print('PASS: Windows WebView2 rendered the app, local continuation, synthetic label and disabled Bluetooth')
+    print('PASS: Windows WebView2 rendered the app, local continuation, synthetic label and experimental Bluetooth control')
 
 
 def main():
@@ -170,7 +171,7 @@ def main():
         import webview
         webview.settings['ALLOW_DOWNLOADS'] = True
         service, engine, url = start_service()
-        webview.create_window('Bandstand · Windows Preview · Synthetic EEG', url, width=1280, height=850, min_size=(900,650))
+        webview.create_window('Bandstand · Windows Preview', url, width=1280, height=850, min_size=(900,650))
         webview.start(gui='edgechromium', private_mode=True)
     except Exception:
         import traceback
