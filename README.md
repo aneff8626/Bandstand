@@ -8,6 +8,10 @@ Download the app ZIP under Assets (not Source code), unzip, and drag **Bandstand
 
 **No headset?** Continue without an account, then select **Try synthetic EEG** on Headset. Choose an activity, configure it, and run it. Simulated recordings are labeled; in Results, include **Test sessions** or select all recording qualities to find them. Synthetic results demonstrate the interface, not actual brain measurements or validated personality predictions. **Use headset** leaves simulation mode. Some tasks require imported stimuli; typing capture additionally requires macOS permissions.
 
+## Windows preview
+
+A headset-free Windows x64 port is being validated. See the [Windows setup and acceptance checklist](docs/windows-preview.md). Bluetooth and across-app typing are not implemented on Windows; this preview uses clearly labeled synthetic EEG.
+
 ## Contributors: edit without rebuilding the app
 
 Install build 17 once, clone this repository, and check out **`codex/desktop-release`**. Copy `backend.development.example.json` to the ignored `backend.json`, configure local Supabase or staging with a publishable client key, then run `python3 scripts/launch_development.py`. Quit other Bandstand windows first. The shell uses bundled Python and your checkout's web/Python code. Use `git pull --ff-only` to receive merged changes. While idle on Headset, Activity or Results, CSS refreshes in place and compatible web/Python changes reload in the same window. Recordings, fitting and open forms defer updates; no new download is needed for compatible edits.

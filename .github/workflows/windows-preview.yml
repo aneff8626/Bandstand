@@ -11,6 +11,10 @@ jobs:
     timeout-minutes: 40
     env:
       PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONUTF8: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
     steps:
       - name: Isolate test data
         run: '"BANDSTAND_DATA_DIR=$env:RUNNER_TEMP\bandstand-test-data" | Out-File -FilePath $env:GITHUB_ENV -Append'

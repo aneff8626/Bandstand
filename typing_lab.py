@@ -281,7 +281,7 @@ class TypingLab:
     result=self.root/'semantic_result.json'
     if result.exists():result.unlink()
     env=dict(os.environ,OPENBLAS_NUM_THREADS='1',OMP_NUM_THREADS='1',VECLIB_MAXIMUM_THREADS='1',HF_HUB_OFFLINE='1',HF_HUB_DISABLE_TELEMETRY='1')
-    subprocess.run([sys.executable,str(Path(__file__).with_name('semantic_decoder.py')),str(request)],check=True,timeout=180,env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    subprocess.run([sys.executable,'-X','utf8',str(Path(__file__).with_name('semantic_decoder.py')),str(request)],check=True,timeout=180,env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     output=json.loads(result.read_text());output['report']['evaluated_at']=time.time();result.write_text(json.dumps(output));model=SemanticModel(output['path']) if output.get('path') else None
     with self.lock:
      if model is not None or output['report'].get('invalidate_model'):self.sequence_model=model

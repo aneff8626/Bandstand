@@ -5,6 +5,7 @@ let typingWasRunning=false,typingStarting=false;
 let typingAccessState=null,typingMarkerSequence=0,typingStopping=false,typingView=false,typingWord=null,typingChain=Promise.resolve(),typingDocTimer=null,typingPlotRevision=-1;
 function typingEvent(body){typingChain=typingChain.then(()=>api('typing/event',body)).catch(e=>{toast(e.message);$('typingStatus').textContent='Recording issue: '+e.message});return typingChain}
 function updateTypingMode(){
+ if(typeof boot!=='undefined'&&boot?.capabilities?.windows_preview&&!state?.typing?.running)$('typingCapture').value='editor';
  const running=!!state?.typing?.running,system=(running?state.typing.session?.capture:$('typingCapture').value)==='system';
  $('writingEditor').hidden=system;
  for(const [id,on] of [['typingModeEditor',!system],['typingModeSystem',system]]){$(id).setAttribute('aria-pressed',String(on));$(id).disabled=running||typingStarting;$(id).textContent=running&&on?'● Recording '+(system?'across apps':'in Bandstand'):typingStarting&&on?'Starting…':id==='typingModeEditor'?'Write in Bandstand app':'Write across all apps';}

@@ -45,12 +45,12 @@ def main():
         content=(model/rel).read_bytes()
         if hashlib.sha256(content).hexdigest()!=digest:raise ValueError('Public encoder hash mismatch')
         dest=app/'models/all-MiniLM-L6-v2'/rel;dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes(content)
-    (out/'Launch Bandstand.cmd').write_text('@echo off\r\nset PYTHONDONTWRITEBYTECODE=1\r\nstart "" "%~dp0runtime\\pythonw.exe" "%~dp0app\\windows_app.py"\r\n')
+    (out/'Launch Bandstand.cmd').write_text('@echo off\r\nset PYTHONDONTWRITEBYTECODE=1\r\nstart "" "%~dp0runtime\\pythonw.exe" -X utf8 "%~dp0app\\windows_app.py"\r\n')
     shutil.copy2(ROOT/'docs/windows-preview.md',out/'START-HERE.md')
     runtime_python=runtime/'python.exe'
-    subprocess.run([str(runtime_python), str(app/'windows_app.py'),'--smoke'],check=True,timeout=90)
+    subprocess.run([str(runtime_python), '-X', 'utf8', str(app/'windows_app.py'),'--smoke'],check=True,timeout=90)
     # Actually load the bundled encoder offline; imports alone do not prove dependency completeness.
-    subprocess.run([str(runtime_python),'-c','from semantic_decoder import encode; assert encode(["Synthetic smoke sentence"]).shape == (1,384); print("PASS: offline encoder")'],check=True,timeout=120)
+    subprocess.run([str(runtime_python),'-X','utf8','-c','from semantic_decoder import encode; assert encode(["Synthetic smoke sentence"]).shape == (1,384); print("PASS: offline encoder")'],check=True,timeout=120)
     files={str(p.relative_to(out)).replace('\\','/'):hashlib.sha256(p.read_bytes()).hexdigest() for p in out.rglob('*') if p.is_file()}
     (out/'bundle-manifest.json').write_text(json.dumps({'platform':'windows-x64','python':PYTHON_VERSION,'files':files},indent=2))
     name=ROOT/'release/Bandstand-windows-x64-preview'
