@@ -611,7 +611,7 @@ body[data-journey-step=summary] :is(#experimentResults,#personalResults,#writing
 .setup-sequence .settings-disclosure>summary>button:focus-visible{outline:2px solid #315d7f;outline-offset:3px}
 #journeyBrief .setup-sequence .start-row{margin:0!important;padding:0!important;border:0!important}
 
-.custom-activity{border-left:4px solid #9a6a42!important;background:#faf3ea!important}
+.custom-activity{border-left:0!important;background:transparent!important}
 .custom-activity .activity-row-heading h3{color:#85572f}
 .custom-condition-labels{color:#85572f;text-align:center;font-weight:550;margin:8px 0 14px}
 #customConditionFields>label{display:flex;flex-direction:column;gap:6px;max-width:220px;margin-top:12px}
@@ -620,3 +620,37 @@ body[data-journey-step=summary] :is(#experimentResults,#personalResults,#writing
 .tf-band-control>span{align-self:center}.tf-band-control>input{min-height:38px}
 
 .tf-plot-mode{grid-column:1/-1;justify-self:start}
+
+/* Link Activity to the selected name above its Setup / Run group. */
+body.journey-theme #journeySteps button[data-step=choose]:not([aria-current=step]){color:#6342cf!important}
+body.journey-theme #activityBranch:not(.activity-locked) #activityBranchName{color:#6342cf;overflow:visible}
+body.journey-theme #activityBranch:not(.activity-locked){border-color:#6342cf;background:#f3effb}
+body.journey-theme #activityBranchName{left:50%;transform:translateX(-50%);text-align:center}
+body.journey-theme #activityBranch:not(.activity-locked) #activityBranchName::before{content:none}
+
+#pointStatsPanel{position:fixed;right:12px;top:calc(var(--journey-header-height,90px) + 16px);z-index:160;border:0;background:transparent;padding:0;margin:0}
+#pointStatsPanel[hidden]{display:none!important}#pointStatsPanel>summary{list-style:none;border:1px solid #b8b0cf;border-radius:18px;background:#f4effa;color:#6342a0;padding:8px 15px;cursor:pointer;text-align:right;width:max-content;margin-left:auto}#pointStatsPanel>summary::-webkit-details-marker{display:none}
+.point-stats-body{width:min(370px,calc(100vw - 32px));max-height:calc(100dvh - var(--journey-header-height,90px) - 80px);overflow:auto;background:#fbfcfe;border:1px solid #dce0ea;border-radius:12px;box-shadow:0 8px 28px #23375020;padding:16px;margin-top:8px}
+.point-stats-heading{display:flex;align-items:center;justify-content:space-between}.point-stats-heading h3{margin:0}.point-stats-heading button{padding:4px 10px}.point-stats-controls{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}.point-stats-controls label{display:flex;flex-direction:column;gap:5px;font-size:12px;min-width:0}.point-stats-controls select,.point-stats-controls input{width:100%;box-sizing:border-box;min-width:0}.point-stats-controls label:has(#pointCorrection),.point-stats-controls label:has(#pointAuto){grid-column:1/-1}.point-stats-controls label:has(#pointAuto){flex-direction:row;align-items:center}.point-stats-controls #pointAuto{width:auto}.point-stats-controls label[hidden]{display:none}#pointStatsOutput h4{margin:16px 0 4px}#pointStatsOutput canvas{width:100%;height:120px}#pointStatsOutput table{font-size:10px;width:100%;border-collapse:collapse}#pointStatsOutput td,#pointStatsOutput th{padding:4px 2px;text-align:right}#pointStatsOutput .point-significant{background:#ede5f7;color:#583487}#pointStatsOutput small{font-size:11px;color:#6e7c88}#pointStatsStatus{font-size:12px}
+/* Provisional statistics keeps analysis controls together. */
+#statsSpectralControls{padding:0 0 14px;border-bottom:1px solid #e2dce9;margin-bottom:12px}#statsSpectralControls[hidden]{display:none}#statsSpectralControls .tf-band-control{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}#statsSpectralControls .tf-band-control>span{grid-column:1/-1}#statsSpectralControls .tf-band-control input{width:100%;min-width:0}#statsSpectralControls>label{display:flex;flex-direction:column;gap:5px;font-size:12px}#statsSpectralControls select{width:100%}.point-stats-controls label:has(#pointAnnotate){grid-column:1/-1;flex-direction:row;align-items:center}.point-stats-controls #pointAnnotate{width:auto}#pointStatsPanel .point-stats-body>button{font-size:12px;padding:7px 10px;margin:3px 5px 3px 0}#pointStatsPanel>summary{font-size:12px}
+
+/* Session tools share one action row; their contents open separately. */
+#pointStatsPanel{position:relative;inset:auto;z-index:160;display:inline-block}
+#pointStatsPanel>summary,#supplementalResults>summary,.session-actions button{display:flex;align-items:center;gap:7px;list-style:none;margin:0;border:1px solid #ccd7e3;border-radius:8px;padding:9px 13px;background:#f4f7fb;color:#304e68;font-size:13px;font-weight:500;cursor:pointer}
+#pointStatsPanel>summary{color:#65469a;background:#f4effa}
+#supplementalResults{padding:0;margin:0;border:0;background:transparent}
+#supplementalResults>summary::-webkit-details-marker{display:none}
+.result-action-icon{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.point-stats-body,.supplemental-body{position:fixed;right:16px;top:calc(var(--journey-header-height,90px) + 12px);z-index:165;max-height:calc(100dvh - var(--journey-header-height,90px) - 42px);overflow:auto}
+.supplemental-body{width:min(440px,calc(100vw - 32px));padding:16px;background:#fbfcfe;border:1px solid #dce0ea;border-radius:12px;box-shadow:0 8px 28px #23375020}
+.supplemental-body>.panel{margin:0;padding:0;border:0;background:none}
+.graph-significance{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 12px;font-size:11px;color:#66758a}
+.graph-significance label{display:flex;flex-direction:row;align-items:center;gap:5px;margin:0;font-size:11px}
+.graph-significance input{width:auto;margin:0}.graph-significance select{width:auto;padding:4px 6px;font-size:11px}
+.run-stats-actions{margin:8px 0}
+
+.graph-significance-status{flex-basis:100%;font-size:10px;color:#78658c}.graph-significance-status[hidden]{display:none}
+
+/* Keep the no-headset entry point available in the connection controls. */
+body.journey-theme #headsetSetup .connection #previewSource{display:inline-flex;align-items:center;padding:7px 10px;border:1px solid var(--line);border-radius:8px;font-size:12px;white-space:nowrap;text-decoration:none}

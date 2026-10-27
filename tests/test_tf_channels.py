@@ -5,6 +5,11 @@ from tf_analysis import channel_windows,summarize_tf
 class TFChannelTests(unittest.TestCase):
  def signals(self):
   t=np.arange(-2,12+1/FS,1/FS);x=np.tile((10*np.sin(2*np.pi*10*t))[:,None],(1,4));return t,x
+ def test_single_frequency_bin(self):
+  t,x=self.signals();r=channel_windows(x,x,t,[2,12],DEFAULT_THRESHOLDS)
+  trials=[dict(index=0,condition_index=0,spectral_channels=r)];session=dict(conditions=['Open','Closed'],minimum=10)
+  peak=summarize_tf(trials,session,[10,10]);off=summarize_tf(trials,session,[20,20])
+  self.assertGreater(peak['channels']['TP10']['groups'][0]['mean'],off['channels']['TP10']['groups'][0]['mean']+20)
  def test_missing_channel_does_not_reject_others(self):
   t,x=self.signals();x[:,0]=np.nan;y=Filters(notch_only=True).process(x)
   self.assertTrue(np.isfinite(y[:,1:]).all())

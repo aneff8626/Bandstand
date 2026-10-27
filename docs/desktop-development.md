@@ -49,3 +49,7 @@ Before publication: run automated tests, sign with the persistent Developer ID, 
 - Confirm production configuration is refused and ordinary launch remains unchanged.
 
 Second-Mac and physical-headset checks cannot be claimed from a local packaged smoke test.
+
+### Local installation and rollback retention
+
+Use `python scripts/install_desktop.py` after building. It verifies the Developer ID signature before installation. Applications contains only `Bandstand.app`; one previous verified bundle lives in `~/Library/Application Support/Bandstand Updates/Previous.app`. Each installation replaces that generated rollback bundle instead of creating numbered backup apps. Participant recordings and settings are outside these bundles and are untouched. The installer does not quit a running recording; reopen after saving the session to load the new build. An `Installing.app` left by an interrupted copy requires inspection before retrying.

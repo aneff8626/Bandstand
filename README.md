@@ -2,9 +2,11 @@
 
 ## Download and install
 
-**[Download Bandstand build 17 for macOS (Apple Silicon, macOS 14+)](https://github.com/aneff8626/Bandstand/releases/download/v0.3.0-alpha.13/Bandstand-0.3.0-build17-macos-arm64.zip)**
+**[Download current preview: build 34 for macOS (Apple Silicon, macOS 14+)](https://github.com/aneff8626/Bandstand/releases/tag/v0.3.0-alpha.14)**
 
-Unzip, drag **Bandstand.app** into **Applications**, and open it. Ordinary use needs no terminal or agent. The release is Developer ID signed and Apple notarized.
+Download the app ZIP under Assets (not Source code), unzip, and drag **Bandstand.app** into **Applications**. No terminal or agent is needed for ordinary use. Build 34 is Developer ID signed, but **not notarized**: Apple's saved credentials need renewal, so macOS may block first launch. The [older notarized build 17](https://github.com/aneff8626/Bandstand/releases/tag/v0.3.0-alpha.13) remains available but lacks recent changes.
+
+**No headset?** Continue without an account, then select **Try synthetic EEG** on Headset. Choose an activity, configure it, and run it. Simulated recordings are labeled; in Results, include **Test sessions** or select all recording qualities to find them. Synthetic results demonstrate the interface, not actual brain measurements or validated personality predictions. **Use headset** leaves simulation mode. Some tasks require imported stimuli; typing capture additionally requires macOS permissions.
 
 ## Contributors: edit without rebuilding the app
 

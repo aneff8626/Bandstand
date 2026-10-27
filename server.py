@@ -36,6 +36,9 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/api/sessions':
                 from session_store import saved_sessions
                 return self.send(200,dumps(saved_sessions(DATA_ROOT)))
+            if path.startswith('/api/point-statistics/'):
+                from point_statistics import request_point_statistics
+                return self.send(200,dumps(request_point_statistics(engine,self.path)))
             if path.startswith('/api/tf-band/'):
                 parts=path.split('/');return self.send(200,dumps(engine.result_band(parts[3],parts[4],parts[5])))
             if path.startswith('/api/results/'):

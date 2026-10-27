@@ -71,6 +71,9 @@ def dispatch(path,body):
     if path=='sessions/delete':
         from session_store import delete_session
         return delete_session(engine,body,DATA_ROOT)
+    if path.startswith('point-statistics/'):
+        from point_statistics import request_point_statistics
+        return request_point_statistics(engine,path)
     if path.startswith('tf-band/'):
         parts=path.split('/');return engine.result_band(parts[1],parts[2],parts[3])
     if path.startswith('results/'):

@@ -574,21 +574,24 @@ class Engine:
             return clean(dict(typing=self.typing.status(),developer=self.developer.status(),source=self.source,status=self.status,stale=stale,live_artifacts=current_artifacts,artifact_regions=list(self.artifact_regions),motion=self.motion_state(),motion_trace={k:list(v) for k,v in self.motion_samples.items()},live_spectra=self.live_spectra(stale),contact=self.contact_state(),quality=[] if stale else self.quality,band=None if stale else self.band,trace=dict(times=list(self.times)[-FS*8::2],values=list(self.filtered)[-FS*8::2]),session=self.session,analysis=self.analysis(),notifications=list(self.notifications),packet_loss=self.assembler.missing))
     def result_band(self,ident,low,high):
         band=[float(low),float(high)]
-        if not all(math.isfinite(v) for v in band) or not 2<=band[0]<band[1]<=40:raise ValueError('Choose 2 ≤ low < high ≤ 40 Hz')
+        if not all(math.isfinite(v) for v in band) or not 2<=band[0]<=band[1]<=40:raise ValueError('Choose 2 ≤ low ≤ high ≤ 40 Hz')
         view=self.saved_view(ident)
         if view.session['mode']!='tf':raise ValueError('Frequency review requires a time-frequency session')
         with view.lock:
+            if band[0]==band[1]:band=[round(band[0]*2)/2]*2
             view.review_band=band;view.cache_revision=None
             return dict(session=view.session,analysis=view.analysis())
 
     def result_window(self,ident,start,end,channel=None):
         import copy
         start,end=float(start),float(end)
-        if not (math.isfinite(start) and math.isfinite(end) and 0<=start<end<=.8): raise ValueError('Choose 0 ≤ start < end ≤ 800 ms')
+        if not (math.isfinite(start) and math.isfinite(end) and -.2<=start<=end<=.8): raise ValueError('Choose -200 ≤ start ≤ end ≤ 800 ms')
         source=self.saved_view(ident)
         with source.lock:
             view=object.__new__(Engine);view.lock=threading.RLock();view.session=copy.deepcopy(source.session);view.trials=copy.deepcopy(source.trials)
         if view.session['mode']!='erp': raise ValueError('Window review is available for ERP recordings')
+        if start==end and view.trials:
+            grid=np.asarray(view.trials[0]['times']);start=end=float(grid[np.argmin(abs(grid-start))])
         if channel is not None:
             if view.session.get('protocol')!='speller' or channel not in view.session['channels']:raise ValueError('Choose a speller electrode')
             view.session.setdefault('speller_review_windows_ms',{})[channel]=[start*1000,end*1000]
@@ -596,7 +599,7 @@ class Engine:
             return dict(session=view.session,analysis=view.analysis())
         original=view.session['window'];view.session.update(window=[start,end],review_window=True,original_window=original,running=False)
         grid=np.asarray(view.trials[0]['times']) if view.trials else np.array([]);mask=(grid>=start)&(grid<=end)
-        if len(grid) and mask.sum()<2: raise ValueError('Select a window containing at least two samples')
+        if len(grid) and mask.sum()<1: raise ValueError('Select a window containing at least one sample')
         def feature(wave):
             values=np.asarray(wave)[mask]
             return float(grid[mask][np.argmin(values) if view.session['polarity']=='negative' else np.argmax(values)]*1000) if view.session['metric']=='latency' else float(values.mean())

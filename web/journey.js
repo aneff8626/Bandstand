@@ -52,7 +52,7 @@ function initJourney(){
  // Make both recording displays visible by default, while retaining one-click hiding.
  $('stage').classList.remove('results-collapsed');$('liveResultsToggle').textContent='Hide EEG & analysis';$('liveResultsToggle').setAttribute('aria-expanded','true');
  $('headsetSetup').open=true;labTypeChosen=true;buildProtocols();
- initWritingRunWorkspace();initHeadsetDisplay();initLabSetupSequence();journeyReady=true;journeySetStep('headset');journeyTick();setInterval(journeyTick,300);
+ initPointStats();initWritingRunWorkspace();initHeadsetDisplay();initLabSetupSequence();journeyReady=true;journeySetStep('headset');journeyTick();setInterval(journeyTick,300);
 }
 function journeyTick(){
  if(!journeyReady||journeyLeavingTyping)return;
@@ -365,7 +365,7 @@ function sessionQuality(r){
 }
 
 function mountSessionActions(host,record,onDeleted){
- host.dataset.actionSession=record.id;host.querySelector('.session-actions')?.remove();const header=personalElement('div',undefined,'session-actions'),buttons=personalElement('div',undefined,'button-row');header.append(buttons);
+ host.dataset.actionSession=record.id;for(const id of ['pointStatsPanel','supplementalResults']){const tool=$(id);if(tool&&host.contains(tool))document.body.append(tool)}host.querySelector('.session-actions')?.remove();const header=personalElement('div',undefined,'session-actions'),buttons=personalElement('div',undefined,'button-row');header.append(buttons);
  const readStars=()=>{try{return new Set(JSON.parse(localStorage.getItem('bandstandStarredSessions')||'[]'))}catch{return new Set()}};
  const star=personalButton('',()=>{const stars=readStars();stars.has(record.id)?stars.delete(record.id):stars.add(record.id);localStorage.setItem('bandstandStarredSessions',JSON.stringify([...stars]));updateStar()});
  const updateStar=()=>{const selected=readStars().has(record.id);star.textContent=selected?'★ Starred':'☆ Star';star.setAttribute('aria-pressed',String(selected))};updateStar();buttons.append(star);
@@ -373,7 +373,7 @@ function mountSessionActions(host,record,onDeleted){
   const dialog=personalElement('dialog',undefined,'session-delete-dialog');dialog.setAttribute('aria-label','Delete local session data');dialog.append(personalElement('h2','Delete this session?'),personalElement('p',`${record.title||record.kind} · ${new Date(record.date*1000).toLocaleString()}`),personalElement('p','This permanently removes this session’s local recording, answers, processed data and app-managed exports. Shared ERP copies and files you copied elsewhere are not removed.'));
   if(record.recordType==='writing')dialog.append(personalElement('p','Local decoder caches and learned models will also be cleared and can be rebuilt from your remaining recordings.'));
   const status=personalElement('p');status.setAttribute('role','status');const actions=personalElement('div',undefined,'button-row'),cancel=personalButton('Cancel',()=>dialog.close()),confirm=personalButton('Delete this session',async()=>{confirm.disabled=true;try{await api('sessions/delete',{id:record.id,kind:record.recordType,confirmation:record.id});const stars=readStars();stars.delete(record.id);localStorage.setItem('bandstandStarredSessions',JSON.stringify([...stars]));deletedSessionIds.add(record.id);resultsViews.clear();resultsHistoryIndex=0;history.replaceState({},'');individualSessionReturn=null;selectedResult=null;journeyFreshResult=false;renderRevision='';$('personalResultsBody')?.replaceChildren();$('savedWritingSession')?.replaceChildren();dialog.close();onDeleted();showResultsBrowser('library')}catch(error){status.textContent=error.message;confirm.disabled=false}});confirm.className='danger';actions.append(cancel,confirm);dialog.append(status,actions);dialog.addEventListener('close',()=>dialog.remove(),{once:true});document.body.append(dialog);dialog.showModal();cancel.focus();
- });remove.className='session-delete';remove.disabled=Boolean(record.synthetic||record.importedResult||String(record.id).startsWith('import-'));if(remove.disabled)remove.title='This is an imported or invented preview, not a local recorded session.';buttons.append(remove);
+ });remove.prepend(statsIcon('trash'));remove.className='session-delete';remove.disabled=Boolean(record.synthetic||record.importedResult||String(record.id).startsWith('import-'));if(remove.disabled)remove.title='This is an imported or invented preview, not a local recorded session.';buttons.append(remove);
  const summary=host.querySelector(':scope > summary');if(summary)summary.after(header);else host.prepend(header);
 }
 

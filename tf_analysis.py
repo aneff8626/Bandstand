@@ -24,6 +24,7 @@ def channel_windows(raw,notched,times,window,thresholds):
 
 def summarize_tf(trials,session,band):
  frequencies=np.arange(2,40.01,.5);weights=np.maximum(0,np.minimum(frequencies+.25,band[1])-np.maximum(frequencies-.25,band[0]));channels={};rejections=[]
+ if band[0]==band[1]:weights[:]=0;weights[int(np.argmin(abs(frequencies-band[0])))]=.5
  for name in CHANNELS:
   groups=[];rejected=[]
   for ci,label in enumerate(session['conditions']):
