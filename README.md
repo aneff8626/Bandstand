@@ -10,7 +10,7 @@ Download the app ZIP under Assets (not Source code), unzip, and drag **Bandstand
 
 ## Windows preview
 
-**[Download Windows x64 preview 1](https://github.com/aneff8626/Bandstand/releases/tag/v0.3.0-windows-preview.1)** — extract the entire ZIP and double-click **Launch Bandstand.cmd**. Python is bundled; WebView2 is required. This portable preview is not Windows-code-signed. See the [Windows setup and acceptance checklist](docs/windows-preview.md). Bluetooth and across-app typing are not implemented on Windows; this preview uses clearly labeled synthetic EEG.
+**[Download Windows x64 preview 2](https://github.com/aneff8626/Bandstand/releases/tag/v0.3.0-windows-preview.2)** — extract the entire ZIP and double-click **Launch Bandstand.cmd**. Python is bundled; WebView2 is required. This portable preview is not Windows-code-signed. See the [Windows setup and acceptance checklist](docs/windows-preview.md). Muse Bluetooth is experimental and awaiting physical headset validation. The app starts with clearly labeled synthetic EEG; choose Connect Muse to try live EEG. Across-app typing remains unavailable on Windows.
 
 ## Contributors: edit without rebuilding the app
 

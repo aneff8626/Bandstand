@@ -42,8 +42,10 @@ The checked entries indicate implemented code, not second-computer acceptance. W
 
 [Download](https://github.com/aneff8626/Bandstand/releases/tag/v0.3.0-windows-preview.1) · [Windows CI evidence](https://github.com/aneff8626/Bandstand/actions/runs/40540970510). The first-PC acceptance items above remain open.
 
-## Experimental Bluetooth (next preview)
+## Experimental Bluetooth (preview 2)
 
 Choose **Connect Muse · experimental** in Headset. Turn Windows Bluetooth on, keep one Muse nearby, and close other apps connected to it. No pairing-code workflow is required by Bandstand. Scanning takes about eight seconds; connection may take another fifteen. The app displays scan, connection, missing-device and stream-timeout status. Disconnect stops acquisition; reconnect begins a fresh stream. Stop recordings before changing sources. Use the synthetic EEG toggle to return to demos.
 
 This uses the same four-channel Muse packet format and p21 preset as the Mac transport, through Bleak's Windows backend on a background thread. Hardware compatibility, adapter reliability and Windows Bluetooth permissions still need testing on a real PC. Motion and pulse are not yet supported by this Windows transport. The preview continues to store records in its separate local folder; real sessions are labeled live, synthetic sessions simulation.
+
+Preview 2: [Download experimental Bluetooth build](https://github.com/aneff8626/Bandstand/releases/tag/v0.3.0-windows-preview.2). Windows CI run 40556817290 passed 234 Python tests, 30 JavaScript tests, packaged service/WebView2 startup and offline encoder. Physical headset testing remains outstanding.
