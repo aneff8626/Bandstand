@@ -9,9 +9,10 @@ permissions:
   contents: read
 jobs:
   mac:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 45
     env:
+      MACOSX_DEPLOYMENT_TARGET: '14.0'
       PYTHONDONTWRITEBYTECODE: '1'
       BANDSTAND_UNSIGNED_BUILD: '1'
       BANDSTAND_VERSION: '0.3.0'
