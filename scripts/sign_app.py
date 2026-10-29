@@ -19,6 +19,9 @@ def sign(app):
     command=['codesign','--force','--options','runtime','--timestamp','--sign',identity]
     for binary in macho_files(app):
         subprocess.run(command+[str(binary)],check=True)
+    # Seal Sparkle's nested code bundles from the inside out after their Mach-O files.
+    for bundle in sorted((p for p in app.rglob('*') if p.is_dir() and not p.is_symlink() and p.suffix in ('.app','.xpc','.framework')),key=lambda p:len(p.parts),reverse=True):
+        subprocess.run(command+[str(bundle)],check=True)
     subprocess.run(command+[str(app)],check=True)
     subprocess.run(['codesign','--verify','--deep','--strict',str(app)],check=True)
     result=subprocess.run(['codesign','-d','-r-',str(app)],capture_output=True,text=True,check=True)

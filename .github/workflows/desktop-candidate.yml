@@ -1,0 +1,44 @@
+name: Desktop Candidate
+on:
+  pull_request:
+    branches: [codex/desktop-release]
+  workflow_dispatch:
+  push:
+    branches: [codex/desktop-release]
+permissions:
+  contents: read
+jobs:
+  mac:
+    runs-on: macos-14
+    timeout-minutes: 45
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      BANDSTAND_UNSIGNED_BUILD: '1'
+      BANDSTAND_VERSION: '0.3.0'
+      BANDSTAND_BUILD: '${{ github.run_number }}00'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Isolated bundled Python
+        run: |
+          echo "BANDSTAND_DATA_DIR=$RUNNER_TEMP/test-data" >> "$GITHUB_ENV"
+          uv python install 3.12
+          uv venv --python 3.12
+          uv pip install -r requirements.txt
+      - run: .venv/bin/python -m unittest discover -s tests
+      - run: node --test tests/*.cjs
+      - run: .venv/bin/python scripts/prepare_public_model.py
+      - run: .venv/bin/python scripts/build_desktop.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Bandstand-macos-unsigned
+          path: release/UNSIGNED-*.zip
+          if-no-files-found: error
+          retention-days: 14
