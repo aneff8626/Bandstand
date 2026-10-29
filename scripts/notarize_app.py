@@ -31,7 +31,7 @@ def main():
     (app.parent/'notarization.json').write_text(json.dumps({'id':submission,'status':result.get('status','Submitted')},indent=2))
     if result.get('status')!='Accepted':
         print('Run again with --resume',submission,'after Apple finishes. No acceptance claimed.')
-        return
+        raise SystemExit(2)
     run('xcrun','stapler','staple',str(app))
     run('xcrun','stapler','validate',str(app))
     run('codesign','--verify','--deep','--strict',str(app))

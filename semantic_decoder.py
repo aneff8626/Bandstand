@@ -5,7 +5,7 @@ import os
 os.environ.setdefault('HF_HUB_OFFLINE','1')
 os.environ.setdefault('HF_HUB_DISABLE_TELEMETRY','1')
 os.environ.setdefault('TOKENIZERS_PARALLELISM','false')
-import json,math,re,sys,resource,threading,time
+import json,math,re,sys,threading,time
 from pathlib import Path
 from collections import deque
 import numpy as np
@@ -14,8 +14,13 @@ MAX_PHRASES=512
 MEMORY_LIMIT=1536*1024*1024
 
 def memory_check():
- rss=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
- if sys.platform!='darwin':rss*=1024
+ if sys.platform=='win32':
+  import psutil
+  rss=psutil.Process().memory_info().peak_wset
+ else:
+  import resource
+  rss=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+  if sys.platform!='darwin':rss*=1024
  if rss>MEMORY_LIMIT:raise MemoryError('Semantic worker exceeded 1.5 GiB memory budget; recording continues')
  return rss
 

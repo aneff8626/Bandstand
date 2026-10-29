@@ -8,9 +8,15 @@ from engine import ROOT, dumps
 engine.start()
 from development import DevelopmentRefresh
 development_refresh=DevelopmentRefresh(ROOT,DATA_ROOT)
+from update_guard import UpdateGuard
+update_guard=UpdateGuard()
 
 def dispatch(path,body):
     body=body or {}
+    update_guard.check(path)
+    if path=='updates/cancel':return update_guard.cancel()
+    if path in ('updates/status','updates/prepare'):
+        return update_guard.status(engine,prepare=path=='updates/prepare')
     if path=='development/status':return development_refresh.status(engine)
     if path=='development/apply':return development_refresh.apply(engine,body.get('revision'))
     if path.startswith('personal/'):

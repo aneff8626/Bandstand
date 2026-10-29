@@ -3,6 +3,7 @@ from pathlib import Path
 from types import SimpleNamespace
 import test_point_statistics as fixtures
 from point_statistics import request_point_statistics
+from update_guard import UpdateGuard
 
 class NativeStatisticsTests(unittest.TestCase):
  def test_native_dispatch_matches_http_helper(self):
@@ -11,7 +12,7 @@ class NativeStatisticsTests(unittest.TestCase):
   engine=SimpleNamespace(saved_view=lambda ident:view)
   tree=ast.parse(Path('desktop_service.py').read_text())
   dispatch=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='dispatch')
-  namespace={'engine':engine}
+  namespace={'engine':engine,'update_guard':UpdateGuard()}
   exec(compile(ast.Module(body=[dispatch],type_ignores=[]),'desktop_service.py','exec'),namespace)
   path='point-statistics/test?low=-200&high=800&first=0&second=1&correction=none&full=true&domain=points'
   native=namespace['dispatch'](path,None)

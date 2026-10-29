@@ -42,6 +42,7 @@ final class LocalFiles: NSObject, WKURLSchemeHandler {
 }
 final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate {
     var window:NSWindow!; var web:WKWebView!; var process:Process!; var input:Pipe!; var output:Pipe!; var pending=Data()
+    let updates = AppUpdates()
     var bluetooth:Bridge?
     var typingMonitor:TypingMonitor?
     let root:URL
@@ -67,9 +68,10 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
         let log=privateURL.appendingPathComponent("desktop.log");FileManager.default.createFile(atPath:log.path,contents:nil,attributes:[.posixPermissions:0o600]);process.standardError=try? FileHandle(forWritingTo:log)
         output.fileHandleForReading.readabilityHandler={ [weak self] handle in
             let data=handle.availableData;guard !data.isEmpty,let s=self else{return}
-            DispatchQueue.main.async {s.pending.append(data);while let range=s.pending.range(of:Data([10])) {let line=s.pending.subdata(in:0..<range.lowerBound);s.pending.removeSubrange(0..<range.upperBound);if let text=String(data:line,encoding:.utf8){s.web.evaluateJavaScript("window.museReceive(\(text))",completionHandler:nil)}}}
+            DispatchQueue.main.async {s.pending.append(data);while let range=s.pending.range(of:Data([10])) {let line=s.pending.subdata(in:0..<range.lowerBound);s.pending.removeSubrange(0..<range.upperBound);if let reply=(try? JSONSerialization.jsonObject(with:line)) as? [String:Any], s.updates.receive(reply) {continue};if let text=String(data:line,encoding:.utf8){s.web.evaluateJavaScript("window.museReceive(\(text))",completionHandler:nil)}}}
         }
         do {try process.run()} catch {let alert=NSAlert();alert.messageText="Bandstand could not start";alert.informativeText="The local analysis service is missing or could not launch. Reinstall the app or rebuild from source.";alert.runModal();NSApp.terminate(nil);return}
+        updates.start(menu:appMenu,send:{ [weak self] body in self?.sendService(body) })
         transportOutput={ [weak self] event in self?.sendService(["id":-1,"path":"bluetooth_native","body":event]) }
         if CommandLine.arguments.contains("--development-smoke-output") {}
         else if CBManager.authorization == .allowedAlways { bluetooth=Bridge() }

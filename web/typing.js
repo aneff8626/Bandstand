@@ -5,9 +5,11 @@ let typingWasRunning=false,typingStarting=false;
 let typingAccessState=null,typingMarkerSequence=0,typingStopping=false,typingView=false,typingWord=null,typingChain=Promise.resolve(),typingDocTimer=null,typingPlotRevision=-1;
 function typingEvent(body){typingChain=typingChain.then(()=>api('typing/event',body)).catch(e=>{toast(e.message);$('typingStatus').textContent='Recording issue: '+e.message});return typingChain}
 function updateTypingMode(){
+ if(typeof boot!=='undefined'&&boot?.capabilities?.windows_preview&&!state?.typing?.running)$('typingCapture').value='editor';
  const running=!!state?.typing?.running,system=(running?state.typing.session?.capture:$('typingCapture').value)==='system';
  $('writingEditor').hidden=system;
  for(const [id,on] of [['typingModeEditor',!system],['typingModeSystem',system]]){$(id).setAttribute('aria-pressed',String(on));$(id).disabled=running||typingStarting;$(id).textContent=running&&on?'● Recording '+(system?'across apps':'in Bandstand'):typingStarting&&on?'Starting…':id==='typingModeEditor'?'Write in Bandstand app':'Write across all apps';}
+ if((typeof boot!=='undefined'&&boot?.capabilities?.windows_preview)){$('typingModeSystem').disabled=true;$('typingModeSystem').title='Not available in the Windows preview';}
  $('typingAccess').hidden=!system||!!typingAccessState?.available;
  $('typingCheckAccess').hidden=!system||!window.museNative||!!typingAccessState?.available;
 }
@@ -41,7 +43,7 @@ function renderTyping(){
  const preview=$('typingCapturePreview');if(preview){preview.hidden=!running;const last=d.session?.capture==='system'?d.capture_preview:{text:$('writingEditor').value.slice(-160),app:'Bandstand',at:Date.now()/1000};preview.textContent=last?.text?'Last captured: “'+redactPhrase(last.text)+'” · '+(last.app||'Another app')+' · '+new Date(last.at*1000).toLocaleTimeString():(d.session?.capture==='system'?'Waiting for typing in another app…':'Ready for your writing below…');}
  $('typingRestart').textContent=running?'Save session & continue':'Continue recording';
  $('typingRequirements').textContent=typingAccessState?.available?'Typing access available.':'Enable typing access to record across apps.';
- $('typingStart').disabled=running||active||!!state.developer?.recording||state.stale||state.source!=='live';show('typingStop',true);$('typingStop').disabled=!running;$('typingWindow').disabled=running;
+ $('typingStart').disabled=running||active||!!state.developer?.recording||state.stale||(state.source!=='live'&&!(typeof boot!=='undefined'&&boot?.capabilities?.windows_preview));show('typingStop',true);$('typingStop').disabled=!running;$('typingWindow').disabled=running;
  $('typingStatus').textContent=running?'Recording locally · space or Enter completes a word':d.session?(d.session.stop_reason||'Recording saved locally'):'Ready when you are';
  $('writingEditor').readOnly=running&&d.session?.capture==='system';
  for(const id of ['typingHistory','typingDelay','typingCapture']){$(id).disabled=running||typingStarting;}
@@ -98,7 +100,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkTypin
 async function startWriting(capture=$('typingCapture').value){
  if(typingStarting||state?.typing?.running)return;
  // Writing records live EEG only; say so before the instruction gate and participant forms, not after.
- if(state?.source!=='live'||state?.stale)return toast('Writing needs the live headset. Demo EEG cannot be used for writing; connect your Muse first.');
+ if((state?.source!=='live'&&!(typeof boot!=='undefined'&&boot?.capabilities?.windows_preview))||state?.stale)return toast('Writing needs the live headset. Demo EEG cannot be used for writing; connect your Muse first.');
  chooseTypingMode(capture);typingStarting=true;updateTypingMode();
  let started=false;
  const feedback=$('typingStartFeedback');if(feedback)feedback.textContent='Checking recording readiness…';

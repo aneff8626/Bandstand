@@ -1,3 +1,4 @@
+import os
 import json,tempfile,unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -8,7 +9,7 @@ class ParticipantContextTests(unittest.TestCase):
    e=SimpleNamespace(session={'id':'abc'},typing=SimpleNamespace(session=None),personal=SimpleNamespace(current=None))
    result=participant_context(tmp,'context',{'fields':{'subject':'Test participant'},'forms':[{'kind':'extraversion','answers':[3]*10,'skipped':False}]},e)
    p=Path(tmp)/'participant-context'/(result['id']+'.json')
-   self.assertEqual(p.stat().st_mode&0o777,0o600)
+   if os.name!='nt':self.assertEqual(p.stat().st_mode&0o777,0o600)
    self.assertEqual(json.loads(p.read_text())['forms'][0]['scores']['Extraversion'],3)
    participant_context(tmp,'context-link',{'context_id':result['id'],'session_id':'abc','kind':'start'},e)
    self.assertEqual(json.loads(p.read_text())['session_id'],'abc')

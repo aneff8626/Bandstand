@@ -1,3 +1,4 @@
+import os
 import json,stat,tempfile,unittest,uuid
 from pathlib import Path
 from unittest.mock import patch
@@ -13,7 +14,7 @@ class OutboxTests(unittest.TestCase):
   erp_outbox.enqueue(ID,'session-a','user-a','erp-sharing-v1',now=1);erp_outbox.enqueue(ID,'session-b','user-b','erp-sharing-v1',now=2)
   [item]=erp_outbox.items();self.assertEqual((item['user'],item['session'],item['state']),('user-a','session-a','pending'))
   self.assertEqual(set(item),{'id','session','user','policy','state','attempts','next_at','created','updated','error'})
-  self.assertEqual(stat.S_IMODE((erp_outbox.ROOT/f'{ID}.json').stat().st_mode),0o600)
+  if os.name!='nt':self.assertEqual(stat.S_IMODE((erp_outbox.ROOT/f'{ID}.json').stat().st_mode),0o600)
  def test_uploads_only_for_the_consenting_account(self):
   erp_outbox.enqueue(ID,'s','user-a','erp-sharing-v1',now=0)
   self.assertEqual(erp_outbox.process('user-b',lambda:True,self.upload,now=1),0);self.assertEqual(self.uploads,[])

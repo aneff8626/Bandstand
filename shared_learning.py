@@ -74,7 +74,7 @@ def _child(root,manifest,mean,scale,weights,out):
  import os
  from cumulative_semantic import connect
  try:os.nice(10)  # best effort; restricted environments may refuse priority changes
- except OSError:pass
+ except (OSError,AttributeError):pass
  db=None
  try:
   db=connect(root)

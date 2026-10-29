@@ -16,12 +16,14 @@ BACKEND=backend_config.validate(json.loads(Path(BACKEND_FILE).read_text())) if B
 TARGET=BACKEND['name'] if BACKEND else 'production'
 # Persistent certificate signing is required for normal updates. Never silently
 # replace a permission-bearing app with a different ad-hoc identity.
+UNSIGNED=os.environ.get('BANDSTAND_UNSIGNED_BUILD')=='1'
 SIGN_ID=os.environ.get('BANDSTAND_SIGN_IDENTITY','').strip()
-if not SIGN_ID or SIGN_ID=='-':
- raise SystemExit('Set BANDSTAND_SIGN_IDENTITY to a persistent code-signing certificate. Ad-hoc release builds invalidate macOS permissions and are disabled.')
-identities=subprocess.run(['/usr/bin/security','find-identity','-v','-p','codesigning'],capture_output=True,text=True,check=True).stdout
-if SIGN_ID not in identities:
- raise SystemExit('Requested signing identity is unavailable. Existing application has not been changed.')
+if not UNSIGNED:
+ if not SIGN_ID or SIGN_ID=='-':raise SystemExit('Set BANDSTAND_SIGN_IDENTITY; unsigned CI artifacts are not distributable.')
+ identities=subprocess.run(['/usr/bin/security','find-identity','-v','-p','codesigning'],capture_output=True,text=True,check=True).stdout
+ if SIGN_ID not in identities:raise SystemExit('Requested signing identity is unavailable.')
+from fetch_sparkle import fetch, PUBLIC_KEY, FEED
+sparkle=fetch(ROOT/'build/sparkle')
 
 subprocess.run([sys.executable,str(ROOT/'scripts/audit_release.py')],check=True,cwd=ROOT)
 out=ROOT/'release/Bandstand.app'
@@ -71,7 +73,10 @@ for name,digest in verified.items():
  target=app/'models/all-MiniLM-L6-v2'/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(p,target)
 info=plistlib.loads((ROOT/'Muse Lab.app/Contents/Info.plist').read_bytes())
 info.update(CFBundleName='Bandstand',CFBundleDisplayName='Bandstand',CFBundleShortVersionString=VERSION,CFBundleVersion=BUILD,BandstandDevelopmentSourceSupported=('--development-source' in (ROOT/'native/Desktop.swift').read_text() and 'validator.terminationStatus' in (ROOT/'native/Desktop.swift').read_text()),LSMinimumSystemVersion='14.0')
+info.update(SUPublicEDKey=PUBLIC_KEY,SUFeedURL=FEED,SUEnableAutomaticChecks=True,SUAutomaticallyUpdate=False,SUAllowsAutomaticUpdates=False,SUEnableSystemProfiling=False,SUVerifyUpdateBeforeExtraction=True)
 (out/'Contents/Info.plist').write_bytes(plistlib.dumps(info))
+frameworks=out/'Contents/Frameworks';frameworks.mkdir()
+shutil.copytree(sparkle/'Sparkle.framework',frameworks/'Sparkle.framework',symlinks=True)
 icon=ROOT/'Muse Lab.app/Contents/Resources/MuseLab.icns'
 if not icon.exists():
  from PIL import Image
@@ -82,21 +87,23 @@ if not icon.exists():
  icon.parent.mkdir(parents=True,exist_ok=True);Image.open(png).save(icon,format='ICNS')
 shutil.copy2(icon,resources/'MuseLab.icns')
 mac=out/'Contents/MacOS';mac.mkdir()
-subprocess.run(['/usr/bin/swiftc','-module-cache-path',str(ROOT/'build/module-cache'),str(ROOT/'native/Desktop.swift'),str(ROOT/'native/MuseTransport.swift'),str(ROOT/'native/TypingMonitor.swift'),'-o',str(mac/'MuseLab'),'-framework','AppKit','-framework','WebKit','-framework','CoreBluetooth','-framework','ApplicationServices','-framework','Carbon'],check=True)
+subprocess.run(['/usr/bin/swiftc','-module-cache-path',str(ROOT/'build/module-cache'),str(ROOT/'native/Desktop.swift'),str(ROOT/'native/AppUpdates.swift'),'-F',str(frameworks),'-framework','Sparkle','-Xlinker','-rpath','-Xlinker','@executable_path/../Frameworks',str(ROOT/'native/MuseTransport.swift'),str(ROOT/'native/TypingMonitor.swift'),'-o',str(mac/'MuseLab'),'-framework','AppKit','-framework','WebKit','-framework','CoreBluetooth','-framework','ApplicationServices','-framework','Carbon'],check=True)
 # Use the same certificate and bundle identifier for every update.
 from sign_app import sign
-sign(out)
+if not UNSIGNED:sign(out)
 subprocess.run([str(resources/'python/bin/python3.12'),'-c','import numpy,PIL,reportlab,ssl; from semantic_decoder import encode; assert encode(["Synthetic packaging test"]).shape == (1,384); print("Bundled runtime and offline encoder passed")'],check=True,cwd=app,env={**os.environ,"PYTHONDONTWRITEBYTECODE":"1"})
 # Runtime verification can create bytecode caches; seal the final tested bundle.
-sign(out)
-subprocess.run(['/usr/bin/codesign','--verify','--deep','--strict',str(out)],check=True)
-subprocess.run([sys.executable,str(ROOT/'scripts/smoke_development.py'),str(out)],check=True)
+if not UNSIGNED:sign(out)
+if not UNSIGNED:subprocess.run(['/usr/bin/codesign','--verify','--deep','--strict',str(out)],check=True)
+if not UNSIGNED:subprocess.run([sys.executable,str(ROOT/'scripts/smoke_development.py'),str(out)],check=True)
 manifest={str(p.relative_to(out)):hashlib.sha256(p.read_bytes()).hexdigest() for p in out.rglob('*') if p.is_file()}
-(ROOT/'release/bundle-manifest.json').write_text(json.dumps({'version':VERSION,'architecture':'arm64','backend':TARGET,'dependencies':versions,'files':manifest},indent=2))
+(ROOT/'release/bundle-manifest.json').write_text(json.dumps({'version':VERSION,'architecture':'arm64','backend':TARGET,'signed':not UNSIGNED,'dependencies':versions,'files':manifest},indent=2))
 archive=ROOT/(f'release/Bandstand-{VERSION}-build{BUILD}-macos-arm64.zip' if TARGET=='production' else f'release/Bandstand-{VERSION}-build{BUILD}-{TARGET}-macos-arm64.zip')
 if archive.exists():archive.unlink()
 subprocess.run(['/usr/bin/ditto','-c','-k','--sequesterRsrc','--keepParent',str(out),str(archive)],check=True)
+if UNSIGNED:
+ unsigned=archive.with_name('UNSIGNED-'+archive.name);archive.rename(unsigned);archive=unsigned
 digest=hashlib.sha256(archive.read_bytes()).hexdigest()
 archive.with_suffix('.zip.sha256').write_text(digest+'  '+archive.name+'\n')
 print(archive)
-print('Signature verified. Clean-Mac Gatekeeper/notarization acceptance still required; this is not an installation-pass claim.')
+print('Unsigned CI candidate only; do not distribute.' if UNSIGNED else 'Signature verified. Clean-Mac Gatekeeper/notarization acceptance still required; this is not an installation-pass claim.')

@@ -8,6 +8,10 @@ Download the app ZIP under Assets (not Source code), unzip, and drag **Bandstand
 
 **No headset?** Continue without an account, then select **Try synthetic EEG** on Headset. Choose an activity, configure it, and run it. Simulated recordings are labeled; in Results, include **Test sessions** or select all recording qualities to find them. Synthetic results demonstrate the interface, not actual brain measurements or validated personality predictions. **Use headset** leaves simulation mode. Some tasks require imported stimuli; typing capture additionally requires macOS permissions.
 
+## Windows preview
+
+**[Download Windows x64 preview 2](https://github.com/aneff8626/Bandstand/releases/tag/v0.3.0-windows-preview.2)** — extract the entire ZIP and double-click **Launch Bandstand.cmd**. Python is bundled; WebView2 is required. This portable preview is not Windows-code-signed. See the [Windows setup and acceptance checklist](docs/windows-preview.md). Muse Bluetooth is experimental and awaiting physical headset validation. The app starts with clearly labeled synthetic EEG; choose Connect Muse to try live EEG. Across-app typing remains unavailable on Windows.
+
 ## Contributors: edit without rebuilding the app
 
 Install build 17 once, clone this repository, and check out **`codex/desktop-release`**. Copy `backend.development.example.json` to the ignored `backend.json`, configure local Supabase or staging with a publishable client key, then run `python3 scripts/launch_development.py`. Quit other Bandstand windows first. The shell uses bundled Python and your checkout's web/Python code. Use `git pull --ff-only` to receive merged changes. While idle on Headset, Activity or Results, CSS refreshes in place and compatible web/Python changes reload in the same window. Recordings, fitting and open forms defer updates; no new download is needed for compatible edits.
@@ -267,3 +271,7 @@ Writing decoder Activity setup offers **Write in Bandstand app** (local editor, 
 The optional MaRs-IB short test provides a live **reference-sample reasoning estimate**, not a validated full-scale IQ score. Its EEG comparison is a clearly labeled synthetic demonstration. [Methods and limitations](docs/matrix-reasoning.md). **License exception:** the original matrix stimulus images are [CC BY-NC 3.0](docs/matrix-stimulus-license.md), not MIT; commercial use requires permission or replacement images.
 
 Original Bandstand pilot puzzles are now randomly interspersed, with responses saved separately for future calibration. They do not affect the reference percentile. [Original-bank design, local inventory and validation plan](docs/matrix-original-bank.md). The mixed app still contains noncommercial MaRs-IB assets.
+
+### Desktop update work
+
+See [desktop updates and release ownership](docs/desktop-updates.md) for the tested implementation, signing boundary and remaining activation checks. Automatic updates are not live until the first notarized updater build is published.
