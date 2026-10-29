@@ -2,7 +2,7 @@
 
 ## Download and install
 
-**[Download current preview: build 34 for macOS (Apple Silicon, macOS 14+)](https://github.com/aneff8626/Bandstand/releases/tag/v0.3.0-alpha.14)**
+**[Download current app: build 600 for macOS (Apple Silicon, macOS 14+)](https://github.com/aneff8626/Bandstand/releases/tag/v0.3.0-build600)**
 
 Download the app ZIP under Assets (not Source code), unzip, and drag **Bandstand.app** into **Applications**. No terminal or agent is needed for ordinary use. Build 34 is Developer ID signed, but **not notarized**: Apple's saved credentials need renewal, so macOS may block first launch. The [older notarized build 17](https://github.com/aneff8626/Bandstand/releases/tag/v0.3.0-alpha.13) remains available but lacks recent changes.
 
@@ -14,7 +14,7 @@ Download the app ZIP under Assets (not Source code), unzip, and drag **Bandstand
 
 ## Contributors: edit without rebuilding the app
 
-Install build 17 once, clone this repository, and check out **`codex/desktop-release`**. Copy `backend.development.example.json` to the ignored `backend.json`, configure local Supabase or staging with a publishable client key, then run `python3 scripts/launch_development.py`. Quit other Bandstand windows first. The shell uses bundled Python and your checkout's web/Python code. Use `git pull --ff-only` to receive merged changes. While idle on Headset, Activity or Results, CSS refreshes in place and compatible web/Python changes reload in the same window. Recordings, fitting and open forms defer updates; no new download is needed for compatible edits.
+Install the current desktop release once, clone this repository, and check out **`codex/desktop-release`**. Copy `backend.development.example.json` to the ignored `backend.json`, configure local Supabase or staging with a publishable client key, then run `python3 scripts/launch_development.py`. Quit other Bandstand windows first. The shell uses bundled Python and your checkout's web/Python code. Use `git pull --ff-only` to receive merged changes. While idle on Headset, Activity or Results, CSS refreshes in place and compatible web/Python changes reload in the same window. Recordings, fitting and open forms defer updates; no new download is needed for compatible edits.
 
 All PRs target **`codex/desktop-release`**; releases are cut from it. Work on separate feature branches. New Python dependencies or Swift/native-interface changes need a new contributor build. [Development setup, backend configuration, and second-Mac acceptance checklist](docs/desktop-development.md).
 
@@ -274,4 +274,4 @@ Original Bandstand pilot puzzles are now randomly interspersed, with responses s
 
 ### Desktop update work
 
-See [desktop updates and release ownership](docs/desktop-updates.md) for the tested implementation, signing boundary and remaining activation checks. Automatic updates are not live until the first notarized updater build is published.
+See [desktop updates and release ownership](docs/desktop-updates.md) for the tested implementation, signing boundary and remaining activation checks. Published Mac builds 400 and newer include **Bandstand → Check for Updates…**. Updates require your choice to download/install and relaunch; they do not silently install on opening.
