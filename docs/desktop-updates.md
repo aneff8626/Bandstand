@@ -29,6 +29,8 @@ Contributors can change application behavior through merged code. This separatio
 - [ ] CI build and private signing workflow complete successfully against the integration branch.
 - [x] Owner refreshed the local notarization Keychain profile; Apple authentication now succeeds.
 - [x] Local build 200 passed Apple notarization, stapling, strict code-signature verification and Gatekeeper. Submission: `ee73661e-818f-4eac-9078-4a8b74c2334f`. The archive is prepared locally, not published.
+- [x] Final ZIP extracted into a temporary installation directory and passed signature, staple and Gatekeeper checks there too.
+- [x] Final archive signed with the dedicated updater key; public-key verification, byte length and SHA256 match. A deliberately altered archive fails signature verification. Local feed and provenance files are prepared; neither is published.
 - [ ] Install older/newer updater-enabled notarized builds and verify actual upgrade, preserved local data and permissions, offline startup, invalid-update rejection, and recording deferral.
 - [ ] Enable automatic release polling only after the preceding checks pass.
 
