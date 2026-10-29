@@ -47,6 +47,11 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
     var typingMonitor:TypingMonitor?
     let root:URL
     init(root:URL) {self.root=root}
+    @objc func showAbout() {
+        let version=Bundle.main.object(forInfoDictionaryKey:"CFBundleShortVersionString") as? String ?? "Unknown"
+        let build=Bundle.main.object(forInfoDictionaryKey:"CFBundleVersion") as? String ?? "Unknown"
+        NSApp.orderFrontStandardAboutPanel(options:[.applicationName:"Bandstand",.applicationVersion:version,.version:build])
+    }
     func applicationDidFinishLaunching(_ notification: Notification) {
         let config=WKWebViewConfiguration();config.setURLSchemeHandler(LocalFiles(root:root),forURLScheme:"muselab")
         config.userContentController.add(self,name:"muse")
@@ -72,6 +77,8 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
         }
         do {try process.run()} catch {let alert=NSAlert();alert.messageText="Bandstand could not start";alert.informativeText="The local analysis service is missing or could not launch. Reinstall the app or rebuild from source.";alert.runModal();NSApp.terminate(nil);return}
         updates.start(menu:appMenu,send:{ [weak self] body in self?.sendService(body) })
+        let about=NSMenuItem(title:"About Bandstand",action:#selector(showAbout),keyEquivalent:"")
+        about.target=self;appMenu.insertItem(about,at:0);appMenu.insertItem(NSMenuItem.separator(),at:1)
         transportOutput={ [weak self] event in self?.sendService(["id":-1,"path":"bluetooth_native","body":event]) }
         if CommandLine.arguments.contains("--development-smoke-output") {}
         else if CBManager.authorization == .allowedAlways { bluetooth=Bridge() }
