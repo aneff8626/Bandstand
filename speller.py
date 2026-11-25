@@ -5,20 +5,37 @@ from analysis import CHANNELS
 
 SYMBOLS='ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789 '
 
+def trial_features(trial):
+    """Fourteen 50 ms mean amplitudes over 100–800 ms for each accepted electrode (shared with the cursor)."""
+    features={};times=np.asarray(trial['times'])
+    for ch,result in trial.get('channel_trials',{}).items():
+        if not result['accepted'] or result['wave'] is None:continue
+        wave=np.asarray(result['wave'])
+        features[ch]=np.array([wave[(times>=lo)&(times<lo+.05)].mean() for lo in (.1+np.arange(14)*.05)])
+    return features
+
 def examples(engine):
     events={e['index']:e for e in engine.events if e.get('kind')=='stimulus' and 'speller' in e}
     rows=[]
     for trial in engine.trials:
         event=events.get(trial['index'])
         if not event:continue
-        meta=event['speller']; features={}
-        times=np.asarray(trial['times'])
-        for ch,result in trial.get('channel_trials',{}).items():
-            if not result['accepted'] or result['wave'] is None:continue
-            wave=np.asarray(result['wave'])
-            features[ch]=np.array([wave[(times>=lo)&(times<lo+.05)].mean() for lo in (.1+np.arange(14)*.05)])
-        rows.append(dict(features=features,group=meta['group'],line=meta['line'],target=meta.get('target'),phase=meta['phase']))
+        meta=event['speller']
+        rows.append(dict(features=trial_features(trial),group=meta['group'],line=meta['line'],target=meta.get('target'),phase=meta['phase']))
     return rows
+
+def calibration_responses(engine,task='speller'):
+    """Per-electrode mean ± approximate 95% interval of calibration flashes, by instructed condition."""
+    channels={};event_map={e['index']:e for e in engine.events if e.get('kind')=='stimulus'}
+    for ch in CHANNELS:
+        waves=[[],[]]
+        for t in engine.trials:
+            e=event_map.get(t['index'])
+            if not e or e.get(task,{}).get('phase')!='calibration':continue
+            v=t.get('channel_trials',{}).get(ch,{})
+            if v.get('accepted'):waves[t['condition_index']].append(v['wave'])
+        channels[ch]=[{'n':len(w),'mean':np.mean(w,axis=0).tolist() if w else [],'ci':(1.96*np.std(w,axis=0,ddof=1)/np.sqrt(len(w))).tolist() if len(w)>1 else []} for w in waves]
+    return channels
 
 def channel_model(x,y,start,end):
     mean=x.mean(0);scale=np.maximum(x.std(0),.1);z=((x-mean)/scale)[:,start:end]
@@ -117,16 +134,7 @@ def request(engine,body):
         if not engine.session or engine.session.get('protocol')!='speller':raise ValueError('Start a P300 spelling session first.')
         engine.process_pending()
         rows=examples(engine) if body.get('action') in ('fit','predict') else [];cal=[r for r in rows if r['phase']=='calibration'];groups=sorted({r['group'] for r in cal})
-        result={'channels':{},'flashes':len(engine.trials),'source':engine.source}
-        event_map={e['index']:e for e in engine.events if e.get('kind')=='stimulus'}
-        for ch in CHANNELS:
-            waves=[[],[]]
-            for t in engine.trials:
-                e=event_map.get(t['index'])
-                if not e or e.get('speller',{}).get('phase')!='calibration':continue
-                v=t.get('channel_trials',{}).get(ch,{})
-                if v.get('accepted'):waves[t['condition_index']].append(v['wave'])
-            result['channels'][ch]=[{'n':len(w),'mean':np.mean(w,axis=0).tolist() if w else [],'ci':(1.96*np.std(w,axis=0,ddof=1)/np.sqrt(len(w))).tolist() if len(w)>1 else []} for w in waves]
+        result={'channels':calibration_responses(engine),'flashes':len(engine.trials),'source':engine.source}
         if body.get('action')=='fit':
             if not 8<=len(groups)<=24 or any(sum(r['group']==g for r in cal)!=60 for g in groups):raise ValueError('Complete at least eight calibration letters first.')
             models,predictions,by_channel=calibrate(cal)

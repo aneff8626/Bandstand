@@ -654,3 +654,19 @@ body.journey-theme #activityBranch:not(.activity-locked) #activityBranchName::be
 
 /* Keep the no-headset entry point available in the connection controls. */
 body.journey-theme #headsetSetup .connection #previewSource{display:inline-flex;align-items:center;padding:7px 10px;border:1px solid var(--line);border-radius:8px;font-size:12px;white-space:nowrap;text-decoration:none}
+
+/* P300 direction cursor: four arrows around a 7 × 7 grid, sharing the speller's run layout. */
+body.cursor-running[data-journey-step=run] #personalSetup{display:none!important}body:not([data-journey-step=run]) #cursorRun{display:none}
+.cursor-stage{display:grid;grid-template-columns:64px minmax(0,1fr) 64px;grid-template-rows:64px auto 64px;grid-template-areas:". up ." "left grid right" ". down .";gap:8px;max-width:560px;margin:12px 0 16px;padding:14px;background:#142733;border-radius:12px}
+.cursor-arrow{display:grid;place-items:center;font-size:2.2rem;line-height:1;color:#899ba6;border-radius:8px;user-select:none}
+.cursor-arrow[data-arrow="0"]{grid-area:up}.cursor-arrow[data-arrow="1"]{grid-area:right}.cursor-arrow[data-arrow="2"]{grid-area:down}.cursor-arrow[data-arrow="3"]{grid-area:left}
+.cursor-arrow.flash{background:#fff3b2;color:#142733;font-weight:750}
+.cursor-arrow.cue-target{outline:3px solid #e4c766;background:#314f64;color:#fff;animation:speller-cue-nudge .65s ease-in-out 2}
+.cursor-grid{grid-area:grid;display:grid;grid-template-columns:repeat(7,1fr);gap:4px;aspect-ratio:1}
+.cursor-grid span{border-radius:4px;background:#1d3442}
+.cursor-grid span.cursor-trail{background:#2c5266}
+.cursor-grid span.cursor-target{background:#e4c766;box-shadow:inset 0 0 0 3px #f6dc8c}
+.cursor-grid span.cursor-dot{background:#5fd0c3;border-radius:50%;box-shadow:0 0 0 3px #142733,0 0 0 5px #5fd0c3}
+.cursor-score{font-size:.9rem}
+@media(max-width:750px){.cursor-stage{grid-template-columns:44px minmax(0,1fr) 44px;grid-template-rows:44px auto 44px}.cursor-arrow{font-size:1.6rem}}
+@media(prefers-reduced-motion:reduce){.cursor-arrow.cue-target{animation:none}}

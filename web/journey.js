@@ -15,6 +15,8 @@ function journeySetStep(step){
 async function journeyGo(step){
  if(typeof spellerRunning!=='undefined'&&spellerRunning&&step!=='run'){toast('End & save spelling before leaving Run.');return}
  if(['setup','run'].includes(step)&&chosenActivityTitle==='P300 speller'&&!spellerRunning){prepareSpeller();if(step==='run')await startSpeller();return}
+ if(typeof cursorRunning!=='undefined'&&cursorRunning&&step!=='run'){toast('End & save the cursor task before leaving Run.');return}
+ if(['setup','run'].includes(step)&&chosenActivityTitle==='P300 direction cursor'&&!cursorRunning){prepareCursor();if(step==='run')await startCursor();return}
  if(typingStarting){toast('Starting recording — please wait.');return}
  if(step!=='run'&&state?.typing?.running){await leaveTypingRun(step,true);return}
  if(['setup','run'].includes(step)&&!chosenActivityTitle){toast('Select an activity first.');return}

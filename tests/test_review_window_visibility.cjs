@@ -5,7 +5,7 @@ const c={$:id=>els[id],state:{session:{mode:'erp',protocol:'oddball',window:[.3,
 vm.createContext(c);vm.runInContext(workspace.slice(workspace.indexOf('function syncReviewWindow'),workspace.indexOf('async function updateReviewWindow')),c);
 c.syncReviewWindow();assert.equal(els.reviewWindow.hidden,false);
 for(const mode of ['tf','bio',undefined]){c.state.session={mode};c.syncReviewWindow();assert.equal(els.reviewWindow.hidden,true);}
-c.state.session={mode:'erp',protocol:'speller'};c.syncReviewWindow();assert.equal(els.reviewWindow.hidden,true);
+for(const protocol of ['speller','cursor']){c.state.session={mode:'erp',protocol};c.syncReviewWindow();assert.equal(els.reviewWindow.hidden,true);}
 const app=fs.readFileSync(__dirname+'/../web/app.js','utf8');const fn=app.slice(app.indexOf('function drawChannelERPs(){'),app.indexOf('function drawChannelERPs(){')+1000);
 assert(fn.indexOf('syncReviewWindow()')<fn.indexOf("mode==='tf'"),'Visibility must update before spectral early return');
-console.log('ERP review controls are hidden for spectral, biofeedback and speller views.');
+console.log('ERP review controls are hidden for spectral, biofeedback, speller and cursor views.');

@@ -21,6 +21,7 @@ const activityExplanations={
  'Find Your Reset':['Try breathing, quiet attention and gratitude, with rest periods. Compare which activity changes your recorded EEG most.','A larger spectral change does not establish a better or healthier state. Eye movements, muscle activity and contact can affect power; noisy channels are screened.'],
  'Meditation practice':['Practice with a glowing circle and sound that respond to your EEG after a resting baseline.','Feedback tracks your selected frequency band and available electrodes. Changes in power are not a direct measure of meditation quality; movement and eye activity can influence the signal.'],
  'Biofeedback':['Choose a frequency band and electrodes, then train with visual and auditory feedback.','A baseline establishes the target comparison. Feedback uses usable selected channels; artifacts and missing data can interrupt it. This exercise does not establish lasting training benefits.'],
+ 'P300 direction cursor':['Four arrows flash around a grid. Count the flashes of the arrow pointing toward the target and the dot moves one step that way. Eight calibration moves (about two minutes) train a local EEG classifier; then try reaching targets. This is an experimental Muse adaptation, with no established cursor accuracy. Stop if flashing is uncomfortable.',''],
  'P300 speller':['Attend to a letter while rows and columns flash. Eight calibration letters (about three minutes) train a local EEG classifier; then try spelling. This is an experimental Muse adaptation, with no established spelling accuracy. Stop if flashing is uncomfortable.',''],
  'Writing decoder':['Write here or use the desktop app to record typing across apps. Watch tentative EEG-based phrase retrieval while your personal dataset grows.','Writing, EEG and embeddings stay local. Live suggestions are exploratory, not validated mind reading. Leaving Run stops and saves the recording; decoder settings are available in Setup.']
 };
@@ -77,7 +78,7 @@ function personalHome(area){
  activitySetupStep('personalSetup',false);
  const setup=$('personalSetupBody');setup.replaceChildren();$('personalResultsBody').replaceChildren();
  const cards=personalElement('div',undefined,'activity-list');setup.append(cards);
- const entries=area==='bci'?[['P300 speller','Calibrate, then select letters with EEG · experimental',()=>startSpeller()],['Writing decoder','Write in Bandstand or across your apps',()=>personalRoute('bci','writing')]]:area==='growth'?[
+ const entries=area==='bci'?[['P300 speller','Calibrate, then select letters with EEG · experimental',()=>startSpeller()],['P300 direction cursor','Steer a dot by counting flashing arrows · experimental',()=>startCursor()],['Writing decoder','Write in Bandstand or across your apps',()=>personalRoute('bci','writing')]]:area==='growth'?[
  ['Find Your Reset','Find the activity with the largest EEG change · about 4 minutes',()=>startPersonal('reset')],
  ['Meditation practice','Train alpha power (8–13 Hz) with live EEG feedback · 2½ minutes',()=>startPersonal('meditation')],
  ['Biofeedback','Choose a frequency band and electrodes · 2½ minutes',()=>startPersonal('biofeedback')]

@@ -89,7 +89,7 @@ function syncReviewWindow(){
  let controls=$('reviewWindow');if(!controls){controls=document.createElement('div');controls.id='reviewWindow';controls.className='review-window';controls.innerHTML='<label>Comparison window (ms)<span class="input-pair"><input id="reviewStart" type="number" min="-200" max="800" step="10" aria-label="Comparison window start"><input id="reviewEnd" type="number" min="-200" max="800" step="10" aria-label="Comparison window end"></span></label><button id="reviewReset">Reset to recorded window</button><p id="reviewStatus" class="muted"></p><p class="muted">Enter a range or drag across an ERP plot to update comparisons automatically. Drag the top or bottom of the left axis to scale; double-click to reset. Window exploration is post hoc; p-values are uncorrected. Exports retain the recorded analysis window.</p>';$('resultExperiment').closest('label').after(controls);
  for(const id of ['reviewStart','reviewEnd'])$(id).oninput=()=>{clearTimeout(reviewTimer);reviewTimer=setTimeout(updateReviewWindow,180)};
  $('reviewReset').onclick=()=>{const s=selectedResult?.session||state.session,w=s.original_window||s.window;$('reviewStart').value=Math.round(w[0]*1000);$('reviewEnd').value=Math.round(w[1]*1000);updateReviewWindow()};}
- controls.hidden=state.session?.mode!=='erp'||state.session?.protocol==='speller';if(state.session?.mode!=='erp'){clearTimeout(reviewTimer);++reviewRequest;previewReviewWindow=null;reviewChannel=null;}if(controls.hidden)return;
+ controls.hidden=state.session?.mode!=='erp'||['speller','cursor'].includes(state.session?.protocol);if(state.session?.mode!=='erp'){clearTimeout(reviewTimer);++reviewRequest;previewReviewWindow=null;reviewChannel=null;}if(controls.hidden)return;
  for(const [i,id]of ['reviewStart','reviewEnd'].entries())if(!previewReviewWindow&&document.activeElement!==$(id))$(id).value=Math.round(state.session.window[i]*1000);
  $('reviewStatus').textContent=state.session.review_window?'Exploratory window · statistics recalculated for each electrode.':'Recorded default window · '+state.session.window.map(v=>Math.round(v*1000)).join('–')+' ms';
 }
@@ -97,7 +97,7 @@ async function updateReviewWindow(){
  const request=++reviewRequest,s=selectedResult?.session||state.session,start=Number($('reviewStart').value),end=Number($('reviewEnd').value);
  if(s?.mode!=='erp')return;
  if(!Number.isFinite(start)||!Number.isFinite(end)||start<-.2*1000||end>800||start>end){$('reviewStatus').textContent='Enter -200 ≤ start ≤ end ≤ 800 ms.';return}
- try{const channel=s.protocol==='speller'?reviewChannel:null;
+ try{const channel=['speller','cursor'].includes(s.protocol)?reviewChannel:null;
  const r=await api('results/'+s.id+'/'+start/1000+'/'+end/1000+(channel?'/'+channel:''));if(request!==reviewRequest||s.id!==(selectedResult?.session||state.session)?.id)return;
- if(channel){const prior=selectedResult||state;selectedResult={...prior,session:{...prior.session,speller_review_windows_ms:{...prior.session.speller_review_windows_ms,[channel]:[start,end]}},analysis:{...prior.analysis,channels:{...prior.analysis.channels,[channel]:r.analysis.channels[channel]}}};}else selectedResult=r;renderRevision='';render()}catch(e){if(request===reviewRequest)$('reviewStatus').textContent=e.message}
+ if(channel){const prior=selectedResult||state;const key=prior.session.protocol+'_review_windows_ms';selectedResult={...prior,session:{...prior.session,[key]:{...prior.session[key],[channel]:[start,end]}},analysis:{...prior.analysis,channels:{...prior.analysis.channels,[channel]:r.analysis.channels[channel]}}};}else selectedResult=r;renderRevision='';render()}catch(e){if(request===reviewRequest)$('reviewStatus').textContent=e.message}
 }

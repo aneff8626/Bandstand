@@ -63,6 +63,9 @@ def dispatch(path,body):
     if path=='speller':
         from speller import request
         return request(engine,body)
+    if path=='cursor':
+        from cursor import request
+        return request(engine,body)
     if path=='start': return engine.begin(body)
     if path=='event': return engine.event(body)
     if path=='stop': return engine.stop(body.get('reason','stopped'))
