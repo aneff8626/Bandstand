@@ -29,7 +29,10 @@ SIM_ERP={  # protocol: (latency s, width s, {condition index: µV per channel})
  'expertise':(.17,.03,{0:(-5,-1,-1,-5),1:(-3,-.5,-.5,-3)}),
  'flanker':(.28,.05,{0:(-.5,-2,-2,-.5),1:(-1,-5,-5,-1)}),
  'reward':(.3,.05,{0:(0,0,0,0),1:(0,5,5,0)}),
+ # Cued calibration arrows only: free cursor moves carry no target label, so simulated moves are random.
+ 'cursor':(.38,.075,{0:(1,.5,.5,1),1:(6,3,3,6)}),
 }
+P300_TASKS=('speller','cursor')  # session-calibrated decoders; only their calibration flashes are analysed as ERPs
 SIM_TF={'alpha':(10,(8,4,4,8)),'theta':(6,(1,4,4,1)),'custom':(10,(4,4,4,4))}  # added only in the second condition
 SIM_NOTES={
  'oddball':'a positive peak near 380 ms, larger for targets and largest at TP9/TP10.',
@@ -43,6 +46,7 @@ SIM_NOTES={
  'custom':'extra 10 Hz alpha during the second condition.',
  'disclosure':'no effect; any difference is noise.',
  'biofeedback':'no effect; any pre/post difference is noise, not training.',
+ 'cursor':'a positive peak near 380 ms for the cued arrow during calibration only; free moves carry no target, so simulated moves are random.',
 }
 
 def image_sequence(pool,n,rng):
@@ -296,7 +300,7 @@ class Engine:
             if p['id']=='biofeedback':count=12;minimum=min(minimum,5)
             if custom:valid=2<=count<=1000 and 10<=minimum<=500
             elif p['id']=='biofeedback':valid=5<=minimum<=6
-            else:valid=(count==4 if p['id']=='disclosure' else 20<=count<=(2400 if p['id']=='speller' else 1000)) and 10<=minimum<=500
+            else:valid=(count==4 if p['id']=='disclosure' else 20<=count<=(2400 if p['id'] in P300_TASKS else 1000)) and 10<=minimum<=500
             if not valid: raise ValueError('Trial count must be 20–1000; minimum usable trials 10–500')
             window=list(map(float,cfg.get('window',p['window'])))
             if len(window)!=2 or not 0<=window[0]<window[1]<= (p['stim_ms'][1]/1000 if p['mode']!='erp' else .8): raise ValueError('Invalid analysis window')
@@ -346,7 +350,7 @@ class Engine:
             self.session['preflight_quality']={'warnings':reasons,'continued_anyway':cfg.get('allow_noisy_start') is True}
             self.session['electrode_warning']=selected!=p['channels']
             self.events=[]; self.trials=[]; self.pending=[]; self.revision+=1
-            self.speller_model=None
+            self.speller_model=None;self.cursor_model=None
             self.raw_file=open(directory/'continuous.csv','w',newline=''); self.writer=csv.writer(self.raw_file)
             self.writer.writerow(['timestamp_unix_s',*['raw_'+c+'_uV' for c in CHANNELS],*['filtered_'+c+'_uV' for c in CHANNELS],'source'])
             self.bio_file=open(directory/'bandpower.csv','w',newline=''); self.bio_writer=csv.writer(self.bio_file); self.bio_writer.writerow(['timestamp','phase','power_uV2','valid','reasons'])
@@ -370,11 +374,20 @@ class Engine:
                 if any(p.get('kind')=='stimulus' and p.get('index')==i for p in self.events): raise ValueError('Duplicate trial marker')
                 if self.session['protocol']=='speller':
                     meta=e.get('speller',{})
-                    if type(meta.get('group')) is not int or not 0<=meta['group']<16 or type(meta.get('line')) is not int or not 0<=meta['line']<12:raise ValueError('Invalid speller flash')
+                    # 2400 flashes per session / 60 per letter = 40 calibration and spelling groups.
+                    if type(meta.get('group')) is not int or not 0<=meta['group']<40 or type(meta.get('line')) is not int or not 0<=meta['line']<12:raise ValueError('Invalid speller flash')
                     if meta.get('phase')=='calibration':
                         target=meta.get('target')
                         if type(target) is not int or not 0<=target<36 or c!=int(meta['line'] in (target//6,6+target%6)):raise ValueError('Invalid calibration target')
                     elif meta.get('phase')!='spelling' or meta.get('target') is not None or c!=0:raise ValueError('Spelling must not provide a target label')
+                if self.session['protocol']=='cursor':
+                    meta=e.get('cursor',{})
+                    # 2400 flashes per session / 40 per move = 60 calibration and cursor moves.
+                    if type(meta.get('group')) is not int or not 0<=meta['group']<60 or type(meta.get('arrow')) is not int or not 0<=meta['arrow']<4:raise ValueError('Invalid cursor flash')
+                    if meta.get('phase')=='calibration':
+                        target=meta.get('target')
+                        if type(target) is not int or not 0<=target<4 or c!=int(meta['arrow']==target):raise ValueError('Invalid calibration target')
+                    elif meta.get('phase')!='moving' or meta.get('target') is not None or c!=0:raise ValueError('Cursor moves must not provide a target label')
                 event['condition']=self.session['conditions'][c]; self.pending.append(event)
             if kind=='phase': self.session['phase']=str(e.get('phase',''))[:100]
             self.events.append(event)
@@ -435,7 +448,7 @@ class Engine:
                     tf=time_frequency(sx[:,idx].mean(1),rt)
             trial=dict(index=event['index'],condition=event['condition'],condition_index=event['condition_index'],onset=event['onset'],accepted=not reasons,reasons=list(dict.fromkeys(reasons)),feature=feature,wave=epoch[:,idx].mean(1).tolist() if epoch is not None else None,times=grid.tolist(),tf=tf)
             trial['channel_trials']=channel_trials
-            if s['protocol']=='speller':trial['speller']=event.get('speller',{})
+            if s['protocol'] in P300_TASKS:trial[s['protocol']]=event.get(s['protocol'],{})
             self.trials.append(trial); self.pending.remove(event); self.revision+=1
             d=DATA_ROOT/s['id']; np.savez_compressed(d/f"trial-{event['index']:04d}.npz",times=rt,raw=x,filtered=y,notched=sx,grid=grid,processed=epoch if epoch is not None else np.empty((0,4)))
             (d/'trials.json').write_text(dumps(self.trials))
@@ -446,7 +459,7 @@ class Engine:
             if getattr(self,'tf_tick',None)!=tick:self.tf_tick=tick;self.cache_revision=None
         if self.cache_revision==(self.revision,len(getattr(self,"events",[]))): return self.cache_analysis
         s=self.session
-        if s.get('protocol')=='speller':s['conditions']=['Unattended','Attended']
+        if s.get('protocol') in P300_TASKS:s['conditions']=['Unattended','Attended']
         if s['mode']=='tf':
             for trial in self.trials:
                 if 'spectral_channels' not in trial:
@@ -470,7 +483,8 @@ class Engine:
                     latest=channel_windows(np.asarray(self.raw),np.asarray(self.spectral),relative,[end-2,end],s['thresholds'])
                     result['live_preview']={ch:r['preview_psd'] for ch,r in latest.items()};result['live_condition']=event['condition_index'];result['live_second']=end
             self.cache_revision=(self.revision,len(getattr(self,"events",[])));self.cache_analysis=result;return result
-        analysis_trials=[t for t in self.trials if s.get('protocol')!='speller' or t.get('speller',{}).get('phase')=='calibration']
+        task=s.get('protocol') if s.get('protocol') in P300_TASKS else None
+        analysis_trials=[t for t in self.trials if not task or t.get(task,{}).get('phase')=='calibration']
         groups=[]
         for c,label in enumerate(s['conditions']):
             all_trials=[t for t in analysis_trials if t['condition_index']==c]; good=[t for t in all_trials if t['accepted']]
@@ -488,14 +502,14 @@ class Engine:
                 for c,label in enumerate(s['conditions']):
                     trials=[{**t.get('channel_trials',{}).get(channel,{}),'index':t['index']} for t in analysis_trials if t['condition_index']==c and channel in t.get('channel_trials',{})]
                     good=[t for t in trials if t['accepted']];features=[t['feature'] for t in good]
-                    window=s.get('speller_review_windows_ms',{}).get(channel,s.get('speller_windows_ms',{}).get(channel)) if s.get('protocol')=='speller' else None
+                    window=s.get(f'{task}_review_windows_ms',{}).get(channel,s.get(f'{task}_windows_ms',{}).get(channel)) if task else None
                     if window and good:
                         mask=(np.asarray(result['times'])>=window[0]/1000)&(np.asarray(result['times'])<window[1]/1000)
                         features=[float(np.asarray(t['wave'])[mask].mean()) for t in good]
                     cg.append(dict(label=label,accepted=len(good),rejected=len(trials)-len(good),features=features,mean=float(np.mean(features)) if features else None,se=float(np.std(features,ddof=1)/np.sqrt(len(features))) if len(features)>1 else None,erp=summarize([t['wave'] for t in good]) if good else None,recent=[{'wave':t['wave'],'index':t['index']} for t in good[-20:]]))
                     rejected.extend(dict(index=t['index'],condition=label,reasons=t['reasons']) for t in trials if not t['accepted'])
                 result['channels'][channel]=dict(groups=cg,times=result['times'],unit=result['unit'],stats=compare(cg[0]['features'],cg[1]['features'],s['minimum']) if len(cg)==2 else dict(ready=False,reason='Multiple conditions: descriptive estimates; no omnibus test'),rejections=rejected)
-                if s.get('protocol')=='speller':
+                if task:
                     result['channels'][channel]['window']=[v/1000 for v in window] if window else None
                     result['channels'][channel]['stats']={'ready':False,'reason':'Means ± SE · descriptive calibration data'}
         if all(g.get('tf') for g in groups):
@@ -612,8 +626,8 @@ class Engine:
         if start==end and view.trials:
             grid=np.asarray(view.trials[0]['times']);start=end=float(grid[np.argmin(abs(grid-start))])
         if channel is not None:
-            if view.session.get('protocol')!='speller' or channel not in view.session['channels']:raise ValueError('Choose a speller electrode')
-            view.session.setdefault('speller_review_windows_ms',{})[channel]=[start*1000,end*1000]
+            if view.session.get('protocol') not in P300_TASKS or channel not in view.session['channels']:raise ValueError('Choose a speller or cursor electrode')
+            view.session.setdefault(f"{view.session['protocol']}_review_windows_ms",{})[channel]=[start*1000,end*1000]
             view.pending=[];view.revision=0;view.cache_revision=None;view.cache_analysis={}
             return dict(session=view.session,analysis=view.analysis())
         original=view.session['window'];view.session.update(window=[start,end],review_window=True,original_window=original,running=False)
@@ -643,9 +657,9 @@ class Engine:
             view.trials=json.loads((d/'trials.json').read_text()) if (d/'trials.json').exists() else []
             view.events=json.loads((d/'events.json').read_text()) if (d/'events.json').exists() else []
             view.pending=[]; view.revision=0; view.cache_revision=None; view.cache_analysis={}; view.readonly_saved=True
-            if view.session.get('protocol')=='speller':
-                from speller import retrospective_calibration
-                retrospective_calibration(view)
+            if view.session.get('protocol') in P300_TASKS:
+                import speller,cursor
+                {'speller':speller,'cursor':cursor}[view.session['protocol']].retrospective_calibration(view)
                 self._speller_saved_cache=(stamp,view)
             return view
 

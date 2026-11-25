@@ -36,8 +36,9 @@ def point_statistics(trials, session, low, high, first=0, second=1, correction='
     selected_indices=set(indices)
     if full_family:indices=list(range(len(grid)))
     channels={};family=[];tested=[]
-    # Speller calibration alone is eligible, never mix online predictions into training labels.
-    trials=[t for t in trials if session.get('protocol')!='speller' or t.get('speller',{}).get('phase')=='calibration']
+    # Speller and cursor calibration alone is eligible, never mix online predictions into training labels.
+    task=session.get('protocol') if session.get('protocol') in ('speller','cursor') else None
+    trials=[t for t in trials if not task or t.get(task,{}).get('phase')=='calibration']
     for ch in (CHANNELS if spectral else session.get('channels',CHANNELS)):
         groups=[]
         for ci in (first,second):

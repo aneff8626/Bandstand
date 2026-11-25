@@ -40,21 +40,7 @@ async function startSpeller(){
   personalBusy=true;journeyRun=true;journeySetStep('run');q('.speller-source').textContent=session.source==='simulation'?'SIMULATION — not real EEG':'';document.addEventListener('visibilitychange',hidden);
   const showOutput=data=>{q('.speller-output').textContent=data.text||'—';q('.speller-evidence').textContent=data.history?.length?spellerEvidence(data.history.at(-1)):'';};
   q('.speller-evidence').title='Classifier gaps: winning row/column score minus runner-up, in standardized classifier units. Larger means stronger separation, not probability of correctness. Calibration accuracy is shown separately.';
-  const chart=data=>{
-   q('.speller-erps').replaceChildren();
-   for(const [ch,conditions]of electrodeEntries(data.channels)){
-    const box=document.createElement('div');const title=document.createElement('strong');title.textContent=electrodeLabel(ch)+' · ';for(const [k,c]of conditions.entries()){const label=document.createElement('span');label.style.color=k?'#b27b20':'#268f86';label.textContent=`${c.n} ${k?'attended':'unattended / '}`;title.append(label)}if(data.windows?.[ch]){const interval=document.createElement('small');interval.textContent=' · '+data.windows[ch].join('–')+' ms';title.append(interval)}box.append(title);
-    const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 300 115');svg.setAttribute('aria-label',`${ch} calibration ERP, −200 to 800 milliseconds, ±15 microvolts`);
-    if(data.windows?.[ch]){const band=document.createElementNS(ns,'rect');const [lo,hi]=data.windows[ch];band.setAttribute('x',20+270*(lo+200)/1000);band.setAttribute('y','8');band.setAttribute('width',270*(hi-lo)/1000);band.setAttribute('height','90');band.setAttribute('fill','#426c9818');svg.append(band)}
-    const xy=(v,i,n)=>`${20+270*i/(n-1)},${Math.max(8,Math.min(98,53-v*3))}`;
-    for(const [k,c]of conditions.entries())if(c.mean.length){
-     const color=k?'#cd922f':'#268f86';
-     if(c.ci.length){const band=document.createElementNS(ns,'polygon');band.setAttribute('points',c.mean.map((v,i)=>xy(v+c.ci[i],i,c.mean.length)).concat(c.mean.map((v,i)=>xy(v-c.ci[i],i,c.mean.length)).reverse()).join(' '));band.setAttribute('fill',color);band.setAttribute('opacity','.14');svg.append(band)}
-     const line=document.createElementNS(ns,'polyline');line.setAttribute('points',c.mean.map((v,i)=>xy(v,i,c.mean.length)).join(' '));line.setAttribute('fill','none');line.setAttribute('stroke',color);line.setAttribute('stroke-width','2');svg.append(line)
-    }
-    for(const [x,y,text]of [[20,112,'−200'],[74,112,'0'],[236,112,'600 ms'],[0,15,'15'],[0,56,'0'],[0,97,'−15 µV']]){const t=document.createElementNS(ns,'text');t.setAttribute('x',x);t.setAttribute('y',y);t.setAttribute('font-size','8');t.textContent=text;svg.append(t)}box.append(svg);q('.speller-erps').append(box)
-   }
-  };
+  const chart=data=>p300CalibrationChart(q('.speller-erps'),data);
   const sequence=async(target,phase)=>{
    if(index+60>2400)throw Error('Session limit reached. Begin a new calibration to continue.');
    const thisGroup=group++;setStatus('Count the flashes.');
@@ -121,4 +107,21 @@ function renderSpellerSummary(){
  if(s.speller_retrospective){const original=s.speller_original_validation||[];panel.append(personalElement('p',`Reanalysed calibration · original decoder: ${original.filter(x=>x.expected===x.predicted).length}/${original.length} correct`,'muted'));}
 
 
+}
+
+// Calibration responses shared by the speller and the direction cursor: attended (gold) vs unattended (teal).
+function p300CalibrationChart(container,data){
+ container.replaceChildren();
+ for(const [ch,conditions]of electrodeEntries(data.channels)){
+  const box=document.createElement('div');const title=document.createElement('strong');title.textContent=electrodeLabel(ch)+' · ';for(const [k,c]of conditions.entries()){const label=document.createElement('span');label.style.color=k?'#b27b20':'#268f86';label.textContent=`${c.n} ${k?'attended':'unattended / '}`;title.append(label)}if(data.windows?.[ch]){const interval=document.createElement('small');interval.textContent=' · '+data.windows[ch].join('–')+' ms';title.append(interval)}box.append(title);
+  const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 300 115');svg.setAttribute('aria-label',`${ch} calibration ERP, −200 to 800 milliseconds, ±15 microvolts`);
+  if(data.windows?.[ch]){const band=document.createElementNS(ns,'rect');const [lo,hi]=data.windows[ch];band.setAttribute('x',20+270*(lo+200)/1000);band.setAttribute('y','8');band.setAttribute('width',270*(hi-lo)/1000);band.setAttribute('height','90');band.setAttribute('fill','#426c9818');svg.append(band)}
+  const xy=(v,i,n)=>`${20+270*i/(n-1)},${Math.max(8,Math.min(98,53-v*3))}`;
+  for(const [k,c]of conditions.entries())if(c.mean.length){
+   const color=k?'#cd922f':'#268f86';
+   if(c.ci.length){const band=document.createElementNS(ns,'polygon');band.setAttribute('points',c.mean.map((v,i)=>xy(v+c.ci[i],i,c.mean.length)).concat(c.mean.map((v,i)=>xy(v-c.ci[i],i,c.mean.length)).reverse()).join(' '));band.setAttribute('fill',color);band.setAttribute('opacity','.14');svg.append(band)}
+   const line=document.createElementNS(ns,'polyline');line.setAttribute('points',c.mean.map((v,i)=>xy(v,i,c.mean.length)).join(' '));line.setAttribute('fill','none');line.setAttribute('stroke',color);line.setAttribute('stroke-width','2');svg.append(line)
+  }
+  for(const [x,y,text]of [[20,112,'−200'],[74,112,'0'],[236,112,'600 ms'],[0,15,'15'],[0,56,'0'],[0,97,'−15 µV']]){const t=document.createElementNS(ns,'text');t.setAttribute('x',x);t.setAttribute('y',y);t.setAttribute('font-size','8');t.textContent=text;svg.append(t)}box.append(svg);container.append(box)
+ }
 }

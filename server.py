@@ -103,6 +103,9 @@ class Handler(BaseHTTPRequestHandler):
             elif path=='/api/speller':
                 from speller import request
                 result=request(engine,body)
+            elif path=='/api/cursor':
+                from cursor import request
+                result=request(engine,body)
             elif path=='/api/start': result=engine.begin(body)
             elif path=='/api/event': result=engine.event(body)
             elif path=='/api/stop': result=engine.stop(str(body.get('reason','stopped'))[:100])
