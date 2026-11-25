@@ -45,6 +45,20 @@ class SpellerIntegrationTests(unittest.TestCase):
         e=Engine.__new__(Engine);e.lock=threading.RLock();e.source='simulation';e.session=dict(running=True,protocol='speller',trials_planned=960);e.events=[]
         with self.assertRaisesRegex(ValueError,'target label'):
             e.event(dict(kind='stimulus',onset=time.time(),index=0,condition_index=0,speller=dict(group=8,line=0,target=3,phase='spelling')))
+    def test_late_letters_are_accepted_until_the_session_limit(self):
+        # Eight calibration letters plus spelling used to fail at the 17th group; the session limit allows 40.
+        import threading,time,tempfile,pathlib
+        from unittest import mock
+        import engine
+        with tempfile.TemporaryDirectory() as root,mock.patch.object(engine,'DATA_ROOT',pathlib.Path(root)):
+            (pathlib.Path(root)/'s').mkdir()
+            e=engine.Engine.__new__(engine.Engine);e.lock=threading.RLock();e.source='simulation';e.events=[];e.pending=[]
+            e.session=dict(id='s',running=True,protocol='speller',trials_planned=2400,conditions=['Unattended','Attended'])
+            e.event(dict(kind='stimulus',onset=time.time(),index=1000,condition_index=0,speller=dict(group=16,line=0,target=None,phase='spelling')))
+            e.event(dict(kind='stimulus',onset=time.time(),index=2399,condition_index=0,speller=dict(group=39,line=11,target=None,phase='spelling')))
+            self.assertEqual(len(e.pending),2)
+            with self.assertRaisesRegex(ValueError,'Invalid speller flash'):
+                e.event(dict(kind='stimulus',onset=time.time(),index=5,condition_index=0,speller=dict(group=40,line=0,target=None,phase='spelling')))
 
 class AdaptiveSpellerTests(unittest.TestCase):
     def test_electrodes_learn_distinct_training_windows(self):

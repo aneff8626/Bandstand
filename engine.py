@@ -370,7 +370,8 @@ class Engine:
                 if any(p.get('kind')=='stimulus' and p.get('index')==i for p in self.events): raise ValueError('Duplicate trial marker')
                 if self.session['protocol']=='speller':
                     meta=e.get('speller',{})
-                    if type(meta.get('group')) is not int or not 0<=meta['group']<16 or type(meta.get('line')) is not int or not 0<=meta['line']<12:raise ValueError('Invalid speller flash')
+                    # 2400 flashes per session / 60 per letter = 40 calibration and spelling groups.
+                    if type(meta.get('group')) is not int or not 0<=meta['group']<40 or type(meta.get('line')) is not int or not 0<=meta['line']<12:raise ValueError('Invalid speller flash')
                     if meta.get('phase')=='calibration':
                         target=meta.get('target')
                         if type(target) is not int or not 0<=target<36 or c!=int(meta['line'] in (target//6,6+target%6)):raise ValueError('Invalid calibration target')
